@@ -4,6 +4,7 @@ version = "0.12.1"
 edition = "2024"
 description = "Back up, restore and install firmware/bootloaders on the M-VAVE FM-1 and SMK-37 through the chip's USB download mode"
 license = "MIT"
+authors = ["Julius Vitkauskas", "Wellington Saam"]
 build = "build.rs"
 
 [dependencies]

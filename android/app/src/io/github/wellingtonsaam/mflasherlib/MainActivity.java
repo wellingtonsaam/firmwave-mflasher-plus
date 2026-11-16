@@ -164,7 +164,7 @@ public class MainActivity extends Activity {
         } else {
             registerReceiver(receiver, f);
         }
-        say("M-Flasher Library on " + Build.MODEL + ", Android " + Build.VERSION.RELEASE);
+        say("M-Flasher + on " + Build.MODEL + ", Android " + Build.VERSION.RELEASE);
         showWaiting();
         library.load();
         readUnit(false);
@@ -233,7 +233,8 @@ public class MainActivity extends Activity {
         LinearLayout bar = new LinearLayout(this);
         bar.setGravity(Gravity.CENTER_VERTICAL);
         bar.setPadding(px(16), px(12), px(16), px(12));
-        TextView name = text("M-FLASHER", MINT, 20, true);
+        TextView name = text("M-FLASHER +", MINT, 20, true);
+        name.setOnClickListener(v -> about());
         name.setTypeface(Typeface.create("sans-serif-condensed", Typeface.BOLD_ITALIC));
         bar.addView(name);
         unit = text("NO UNIT", DIM, 11, false);
@@ -341,6 +342,26 @@ public class MainActivity extends Activity {
                 new android.graphics.drawable.Drawable[] {new android.graphics.drawable.ColorDrawable(PANEL), line});
         l.setLayerHeight(1, px(2));
         return l;
+    }
+
+    /** About: what this app is, and whose work it builds on. */
+    private void about() {
+        String version;
+        try {
+            version = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+        } catch (Exception e) {
+            version = "";
+        }
+        new AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
+                .setTitle("M-Flasher + " + version)
+                .setMessage("Back up, restore and install the firmware of an M-VAVE FM-1 from this phone, through the "
+                        + "chip's USB download mode.\n\n"
+                        + "M-Flasher + by Wellington Saam: the firmware library, m-bootloader before a firmware "
+                        + "(REQ-BOOT-01), the Device tab's checks and this Android app. Based on M-Flasher by Julius "
+                        + "Vitkauskas (MIT).\n\n"
+                        + "Bootloader and flash loader: m-bootloader (MIT). Firmware list: The Firmware Hub "
+                        + "(CC BY 4.0).\n\nUnofficial: not affiliated with M-VAVE or JieLi.")
+                .setPositiveButton("OK", null).show();
     }
 
     // ---- state shown

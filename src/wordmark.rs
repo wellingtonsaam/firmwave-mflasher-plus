@@ -165,3 +165,15 @@ pub fn draw(painter: &eframe::egui::Painter, x: f32, baseline: f32, cap: f32, co
     }
     w.width * k
 }
+
+/// The "+" of M-Flasher +, after the wordmark: outlined as "-FLASHER" and
+/// leaning with its italic. Its left end at `x`; returns its width.
+pub fn plus(painter: &eframe::egui::Painter, x: f32, baseline: f32, cap: f32, color: Color32) -> f32 {
+    let (h, a) = (0.3 * cap, 0.09 * cap); // half its size, half a bar
+    let lean = 0.2;
+    let (cx, cy) = (x + h + lean * cap * 0.5, cap * 0.5);
+    let at = |px: f32, py: f32| pos2(cx + px + lean * py, baseline - cy - py);
+    let outline = [(-a, -h), (a, -h), (a, -a), (h, -a), (h, a), (a, a), (a, h), (-a, h), (-a, a), (-h, a), (-h, -a), (-a, -a)];
+    painter.add(Shape::closed_line(outline.iter().map(|&(px, py)| at(px, py)).collect(), Stroke::new(OUTLINE * cap, color)));
+    2.0 * h + lean * cap
+}

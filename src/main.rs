@@ -65,7 +65,7 @@ fn window_error(error: &str) {
         "Cannot open the window: {error}\n\nIt is drawn with Direct3D 12, which Windows 10 and 11 provide even without a graphics driver that has it.\n\nThe command line works without it: M-Flasher --help"
     );
     // SAFETY: both are valid NUL-terminated strings; no owner window
-    unsafe { MessageBoxW(std::ptr::null_mut(), wide(&text).as_ptr(), wide("M-Flasher").as_ptr(), MB_ICONERROR | MB_OK) };
+    unsafe { MessageBoxW(std::ptr::null_mut(), wide(&text).as_ptr(), wide("M-Flasher +").as_ptr(), MB_ICONERROR | MB_OK) };
 }
 
 /// Why the window cannot open on this Linux desktop, if it cannot: checked

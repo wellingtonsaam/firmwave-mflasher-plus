@@ -214,7 +214,9 @@ impl eframe::App for App {
 
         // ---- masthead ----
         let origin = board.p(40.0, 116.0);
-        let ww = crate::wordmark::draw(&painter, origin.x, origin.y, 72.0 * s, MINT) / s;
+        // M-Flasher +: the plus after the word, both a little smaller to leave the tabs their room
+        let ww = crate::wordmark::draw(&painter, origin.x, origin.y, 64.0 * s, MINT) / s;
+        let ww = ww + 12.0 + crate::wordmark::plus(&painter, origin.x + (ww + 12.0) * s, origin.y, 64.0 * s, MINT) / s;
         p.text(38.0 + ww + 24.0, 70.0, Align2::LEFT_CENTER, "USB FIRMWARE UTILITY", "tech", 21.0, LAV, 2.4);
         p.text(38.0 + ww + 24.0, 96.0, Align2::LEFT_CENTER, "FOR THE FM-1 AND SMK-37", "tech", 14.0, hex(0x8f80b6), 3.0);
         p.text(1500.0, 80.0, Align2::RIGHT_CENTER, &format!("v{}", env!("CARGO_PKG_VERSION")), "tech", 14.0, LAV, 1.0);
@@ -1036,9 +1038,13 @@ impl App {
                     ("The unit is not touched. GET downloads it again, with its SHA-256 checked.".into(), DIM),
                 ], vec![("CANCEL", 0), ("DELETE", 9)]),
                 Dialog::About => ("ABOUT", vec![
-                    (format!("M-Flasher {}: back up, restore and reinstall the firmware of the M-VAVE FM-1 and SMK-37 \
+                    (format!("M-Flasher + {}: back up, restore and reinstall the firmware of the M-VAVE FM-1 and SMK-37 \
                               Pro / Elite through the chip's USB download mode, and install m-bootloader.",
                              env!("CARGO_PKG_VERSION")), INK),
+                    (String::new(), INK),
+                    ("M-Flasher + by Wellington Saam: the firmware library, m-bootloader before a firmware \
+                      (REQ-BOOT-01), the Device tab's checks and the Android app. Based on M-Flasher by Julius \
+                      Vitkauskas (MIT).".into(), INK),
                     (String::new(), INK),
                     ("Bootloader and flash loader: m-bootloader (MIT). Protocol after jl-uboot-tool by \
                       kagaimiq (MIT). Fonts: Saira, Barlow Condensed, Share Tech Mono, IBM Plex Mono, VT323 \
@@ -1046,7 +1052,7 @@ impl App {
                     (String::new(), INK),
                     ("Unofficial: not affiliated with M-VAVE or JieLi.".into(), DIM),
                     (String::new(), INK),
-                    ("M-Flasher is free. It isn't signed yet, which is why Windows and macOS ask before it first \
+                    ("M-Flasher + is free. It isn't signed yet, which is why Windows and macOS ask before it first \
                       starts; signing costs money every year, and donations would pay for it.".into(), INK),
                 ], vec![("GITHUB SPONSORS", 7), ("KO-FI", 8), ("CLOSE", 0)]),
                 Dialog::Model => {
@@ -1174,7 +1180,7 @@ const ICON: &[u8] = if cfg!(target_os = "macos") {
 pub fn run() -> eframe::Result {
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_title("M-Flasher")
+            .with_title("M-Flasher +")
             // Linux: matches the installed launcher, for the dock's icon
             .with_app_id("io.github.jvitkauskas.m-flasher")
             .with_inner_size(vec2(1280.0, 853.0))
@@ -1185,7 +1191,7 @@ pub fn run() -> eframe::Result {
         wgpu_options: wgpu_options(),
         ..Default::default()
     };
-    eframe::run_native("M-Flasher", options, Box::new(|cc| Ok(Box::new(App::new(cc)))))
+    eframe::run_native("M-Flasher +", options, Box::new(|cc| Ok(Box::new(App::new(cc)))))
 }
 
 /// Windows: Direct3D 12 (the only backend built in); on a laptop with two
