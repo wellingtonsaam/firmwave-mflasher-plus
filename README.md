@@ -1,7 +1,8 @@
 # M-Flasher +
 
-**Free for Windows, macOS, Linux and Android.** Download it from the
-[releases](../../releases).
+**Free for macOS and Android.** Download it from the
+[releases](../../releases). (Windows and Linux build from the same code, as
+M-Flasher's do, but this version has not been tested on them yet.)
 
 Back up, restore and reinstall the firmware of an **M-VAVE FM-1** (or its
 rebranded twin, the **Fame MiniFM**) or **SMK-37 Pro / Elite** over USB, with
@@ -123,29 +124,32 @@ it.
 - **Firmware names**: the firmware is shown by the name it was installed by
   (*zp12 2.5 · Felucca*), as above.
 - **SAFETY CHECK**: recovery, backup, firmware and chip, at a glance.
-- **No keys to remember**: INSTALL (and READ UNIT on Android) switches a
-  running unit to download mode by a MIDI message. If its firmware does not
+- **No keys to remember**: INSTALL and CHECK FM1 STATUS switch a running
+  unit to download mode by a MIDI message. If its firmware does not
   know it, the app says which keys do it on *that* unit, and carries on when
   it shows up.
 - **Restart after writing**: the FM-1 leaves download mode by itself and the
   app tells you when the new firmware is running.
 - **Android app**: the same core on a phone, over a USB OTG cable: read the
   unit, back up, install from the library, restore.
-- **In development**: the redesigned Device tab, with **CHECK FM1 STATUS**
-  and **INSTALL M-BOOTLOADER** first, and each operation's form shown only
-  when it is chosen.
+- **The Device tab, redesigned** around the use cases: **CHECK FM1 STATUS**
+  and **INSTALL M-BOOTLOADER** first, then the unit's details, and each
+  operation's form shown only when it is chosen.
+- **Backups named by the firmware**: *fm1-zp12-2.5-20261116-165332.bin*.
 
 ## Getting started
 
-1. Download M-Flasher + from the [releases](../../releases): the desktop app
-   for your system, or the Android APK. The apps are not signed, so the first
-   start needs one extra confirmation.
+1. Download M-Flasher + from the [releases](../../releases): the macOS disk
+   image or the Android APK. The Mac app is not signed with an Apple
+   certificate: the first time, macOS blocks it; allow it in **System
+   Settings › Privacy & Security › Open Anyway**. On Android, allow installing
+   apps from your browser or file manager.
 2. Connect the FM-1 with a USB **data** cable (on a phone: a USB OTG adapter)
    and switch it on.
 3. Pick a firmware in the **LIBRARY** tab and press **INSTALL**: M-Flasher +
    switches the FM-1 to download mode, reads it and opens the review. Nothing
-   is written until you confirm. To start with a backup, press **DOWNLOAD
-   MODE** (desktop) or **READ UNIT** (Android), then save one.
+   is written until you confirm. To start with a backup, press **CHECK FM1
+   STATUS**, then **BACKUP FULL FLASH**.
 
 ## More
 

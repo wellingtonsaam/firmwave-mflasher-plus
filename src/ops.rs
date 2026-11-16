@@ -145,6 +145,8 @@ pub struct Session<F: Flash> {
     pub unit_id: Option<String>,
     /// The unit's own display is showing our screens.
     pub display: bool,
+    /// The firmware by the name it was installed by ("zp12 2.5"), when known: the unit's display shows it.
+    pub named: Option<String>,
 }
 
 // the unit's display: colours (RGB565) and the screens' text (its font has
@@ -153,6 +155,20 @@ const MINT: u16 = 0x7F57;
 const LAV: u16 = 0xB51C;
 const AMBER: u16 = 0xFDA0;
 const WHITE: u16 = 0xFFFF;
+
+/// A name as part of a file name: lowercase letters, digits and dots, the rest as single dashes, at most
+/// 40 characters ("zp12 2.5" → "zp12-2.5").
+pub fn file_part(s: &str) -> String {
+    let mut out = String::new();
+    for c in s.to_lowercase().chars() {
+        if c.is_ascii_alphanumeric() || c == '.' {
+            out.push(c);
+        } else if !out.ends_with('-') {
+            out.push('-');
+        }
+    }
+    out.trim_matches(|c| c == '-' || c == '.').chars().take(40).collect::<String>().trim_end_matches('-').to_string()
+}
 
 fn screen_text(s: &str) -> String {
     s.to_uppercase().chars().map(|c| if c.is_ascii_alphanumeric() || " -./:<>+?".contains(c) { c } else { ' ' }).collect()
@@ -196,7 +212,7 @@ impl<F: Flash> Session<F> {
         }
         let analysis = Analysis::new(&a, Some(dev.flash_id()), dev.chip_key());
         let unit_id = dev.unique_id();
-        Ok(Session { dev, flash: a, analysis, backup_dir, backup_path: None, board_override: None, unit_id, display: false })
+        Ok(Session { dev, flash: a, analysis, backup_dir, backup_path: None, board_override: None, unit_id, display: false, named: None })
     }
 
     pub fn board(&self) -> Option<&'static Board> {
@@ -222,6 +238,7 @@ impl<F: Flash> Session<F> {
             ("model", self.board_override.map(|b| b.name.to_string()).unwrap_or_else(|| self.analysis.model_text())),
             ("bootloader", self.analysis.bootloader_text.clone()),
             ("firmware", self.analysis.firmware_text.clone()),
+            ("firmware name", self.named.clone().unwrap_or_default()),
             ("app", self.analysis.app_status.text().to_string()),
             ("chip key", format!("0x{:04X}", self.dev.chip_key())),
             ("flash", format!("0x{:06X}", self.dev.flash_id())),
@@ -239,7 +256,8 @@ impl<F: Flash> Session<F> {
         }
         self.dev.show(Show::On(if board.key == "fm1" { 1 } else { 2 }));
         self.display = true;
-        let firmware = screen_text(&self.analysis.firmware_text);
+        // the name it was installed by, when known (a fork of Felucca calls itself Felucca)
+        let firmware = screen_text(self.named.as_deref().unwrap_or(&self.analysis.firmware_text));
         self.screen(&[(1, " M-FLASHER", MINT), (3, " CONNECTED", WHITE), (5, &format!(" {}", screen_text(board.name)), LAV),
                       (6, &format!(" {firmware}"), LAV), (12, " READY", MINT)]);
     }
@@ -258,6 +276,11 @@ impl<F: Flash> Session<F> {
         create_dirs(&dir).map_err(|e| Error::Io(format!("cannot create {}: {e}", dir.display())))?;
         let stamp = chrono::Local::now().format("%Y%m%d-%H%M%S").to_string();
         let model = self.board().map(|b| b.key).unwrap_or("unknown");
+        // the firmware by the name it was installed by, when known: "fm1-zp12-2.5-20261116-153448.bin"
+        let model = match self.named.as_deref().map(file_part).filter(|n| !n.is_empty()) {
+            Some(n) => format!("{model}-{n}"),
+            None => model.to_string(),
+        };
         // two backups in the same second: the second gets -2 (and so on). The
         // name is taken by creating the file, so that another M-Flasher saving
         // at the same moment gets the next one, and neither writes over the other's.

@@ -104,6 +104,13 @@ final class Ui {
     }
 
     /** Disabled: the Figma 40 %. */
+    /** When a backup was saved, from its name ("20261116-165332"); its file's time if the name has none. */
+    static String savedAt(java.io.File f) {
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("(\\d{8}-\\d{6})").matcher(f.getName());
+        return m.find() ? m.group(1)
+                : new java.text.SimpleDateFormat("yyyyMMdd-HHmmss", java.util.Locale.ROOT).format(new java.util.Date(f.lastModified()));
+    }
+
     static void enable(View v, boolean on) {
         v.setEnabled(on);
         v.setAlpha(on ? 1f : 0.4f);

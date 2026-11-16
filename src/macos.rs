@@ -30,6 +30,7 @@ const FIND: u8 = 1;
 const OPEN: u8 = 2;
 const EXECUTE: u8 = 3;
 const CLOSE: u8 = 4;
+const GIVE_BACK: u8 = 5;
 
 const OK: u8 = 0;
 const FAILED: u8 = 1;
@@ -297,6 +298,7 @@ pub fn usb_helper() -> i32 {
                 device = None;
                 Ok(vec![])
             }
+            GIVE_BACK => give_back_as_root(&request[1..]),
             _ => Err(ScsiError::Failed("unknown request".into())),
         };
         let (status, payload) = match answer {
@@ -310,6 +312,86 @@ pub fn usb_helper() -> i32 {
         frame.extend(payload);
         if output.write_all(&frame).and_then(|_| output.flush()).is_err() {
             return 0;
+        }
+    }
+}
+
+/// Whether any file under these folders is root's: left there by M-Flasher run with sudo, it can't be
+/// written by the window any more (the library's favorites, its packages).
+pub fn left_to_root(dirs: &[std::path::PathBuf]) -> bool {
+    use std::os::unix::fs::MetadataExt;
+    !is_root() && dirs.iter().any(|d| walk(d, &mut |m| m.uid() == 0))
+}
+
+/// Gives back to the user the files of these folders that are root's, through the helper: only when it
+/// runs already (the password was given to reach the unit), so this never asks for it by itself. How
+/// many were given back.
+pub fn give_back(dirs: &[std::path::PathBuf]) -> Result<usize, ScsiError> {
+    // SAFETY: plain libc calls without arguments
+    let (uid, gid) = unsafe { (libc::getuid(), libc::getgid()) };
+    let mut request = vec![GIVE_BACK];
+    request.extend(format!("{uid}\t{gid}").as_bytes());
+    for d in dirs {
+        request.extend(format!("\n{}", d.display()).as_bytes());
+    }
+    let n = ask(&request, false)?;
+    Ok(u32::from_le_bytes(n.get(..4).and_then(|b| b.try_into().ok()).unwrap_or([0; 4])) as usize)
+}
+
+/// GIVE_BACK, as root: "uid\tgid" then the folders, a line each. Only folders named M-Flasher (or in
+/// one) inside that user's home are touched, and only what is root's there; links are not followed.
+fn give_back_as_root(r: &[u8]) -> Result<Vec<u8>, ScsiError> {
+    let bad = || ScsiError::Failed("bad request".into());
+    let text = String::from_utf8_lossy(r);
+    let mut lines = text.lines();
+    let (uid, gid) = lines.next().and_then(|l| l.split_once('\t')).ok_or_else(bad)?;
+    let (uid, gid): (u32, u32) = (uid.parse().map_err(|_| bad())?, gid.parse().map_err(|_| bad())?);
+    // SAFETY: getpwuid returns null or a valid entry, read at once
+    let home = unsafe {
+        let pw = libc::getpwuid(uid);
+        if pw.is_null() {
+            return Err(bad());
+        }
+        std::ffi::CStr::from_ptr((*pw).pw_dir).to_string_lossy().into_owned()
+    };
+    let mut n = 0u32;
+    for dir in lines.map(std::path::PathBuf::from) {
+        let inside = dir.is_absolute() && dir.starts_with(&home)
+            && dir.components().any(|c| c.as_os_str() == "M-Flasher")
+            && !dir.components().any(|c| c.as_os_str() == "..");
+        if !inside {
+            continue;
+        }
+        let mut give = |p: &std::path::Path| {
+            let c = CString::new(p.as_os_str().as_bytes()).unwrap_or_default();
+            // SAFETY: a valid C string; lchown does not follow links
+            if unsafe { libc::lchown(c.as_ptr(), uid, gid) } == 0 {
+                n += 1;
+            }
+        };
+        walk_paths(&dir, &mut |p, m| {
+            use std::os::unix::fs::MetadataExt;
+            if m.uid() == 0 {
+                give(p);
+            }
+        });
+    }
+    Ok(n.to_le_bytes().to_vec())
+}
+
+/// True when `f` is true for the folder or anything under it (links not followed).
+fn walk(dir: &std::path::Path, f: &mut dyn FnMut(&std::fs::Metadata) -> bool) -> bool {
+    let mut found = false;
+    walk_paths(dir, &mut |_, m| found |= f(m));
+    found
+}
+
+fn walk_paths(dir: &std::path::Path, f: &mut dyn FnMut(&std::path::Path, &std::fs::Metadata)) {
+    let Ok(m) = std::fs::symlink_metadata(dir) else { return };
+    f(dir, &m);
+    if m.is_dir() {
+        for e in std::fs::read_dir(dir).into_iter().flatten().flatten() {
+            walk_paths(&e.path(), f);
         }
     }
 }

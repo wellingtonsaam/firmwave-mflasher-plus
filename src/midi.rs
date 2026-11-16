@@ -17,9 +17,11 @@ pub const SOFT_KEY: [u8; 6] = [0xF0, 0x22, 0x24, 0x35, 0x7D, 0xF7];
 
 /// Names under which the units appear on USB MIDI, each unit with the
 /// spellings its name may take. Nothing else is ever sent the soft key.
-/// Felucca 1.8 names its port "Caravel" (seen on an FM-1, 2026-11-16).
-const NAMES: [(&str, &[&str]); 3] =
-    [("FM-1", &["FM-1", "FM1", "MiniFM"]), ("SMK-37", &["SMK-37", "SMK37"]), ("Felucca", &["Felucca", "Caravel"])];
+/// Felucca 1.8 names its port "Caravel" (seen on an FM-1, 2026-11-16); Hügelton Instruments' other
+/// firmwares, built on Felucca's code, name theirs after the maker ("Hügelton Instruments Hortator",
+/// "... Jangada", seen on Android 2026-11-16; "u" and "ü" either way, as systems spell it).
+const NAMES: [(&str, &[&str]); 3] = [("FM-1", &["FM-1", "FM1", "MiniFM"]), ("SMK-37", &["SMK-37", "SMK37"]),
+    ("Felucca", &["Felucca", "Caravel", "Hügelton", "Hu\u{308}gelton", "Hugelton"])];
 
 /// A unit found on USB MIDI.
 pub struct MidiUnit {
@@ -504,6 +506,9 @@ mod tests {
         assert!(known("SMK-37 Elite") && known("FM-1") && known("Felucca Update") && !known("HDA Intel PCH"));
         assert!(known("SMK37 Pro") && known("FM1_MONITOR") && known("MIDIMON FM-1"));
         assert!(known("MiniFM") && known("MiniFM Midi"));
+        // Hügelton's firmwares, the umlaut composed or not
+        assert!(known("Hügelton Instruments Hortator#033 MIDI 1.0") && known("Hu\u{308}gelton Instruments Jangada"));
+        assert!(known("Hugelton Instruments Jangada"));
     }
 
     /// On Linux with a sequencer: `aseqdump` (from alsa-utils) shows its port,

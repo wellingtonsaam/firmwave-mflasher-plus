@@ -632,7 +632,8 @@ public class MainActivity extends Activity {
             dialog("No backups yet", "Save one with BACKUP FULL FLASH first.").setPositiveButton("OK", null).show();
             return;
         }
-        java.util.Arrays.sort(all, (x, y) -> y.getName().compareTo(x.getName()));
+        // newest first by when each was saved (its name holds the firmware too: "fm1-zp12-2.5-20261116-165332.bin")
+        java.util.Arrays.sort(all, (x, y) -> Ui.savedAt(y).compareTo(Ui.savedAt(x)));
         String[] names = new String[all.length];
         for (int i = 0; i < all.length; i++) {
             // fm1-20261116-102922.bin: saved 16/11/2026 10:29
@@ -662,9 +663,10 @@ public class MainActivity extends Activity {
         }
         if (plan == null) return;
         int n = Integer.parseInt(plan[3]);
-        bootVersion = plan[2];
+        // its release ("2.4"), not the build ("2.4-395e6cc")
+        bootVersion = plan[2].split("-")[0];
         bootSectors = n;
-        showReview(dialog("Install m-bootloader " + plan[2] + "?",
+        showReview(dialog("Install m-bootloader " + bootVersion + "?",
                 "Your FM-1 gets its rescue mode: holding REC while switching on always reaches download mode, whatever "
                 + "the firmware does.\n\n"
                 + "✓  Your FM-1 is backed up on this phone first.\n"
@@ -1477,7 +1479,7 @@ public class MainActivity extends Activity {
             if (p[0].equals("BOOT") && p.length >= 4) {
                 boot = p;
                 bootSectors = Integer.parseInt(p[1]);
-                if (p.length >= 5 && !p[4].isEmpty()) bootVersion = p[4];
+                if (p.length >= 5 && !p[4].isEmpty()) bootVersion = p[4].split("-")[0];
             }
             if ((p[0].equals("PNOTE") || p[0].equals("PWARN")) && p.length >= 2) notes.append(p[1]).append("\n");
         }

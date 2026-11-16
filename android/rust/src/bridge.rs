@@ -446,9 +446,14 @@ fn remember(session: &Unit, plan: &ops::Plan, dir: &str, name: &str) {
 /// to the backups), else the saved one whose install would change nothing. "id|name|version", or "" when
 /// neither (the unit's own name for it is then all there is). Reads only what was read.
 fn identify(lib_dir: &str, dir: &str) -> String {
-    let Ok(kept) = UNIT.lock() else { return String::new() };
-    let Some((_, s)) = kept.as_ref() else { return String::new() };
+    let Ok(mut kept) = UNIT.lock() else { return String::new() };
+    let Some((_, s)) = kept.as_mut() else { return String::new() };
     if let Some(n) = crate::library::installed_name(std::path::Path::new(dir), &s.flash) {
+        // the unit's display too: the name it was installed by
+        s.named = Some(n.clone());
+        if s.display {
+            s.show_on_unit();
+        }
         return format!("|{}|", n.replace('|', " "));
     }
     let lib = Library::new(PathBuf::from(lib_dir));
@@ -456,6 +461,10 @@ fn identify(lib_dir: &str, dir: &str) -> String {
     for e in cat.entries.iter().filter(|e| lib.downloaded(e)) {
         let Ok(data) = std::fs::read(lib.package_path(e)) else { continue };
         if s.plan_firmware(&data).is_ok_and(|p| p.sectors.is_empty()) {
+            s.named = Some(format!("{} {}", e.name, e.version));
+            if s.display {
+                s.show_on_unit();
+            }
             return format!("{}|{}|{}", e.id, e.name, e.version);
         }
     }

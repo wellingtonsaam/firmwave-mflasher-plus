@@ -1769,3 +1769,13 @@ fn an_installed_firmware_is_named_by_its_fingerprint() {
     assert_eq!(n, 1);
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn a_firmware_name_in_a_backup_file_name() {
+    assert_eq!(crate::ops::file_part("zp12 2.5"), "zp12-2.5");
+    assert_eq!(crate::ops::file_part("Hortator 1.0.1"), "hortator-1.0.1");
+    assert_eq!(crate::ops::file_part("M-VAVE FM-1 (official) 015"), "m-vave-fm-1-official-015");
+    assert_eq!(crate::ops::file_part("  ../etc/passwd  "), "etc-passwd");
+    assert_eq!(crate::ops::file_part("???"), "");
+    assert!(crate::ops::file_part(&"x".repeat(80)).len() <= 40);
+}

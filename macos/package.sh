@@ -46,6 +46,8 @@ cat > "$app/Contents/Info.plist" <<EOF
 </plist>
 EOF
 plutil -lint "$app/Contents/Info.plist"
+# extended attributes (quarantine, Finder information) on any file stop codesign
+xattr -cr "$app"
 codesign --force --sign - "$app"
 codesign --verify --deep --strict --verbose=2 "$app"
 

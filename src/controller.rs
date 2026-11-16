@@ -344,9 +344,11 @@ impl Shared {
 impl Controller {
     pub fn new(ctx: egui::Context) -> Controller {
         let open_version = bundled_bootloader(BOARDS[1]).map(|(_, v)| v).unwrap_or_else(|_| "?".into());
+        // shown as its release ("2.4"); the log keeps the build ("2.4-395e6cc")
+        let shown_version = open_version.split('-').next().unwrap_or(&open_version).to_string();
         let backup_dir = default_backup_dir();
         let c = Controller {
-            shared: Arc::new(Mutex::new(Shared::new(open_version.clone(), backup_dir))),
+            shared: Arc::new(Mutex::new(Shared::new(shown_version, backup_dir))),
             unit: Arc::new(Mutex::new(None)),
             plan: Arc::new(Mutex::new(None)),
             declined: Arc::new(Mutex::new(None)),
@@ -686,9 +688,13 @@ impl Controller {
                 return Err(e);
             }
         };
-        let mut view = device_view(&unit);
+        #[cfg(target_os = "macos")]
+        c.give_back_folders();
+        let mut unit = unit;
+        let backup_dir = c.shared.lock().unwrap().backup_dir.clone();
+        unit.named = firmware_named(&unit, &backup_dir);
+        let view = device_view(&unit);
         c.log(format!("{} · {} · bootloader {} · flash read and checked", view.model, view.firmware, view.bootloader));
-        view.named = firmware_named(&unit, &c.shared.lock().unwrap().backup_dir.clone());
         if let Some(n) = &view.named {
             c.log(format!("Firmware: {n} (the unit calls it {})", view.firmware));
         }
@@ -703,7 +709,6 @@ impl Controller {
         }
         let map = sector_map(&unit.flash, unit.dev.chip_key(), unit.board());
         remember_unit(&unit, &view);
-        let mut unit = unit;
         unit.show_on_unit();
         *c.unit.lock().unwrap() = Some(unit);
         c.with(|s| {
@@ -1340,6 +1345,21 @@ impl Controller {
         }
     }
 
+    /// macOS: M-Flasher's folders left to root by a run with sudo (the library's favorites and packages
+    /// can't be written then) are given back through the helper, which runs once the unit is reached.
+    #[cfg(target_os = "macos")]
+    fn give_back_folders(&self) {
+        let dirs = vec![crate::library::default_dir(), self.shared.lock().unwrap().backup_dir.clone()];
+        if !crate::scsi::macos::left_to_root(&dirs) {
+            return;
+        }
+        match crate::scsi::macos::give_back(&dirs) {
+            Ok(n) => self.log(format!("Gave back to you {n} files of M-Flasher's folders (an M-Flasher run with sudo \
+                                       had left them to the administrator)")),
+            Err(e) => self.log(format!("M-Flasher's folders are partly the administrator's (a run with sudo): {e}")),
+        }
+    }
+
     /// After a firmware is written: its fingerprint with the name it was chosen by (the library's, else the
     /// file's), so that DEVICE INFO names it so on the next read.
     fn remember_install(&self, plan: &Plan) {
@@ -1470,7 +1490,7 @@ fn device_view(u: &Unit) -> DeviceView {
         chip_key: format!("0x{:04X}", u.dev.chip_key()),
         chip_key_ok: u.dev.chip_key() == CHIP_KEY,
         evidence: a.evidence.iter().map(|e| e.2.clone()).collect(),
-        named: None,
+        named: u.named.clone(),
     }
 }
 
@@ -1497,7 +1517,12 @@ fn recent_backups(dir: &Path, n: usize) -> Vec<BackupInfo> {
     v.sort_by(|a, b| b.0.cmp(&a.0));
     v.into_iter().take(n).map(|(t, p)| {
         let json = std::fs::read_to_string(p.with_extension("json")).unwrap_or_default();
-        let firmware = json.split("\"firmware\": \"").nth(1).and_then(|r| r.split('"').next()).unwrap_or("").to_string();
+        let field = |k: &str| json.split(&format!("\"{k}\": \"")).nth(1).and_then(|r| r.split('"').next()).unwrap_or("").to_string();
+        // the name it was installed by first, then what the firmware calls itself
+        let firmware = match (field("firmware name"), field("firmware")) {
+            (n, f) if !n.is_empty() && n != f => format!("{n} · {f}"),
+            (_, f) => f,
+        };
         let time: chrono::DateTime<chrono::Local> = t.into();
         BackupInfo { name: p.file_name().unwrap().to_string_lossy().into_owned(), path: p,
                      time: time.format("%Y-%m-%d %H:%M").to_string(), firmware }

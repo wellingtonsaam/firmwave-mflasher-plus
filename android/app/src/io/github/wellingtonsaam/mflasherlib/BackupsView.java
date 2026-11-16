@@ -82,7 +82,8 @@ final class BackupsView extends LinearLayout {
         list.removeAllViews();
         File[] bins = dir.listFiles((d, n) -> n.endsWith(".bin"));
         if (bins == null) bins = new File[0];
-        Arrays.sort(bins, (a, b) -> b.getName().compareTo(a.getName()));
+        // newest first by when each was saved: the name holds the firmware too ("fm1-zp12-2.5-20261116-165332.bin")
+        Arrays.sort(bins, (a, b) -> Ui.savedAt(b).compareTo(Ui.savedAt(a)));
         count.setText(bins.length + (bins.length == 1 ? " BACKUP" : " BACKUPS"));
         if (bins.length == 0) {
             list.addView(Ui.text(getContext(), "No backup yet: SAVE on the DEVICE tab makes one.", Ui.DIM, 12, false));
@@ -102,6 +103,9 @@ final class BackupsView extends LinearLayout {
         String saved = field(json, "saved");
         if (saved.isEmpty()) saved = bin.getName().replaceAll("^[a-z0-9]+-|\\.bin$", "");
         String firmware = field(json, "firmware"), boot = field(json, "bootloader"), model = field(json, "model");
+        // the name it was installed by first, then what the firmware calls itself
+        String named = field(json, "firmware name");
+        if (!named.isEmpty() && !named.equals(firmware)) firmware = named + " · " + firmware;
         final String date = when(saved);
 
         LinearLayout r = new LinearLayout(c);

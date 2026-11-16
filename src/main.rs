@@ -41,6 +41,18 @@ fn main() {
         }
         std::process::exit(cli::run(args));
     }
+    // one window at a time: two would both take the unit as it shows up in download mode
+    let _one = match one_window() {
+        Ok(lock) => lock,
+        Err(()) => {
+            rfd::MessageDialog::new()
+                .set_title("M-Flasher +")
+                .set_description("M-Flasher + is already open. Use its window: two at once would both reach for the unit.")
+                .set_level(rfd::MessageLevel::Info)
+                .show();
+            return;
+        }
+    };
     #[cfg(target_os = "linux")]
     if let Some(problem) = linux_display_problem() {
         eprintln!("cannot open the window: {problem}");
@@ -51,6 +63,26 @@ fn main() {
         #[cfg(windows)]
         window_error(&e.to_string());
         std::process::exit(1);
+    }
+}
+
+/// The lock one window holds while it is open: Err when another window holds it, Ok(None) when there is
+/// no lock file to take (the window opens anyway). A file every user may open (an M-Flasher started with
+/// sudo runs as root); the system unlocks it when the process ends, however it ends.
+fn one_window() -> Result<Option<std::fs::File>, ()> {
+    let path = if cfg!(windows) { std::env::temp_dir() } else { std::path::PathBuf::from("/tmp") }.join("m-flasher-plus.lock");
+    let opened = std::fs::OpenOptions::new().read(true).write(true).create(true).truncate(false).open(&path)
+        .or_else(|_| std::fs::File::open(&path));
+    let Ok(file) = opened else { return Ok(None) };
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o666));
+    }
+    match file.try_lock() {
+        Ok(()) => Ok(Some(file)),
+        Err(std::fs::TryLockError::WouldBlock) => Err(()),
+        Err(_) => Ok(None),
     }
 }
 

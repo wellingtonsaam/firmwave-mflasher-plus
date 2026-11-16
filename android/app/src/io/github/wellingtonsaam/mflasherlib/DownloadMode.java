@@ -22,7 +22,8 @@ final class DownloadMode {
     /** The SysEx the firmwares answer by restarting into download mode. */
     static final byte[] SOFT_KEY = {(byte) 0xF0, 0x22, 0x24, 0x35, 0x7D, (byte) 0xF7};
     /** Names under which an FM-1 appears on USB MIDI (src/midi.rs); nothing else is ever sent the soft key. */
-    private static final String[] NAMES = {"fm-1", "fm1", "minifm", "felucca", "caravel"};
+    /** Hügelton Instruments' firmwares (Hortator, Jangada), built on Felucca, name their port after the maker. */
+    private static final String[] NAMES = {"fm-1", "fm1", "minifm", "felucca", "caravel", "hügelton", "hu\u0308gelton", "hugelton"};
 
     /** The soft key's outcome: the unit's MIDI name (null: none found) and what went wrong (null: sent). */
     interface Sent {
