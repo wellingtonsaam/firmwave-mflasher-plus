@@ -1,0 +1,25 @@
+[package]
+name = "mflr_android"
+version = "0.1.0"
+edition = "2024"
+description = "Android spike: M-Flasher's core over the USB file descriptor Android hands the app"
+license = "MIT"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+sha2 = "0.11"
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+libc = "0.2"
+jni = "0.21"
+
+# src/scsi.rs gates its libusb path on this (desktop Linux); never on here
+[features]
+usb = []
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
