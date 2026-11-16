@@ -94,6 +94,53 @@ On a Mac, `macos/package.sh` makes the app and the disk image,
 and `macos/render.sh` renders the icons and the disk image's background from
 their SVGs.
 
+### The Android app
+
+The Android app (`android/`) is built without Gradle by `android/build.sh`: the
+Rust core with [cargo-ndk](https://github.com/bbqsrc/cargo-ndk) into a shared
+library, then the Java app with the SDK's own tools (aapt2, javac, d8,
+zipalign, apksigner). It runs on Android 9 or newer (API 28), arm64 phones.
+
+What it needs, as tested on macOS:
+
+- [rustup](https://rustup.rs)'s Rust in `~/.cargo/bin`, with the Android target
+  and cargo-ndk:
+  ```sh
+  rustup target add aarch64-linux-android
+  cargo install cargo-ndk
+  ```
+- The [Android SDK](https://developer.android.com/studio#command-tools) at
+  `~/Library/Android/sdk` (or `ANDROID_HOME`), with **build-tools 36.0.0**,
+  **platforms;android-37.0** and an **NDK** (28 here):
+  ```sh
+  sdkmanager "build-tools;36.0.0" "platforms;android-37.0" "ndk;28.2.13676358"
+  ```
+- A JDK (`javac`, 17 or newer).
+
+Then:
+
+```sh
+sh android/build.sh            # android/build/m-flasher-library.apk, signed with the debug key
+adb install -r android/build/m-flasher-library.apk
+```
+
+The core is the same source as the desktop's: `android/rust/src/lib.rs` takes
+`src/formats.rs`, `boards.rs`, `scsi.rs`, `jl.rs`, `ops.rs`, `library.rs` and
+`sectormap.rs` by path, and `android/rust/src/bridge.rs` is their JNI side for
+`android/app/src/.../Native.java`. The app reaches the unit through Android's
+USB host API (`android/rust/src/usbfs.rs`), so it needs no root.
+
+**Signing.** Without settings, the APK is signed with the debug key
+(`~/.android/debug.keystore`, made if missing): for testing. `RELEASE=1 sh
+android/build.sh` signs it with the release key instead, from
+`~/Documents/M-Flasher + signing` (or `RELEASE_KEY_DIR`):
+`m-flasher-plus-release.jks` (alias `m-flasher-plus`) and its password in
+`m-flasher-plus-release.password`, read from the file and never put on the
+command line. The release key is not in this repository. A phone with an APK
+signed by one key refuses an APK signed by the other on top of it: to change
+keys, the app has to be uninstalled first, and that deletes what it keeps
+(backups included), so copy those off the phone before.
+
 ## Tested
 
 FM-1s sold from late 2026 have a UCUN UC25HQ80 flash (`0xB36014`) in place of the
