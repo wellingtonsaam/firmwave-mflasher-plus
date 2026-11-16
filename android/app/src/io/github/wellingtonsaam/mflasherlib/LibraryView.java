@@ -321,7 +321,7 @@ final class LibraryView extends LinearLayout {
                     it.saved = true;
                     Toast.makeText(getContext(), it.name + " " + it.version + " saved · SHA-256 OK", Toast.LENGTH_SHORT).show();
                 } else {
-                    new AlertDialog.Builder(getContext(), android.R.style.Theme_Material_Dialog_Alert)
+                    Ui.dialog(getContext(), Ui.NOW)
                             .setTitle("COULD NOT GET " + it.name.toUpperCase(Locale.ROOT))
                             .setMessage(r.substring(Math.min(r.length(), 6)))
                             .setPositiveButton("OK", null).show();
@@ -334,7 +334,7 @@ final class LibraryView extends LinearLayout {
     /** Figma A04: asked first; the unit is never touched. */
     private void confirmDelete(Item it) {
         String versions = it.saved ? it.version + (it.older.isEmpty() ? "" : ", " + it.older) : it.older;
-        new AlertDialog.Builder(getContext(), android.R.style.Theme_Material_Dialog_Alert)
+        Ui.dialog(getContext(), Ui.NOW)
                 .setTitle("DELETE FROM THIS PHONE?")
                 .setMessage(it.name + ": " + versions + " saved on this phone.\n\nGET downloads it again later. Nothing on the unit changes.")
                 .setNegativeButton("CANCEL", null)

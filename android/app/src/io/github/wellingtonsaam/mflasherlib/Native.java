@@ -57,7 +57,7 @@ public final class Native {
      * Which firmware saved on this phone the unit holds (its install would change nothing):
      * "id|name|version", or "" if none matches. Uses what was read; quick.
      */
-    public static native String identify(String libDir);
+    public static native String identify(String libDir, String dir);
 
     /**
      * Plans putting back a backup saved on this phone (checked against its .json's SHA-256), as the
@@ -71,6 +71,17 @@ public final class Native {
 
     /** Forgets the unit read on this connection (it went, or the connection closes). */
     public static native void close();
+
+    /**
+     * Plans the Device tab's operations: kind "file" (a firmware package on the phone, m-bootloader first on a stock
+     * unit: BOOT|..) or "boot" (m-bootloader alone). PLAN|name|version|sectors|span|title, PNOTE, PWARN.
+     */
+    public static native String planPackage(int fd, int iface, int epIn, int epOut, int inPacket, String dir, String file,
+            String kind);
+
+    /** Writes what planPackage planned (boot: the file's m-bootloader step). DONE|sectors|span, BACKUP|path. */
+    public static native String installPackage(int fd, int iface, int epIn, int epOut, int inPacket, String dir, String file,
+            String kind, boolean boot);
 
     /** After a write: the unit leaves download mode and starts what was written. OK|address or ERR|why. */
     public static native String restart();

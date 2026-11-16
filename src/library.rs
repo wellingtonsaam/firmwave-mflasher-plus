@@ -14,6 +14,7 @@
 //! <data dir>/packages/index.json     which firmware and version each package is
 //! <data dir>/stock/ID.fwsc           M-VAVE's official packages, imported
 //! <data dir>/favorites.json          the firmwares starred, by id
+//! <backup dir>/installed.json        what was installed, by fingerprint (see `remember_installed`)
 //! ```
 
 use crate::boards::FM1;
@@ -275,16 +276,118 @@ pub fn default_dir() -> PathBuf {
     // under sudo (install talks to the unit as root) the library is still the user's own
     #[cfg(all(unix, not(target_os = "android")))]
     let home = crate::cli::sudo_user_home().unwrap_or(home);
-    if cfg!(target_os = "macos") {
-        home.join("Library/Application Support/M-Flasher/library")
+    let (dir, old) = if cfg!(target_os = "macos") {
+        (home.join("Library/Application Support/M-Flasher/library"), home.join("Library/Application Support/M-Flasher Library"))
     } else if cfg!(windows) {
-        std::env::var_os("APPDATA").map(PathBuf::from).unwrap_or(home).join("M-Flasher").join("library")
+        let base = std::env::var_os("APPDATA").map(PathBuf::from).unwrap_or(home);
+        (base.join("M-Flasher").join("library"), base.join("M-Flasher Library"))
     } else {
-        std::env::var_os("XDG_DATA_HOME").map(PathBuf::from).unwrap_or_else(|| home.join(".local/share")).join("m-flasher/library")
+        let base = std::env::var_os("XDG_DATA_HOME").map(PathBuf::from).unwrap_or_else(|| home.join(".local/share"));
+        (base.join("m-flasher/library"), base.join("m-flasher-library"))
+    };
+    static ADOPTED: std::sync::Once = std::sync::Once::new();
+    ADOPTED.call_once(|| adopt_old_library(&dir, &old));
+    dir
+}
+
+/// The library M-Flasher + kept before it moved into M-Flasher's folder:
+/// what the new one lacks comes over (downloads, official packages, the
+/// catalog), the two indexes and favorites are merged, and the old folder is
+/// renamed so that nothing comes back once deleted.
+pub(crate) fn adopt_old_library(new: &Path, old: &Path) {
+    if !old.is_dir() {
+        return;
     }
+    let _ = std::fs::create_dir_all(new);
+    for sub in ["packages", "stock"] {
+        let Ok(rd) = std::fs::read_dir(old.join(sub)) else { continue };
+        let _ = std::fs::create_dir_all(new.join(sub));
+        for e in rd.flatten() {
+            let to = new.join(sub).join(e.file_name());
+            if e.file_name() != "index.json" && !to.exists() {
+                let _ = std::fs::rename(e.path(), &to);
+            }
+        }
+    }
+    // which package is which: both indexes, the new one's entries kept
+    let read = |p: PathBuf| std::fs::read(p).ok().and_then(|b| serde_json::from_slice::<serde_json::Value>(&b).ok());
+    if let Some(serde_json::Value::Object(o)) = read(old.join("packages/index.json")) {
+        let mut merged = match read(new.join("packages/index.json")) { Some(serde_json::Value::Object(n)) => n, _ => Default::default() };
+        for (k, v) in o {
+            merged.entry(k).or_insert(v);
+        }
+        let _ = write_whole(&new.join("packages/index.json"), serde_json::to_string_pretty(&merged).unwrap_or_default().as_bytes());
+    }
+    // the stars of both
+    let stars = |p: PathBuf| read(p).and_then(|v| v.as_array().cloned()).unwrap_or_default();
+    let mut fav: std::collections::BTreeSet<String> = stars(new.join("favorites.json")).iter().filter_map(|v| v.as_str().map(str::to_string)).collect();
+    fav.extend(stars(old.join("favorites.json")).iter().filter_map(|v| v.as_str().map(str::to_string)));
+    if !fav.is_empty() {
+        let _ = write_whole(&new.join("favorites.json"), serde_json::to_string_pretty(&fav.into_iter().collect::<Vec<_>>()).unwrap_or_default().as_bytes());
+    }
+    for f in ["catalog.json", "catalog-fetched", "last-unit.txt"] {
+        if !new.join(f).exists() {
+            let _ = std::fs::rename(old.join(f), new.join(f));
+        }
+    }
+    let moved = old.with_file_name(format!("{} (moved)", old.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default()));
+    let _ = std::fs::rename(old, moved);
 }
 
 /// Writes through a temporary file, so that a file is either whole or absent.
+/// The sectors of a firmware's own code in an image (the sector map's FIRMWARE): what stays the same while
+/// it runs. Its settings and sounds change with use, so they are not part of its fingerprint.
+pub fn firmware_sectors(image: &[u8], key: u16, board: Option<&crate::boards::Board>) -> Vec<usize> {
+    use crate::formats::SECTOR;
+    crate::sectormap::sector_map(image, key, board).iter().enumerate()
+        .filter(|(i, r)| **r == crate::sectormap::Region::Firmware && (i + 1) * SECTOR <= image.len())
+        .map(|(i, _)| i * SECTOR).collect()
+}
+
+/// The SHA-256 of these sectors of an image, in hex.
+pub fn fingerprint(image: &[u8], sectors: &[usize]) -> String {
+    use crate::formats::SECTOR;
+    let mut h = Sha256::new();
+    for &s in sectors {
+        h.update(&image[s..s + SECTOR]);
+    }
+    h.finalize().iter().map(|b| format!("{b:02x}")).collect()
+}
+
+const INSTALLED: &str = "installed.json";
+
+/// After an install: the firmware's fingerprint and the name it was chosen by ("zp12 2.5", a file's name),
+/// in `<dir>/installed.json`, newest first. A unit read later that holds the same code is named by it,
+/// whatever the firmware calls itself inside (a fork of Felucca says "Felucca").
+pub fn remember_installed(dir: &Path, image: &[u8], sectors: &[usize], name: &str) -> Result<(), String> {
+    if sectors.is_empty() || name.trim().is_empty() {
+        return Ok(());
+    }
+    let sha = fingerprint(image, sectors);
+    let path = dir.join(INSTALLED);
+    let mut list: Vec<Value> = std::fs::read(&path).ok().and_then(|b| serde_json::from_slice(&b).ok()).unwrap_or_default();
+    list.retain(|e| e["sha256"].as_str() != Some(sha.as_str()));
+    list.insert(0, serde_json::json!({
+        "name": name.trim(),
+        "sha256": sha,
+        "sectors": sectors,
+        "installed": chrono::Local::now().format("%Y-%m-%d %H:%M").to_string(),
+    }));
+    list.truncate(200);
+    std::fs::create_dir_all(dir).map_err(|e| format!("cannot create {}: {e}", dir.display()))?;
+    write_whole(&path, serde_json::to_string_pretty(&list).unwrap_or_default().as_bytes())
+}
+
+/// The name a firmware was installed by, if this flash holds one remembered in `<dir>/installed.json`.
+pub fn installed_name(dir: &Path, flash: &[u8]) -> Option<String> {
+    let list: Vec<Value> = serde_json::from_slice(&std::fs::read(dir.join(INSTALLED)).ok()?).ok()?;
+    list.iter().find_map(|e| {
+        let sectors: Vec<usize> = e["sectors"].as_array()?.iter().filter_map(|v| v.as_u64().map(|v| v as usize)).collect();
+        let fits = !sectors.is_empty() && sectors.iter().all(|&s| s + crate::formats::SECTOR <= flash.len());
+        (fits && e["sha256"].as_str()? == fingerprint(flash, &sectors)).then(|| e["name"].as_str().map(str::to_string))?
+    })
+}
+
 fn write_whole(path: &Path, data: &[u8]) -> Result<(), String> {
     let tmp = path.with_extension("part");
     std::fs::write(&tmp, data).and_then(|_| std::fs::rename(&tmp, path)).map_err(|e| format!("cannot write {}: {e}", path.display()))

@@ -141,7 +141,7 @@ final class BackupsView extends LinearLayout {
     }
 
     private void confirmDelete(File bin, File json, String when) {
-        new AlertDialog.Builder(getContext(), android.R.style.Theme_Material_Dialog_Alert)
+        Ui.dialog(getContext(), Ui.NOW)
                 .setTitle("Delete this backup?")
                 .setMessage("The backup of " + when + " is removed from this phone. It can't be brought back.\n\n"
                         + "Nothing on the FM-1 changes.")

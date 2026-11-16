@@ -137,7 +137,8 @@ fn plan_install(fd: i32, iface: u8, ep_in: u8, ep_out: u8, in_packet: usize, dir
     }
     let mut out = report(session);
     if let Some((boot, why)) = bootloader_step(session, &inst, &InstallOptions::default()).map_err(|e| e.to_string())? {
-        out.push(format!("BOOT|{}|{}|{}", boot.sectors.len(), span(&boot), why.replace(['|', '\n'], " ")));
+        let version = ops::bundled_bootloader(crate::boards::BOARDS[1]).map(|(_, v)| v).unwrap_or_default();
+        out.push(format!("BOOT|{}|{}|{}|{version}", boot.sectors.len(), span(&boot), why.replace(['|', '\n'], " ")));
     }
     let fw = session.plan_firmware(&inst.data).map_err(|e| e.to_string())?;
     let clean = |t: &str| t.replace(['|', '\n'], " ");
@@ -170,7 +171,11 @@ fn install(fd: i32, iface: u8, ep_in: u8, ep_out: u8, in_packet: usize, dir: &st
     } else {
         session.plan_firmware(&inst.data).map_err(|e| e.to_string())?
     };
-    write(session, &plan)
+    let out = write(session, &plan)?;
+    if !boot {
+        remember(session, &plan, dir, &format!("{} {}", inst.name, inst.version));
+    }
+    Ok(out)
     })
 }
 
@@ -321,12 +326,131 @@ pub extern "system" fn Java_io_github_wellingtonsaam_mflasherlib_Native_install<
     env.new_string(text).map(|s| s.into_raw()).unwrap_or(std::ptr::null_mut())
 }
 
-/// Which saved firmware the unit holds: the one whose install would change
-/// nothing. "id|name|version", or "" when none of the saved ones matches (the
-/// unit's own name for it is then all there is). Reads only what was read.
-fn identify(lib_dir: &str) -> String {
+/// The m-bootloader step on this unit (REQ-BOOT-01): only on M-VAVE's stock
+/// bootloader, the bundled m-bootloader for the identified model.
+fn boot_step(session: &Unit) -> Result<Option<ops::Plan>, String> {
+    if session.bootloader_suggestion().is_none() {
+        return Ok(None);
+    }
+    session.plan_bootloader(None, None).map(Some).map_err(|e| e.to_string())
+}
+
+/// Plans what the Device tab's operations install, as the desktop does: a
+/// firmware package chosen on the phone (`kind` "file", REQ-BOOT-01's step
+/// first on a stock unit: `BOOT|..`), or m-bootloader alone ("boot", from
+/// INSTALL M-BOOTLOADER). `PLAN|name|version|sectors|span|title`, `PNOTE`,
+/// `PWARN`. Nothing is written.
+fn plan_package(fd: i32, iface: u8, ep_in: u8, ep_out: u8, in_packet: usize, dir: &str, file: &str, kind: &str)
+        -> Result<String, String> {
+    with_unit(fd, iface, ep_in, ep_out, in_packet, dir, false, |session| {
+        let clean = |t: &str| t.replace(['|', '\n'], " ");
+        let mut out = report(session);
+        let (plan, name, version) = if kind == "boot" {
+            let plan = session.plan_bootloader(None, None).map_err(|e| e.to_string())?;
+            let version = ops::bundled_bootloader(crate::boards::BOARDS[1]).map(|(_, v)| v).unwrap_or_default();
+            (plan, "m-bootloader".to_string(), version)
+        } else {
+            let data = std::fs::read(file).map_err(|e| format!("cannot read {file}: {e}"))?;
+            if let Some(boot) = boot_step(session)? {
+                let version = ops::bundled_bootloader(crate::boards::BOARDS[1]).map(|(_, v)| v).unwrap_or_default();
+                out.push(format!("BOOT|{}|{}|m-bootloader goes first|{version}", boot.sectors.len(), span(&boot)));
+            }
+            let name = std::path::Path::new(file).file_stem().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+            (session.plan_firmware(&data).map_err(|e| e.to_string())?, name, String::new())
+        };
+        out.push(format!("PLAN|{}|{}|{}|{}|{}", clean(&name), clean(&version), plan.sectors.len(), span(&plan), clean(&plan.title)));
+        out.extend(plan.notes.iter().map(|n| format!("PNOTE|{}", clean(n))));
+        out.extend(plan.warnings.iter().map(|w| format!("PWARN|{}", clean(w))));
+        Ok(out.join("\n"))
+    })
+}
+
+/// Writes what plan_package planned, made again on what the unit holds now
+/// (with `boot`, the file's m-bootloader step), as install does.
+fn install_package(fd: i32, iface: u8, ep_in: u8, ep_out: u8, in_packet: usize, dir: &str, file: &str, kind: &str, boot: bool)
+        -> Result<String, String> {
+    with_unit(fd, iface, ep_in, ep_out, in_packet, dir, false, |session| {
+        let plan = if kind == "boot" {
+            session.plan_bootloader(None, None).map_err(|e| e.to_string())?
+        } else if boot {
+            boot_step(session)?.ok_or("this unit needs no m-bootloader step")?
+        } else {
+            let data = std::fs::read(file).map_err(|e| format!("cannot read {file}: {e}"))?;
+            session.plan_firmware(&data).map_err(|e| e.to_string())?
+        };
+        let out = write(session, &plan)?;
+        if kind != "boot" && !boot {
+            let name = std::path::Path::new(file).file_stem().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+            remember(session, &plan, dir, &name);
+        }
+        Ok(out)
+    })
+}
+
+#[unsafe(no_mangle)]
+pub extern "system" fn Java_io_github_wellingtonsaam_mflasherlib_Native_planPackage<'l>(
+    mut env: JNIEnv<'l>,
+    _class: JClass<'l>,
+    fd: jint,
+    iface: jint,
+    ep_in: jint,
+    ep_out: jint,
+    in_packet: jint,
+    dir: JString<'l>,
+    file: JString<'l>,
+    kind: JString<'l>,
+) -> jstring {
+    let dir: String = env.get_string(&dir).map(|s| s.into()).unwrap_or_default();
+    let file: String = env.get_string(&file).map(|s| s.into()).unwrap_or_default();
+    let kind: String = env.get_string(&kind).map(|s| s.into()).unwrap_or_default();
+    let text = reply(std::panic::catch_unwind(|| {
+        plan_package(fd, iface as u8, ep_in as u8, ep_out as u8, in_packet as usize, &dir, &file, &kind)
+    }));
+    env.new_string(text).map(|s| s.into_raw()).unwrap_or(std::ptr::null_mut())
+}
+
+#[unsafe(no_mangle)]
+pub extern "system" fn Java_io_github_wellingtonsaam_mflasherlib_Native_installPackage<'l>(
+    mut env: JNIEnv<'l>,
+    _class: JClass<'l>,
+    fd: jint,
+    iface: jint,
+    ep_in: jint,
+    ep_out: jint,
+    in_packet: jint,
+    dir: JString<'l>,
+    file: JString<'l>,
+    kind: JString<'l>,
+    boot: jni::sys::jboolean,
+) -> jstring {
+    let dir: String = env.get_string(&dir).map(|s| s.into()).unwrap_or_default();
+    let file: String = env.get_string(&file).map(|s| s.into()).unwrap_or_default();
+    let kind: String = env.get_string(&kind).map(|s| s.into()).unwrap_or_default();
+    let text = reply(std::panic::catch_unwind(|| {
+        install_package(fd, iface as u8, ep_in as u8, ep_out as u8, in_packet as usize, &dir, &file, &kind, boot != 0)
+    }));
+    env.new_string(text).map(|s| s.into_raw()).unwrap_or(std::ptr::null_mut())
+}
+
+/// After a firmware is written: its fingerprint with the name it was chosen by, next to the backups
+/// (installed.json), so that the next read names it so.
+fn remember(session: &Unit, plan: &ops::Plan, dir: &str, name: &str) {
+    let sectors = crate::library::firmware_sectors(&plan.target, session.dev.chip_key(), session.board());
+    match crate::library::remember_installed(std::path::Path::new(dir), &plan.target, &sectors, name) {
+        Ok(()) => log(format!("Remembered: this code is {name}")),
+        Err(e) => log(format!("Could not remember the firmware's name: {e}")),
+    }
+}
+
+/// Which firmware the unit holds by name: the one installed with that code (installed.json in `dir`, next
+/// to the backups), else the saved one whose install would change nothing. "id|name|version", or "" when
+/// neither (the unit's own name for it is then all there is). Reads only what was read.
+fn identify(lib_dir: &str, dir: &str) -> String {
     let Ok(kept) = UNIT.lock() else { return String::new() };
     let Some((_, s)) = kept.as_ref() else { return String::new() };
+    if let Some(n) = crate::library::installed_name(std::path::Path::new(dir), &s.flash) {
+        return format!("|{}|", n.replace('|', " "));
+    }
     let lib = Library::new(PathBuf::from(lib_dir));
     let Ok(Some(cat)) = lib.catalog() else { return String::new() };
     for e in cat.entries.iter().filter(|e| lib.downloaded(e)) {
@@ -343,9 +467,11 @@ pub extern "system" fn Java_io_github_wellingtonsaam_mflasherlib_Native_identify
     mut env: JNIEnv<'l>,
     _class: JClass<'l>,
     lib_dir: JString<'l>,
+    dir: JString<'l>,
 ) -> jstring {
     let lib_dir: String = env.get_string(&lib_dir).map(|s| s.into()).unwrap_or_default();
-    let text = std::panic::catch_unwind(|| identify(&lib_dir)).unwrap_or_default();
+    let dir: String = env.get_string(&dir).map(|s| s.into()).unwrap_or_default();
+    let text = std::panic::catch_unwind(|| identify(&lib_dir, &dir)).unwrap_or_default();
     env.new_string(text).map(|s| s.into_raw()).unwrap_or(std::ptr::null_mut())
 }
 

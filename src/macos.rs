@@ -58,7 +58,7 @@ impl Helper {
         let path = CString::new(exe.as_os_str().as_bytes()).map_err(|e| ScsiError::Failed(e.to_string()))?;
         let arg = CString::new(USB_HELPER).unwrap();
         let argv = [arg.as_ptr(), std::ptr::null()];
-        let prompt = c"M-Flasher needs administrator rights to reach the unit's USB download mode.";
+        let prompt = c"M-Flasher + needs administrator rights to reach the unit's USB download mode.";
         // Looked up when needed, not linked: the call is long deprecated, and
         // were macOS to drop it, a linked M-Flasher would not start at all,
         // not even for the command line under sudo, which doesn't use it.

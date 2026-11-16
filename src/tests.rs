@@ -1605,7 +1605,7 @@ mod two_step {
         assert_eq!(s.mode, Mode::Firmware);
         assert_eq!(s.phase, Phase::Ready);
         assert!(s.review_next, "the firmware's review opens next");
-        assert!(s.alert.as_ref().is_some_and(|a| a.1.contains("Step 1 of 2") && a.1.contains("2.4")));
+        assert!(s.alert.as_ref().is_some_and(|a| a.1.contains("is now protected with m-bootloader 2.4")));
         assert!(s.files.contains_key("firmware"), "the firmware stays chosen");
         assert!(!s.end_step_one(4), "once only");
     }
@@ -1644,36 +1644,128 @@ mod download_mode {
 
     #[test]
     fn m_bootloader_says_rec_while_switching_on() {
-        let t = how_to("yes", "ChoralRoot", "FM-1", Some("ChoralRoot FM-1"));
-        assert!(t.contains("Hold REC and switch it on"));
+        let t = how_to("yes", "ChoralRoot", "FM-1", Some("ChoralRoot FM-1"), true);
+        assert!(t.contains("Hold REC and switch FM-1 on"));
         assert!(!t.contains("OCT-"));
-        assert!(t.contains("did not switch by itself"));
+        assert!(t.contains("did not switch automatically to Download Mode"));
+        assert!(t.starts_with("The M-Vave FM-1 did not switch"), "the unit by its model, not its MIDI port's name");
+        assert!(how_to("", "", "", Some("Caravel"), false).starts_with("The M-Vave FM-1 "));
+        assert!(how_to("yes", "", "SMK-37 Pro", Some("SMK-37 Elite"), false).starts_with("The M-Vave SMK-37 "));
     }
 
     #[test]
     fn smk37_uses_seq_rec() {
-        assert!(how_to("yes", "", "SMK-37 Pro", None).contains("Hold SEQ REC"));
+        assert!(how_to("yes", "", "SMK-37 Pro", None, true).contains("Hold SEQ REC"));
     }
 
     #[test]
     fn felucca_adds_the_oct_keys() {
-        let t = how_to("yes", "Felucca", "FM-1", None);
+        let t = how_to("yes", "Felucca", "FM-1", None, true);
         assert!(t.contains("REC") && t.contains("OCT- and OCT+"));
-        assert!(how_to("no", "Felucca", "FM-1", None).starts_with("This computer can't see"));
-        assert!(how_to("", "", "FM-1", Some("Caravel")).contains("OCT- and OCT+ together for 5 s"));
+        assert!(how_to("no", "Felucca", "FM-1", None, true).starts_with("M-Flasher can't see your M-Vave FM-1"));
+        assert!(how_to("", "", "FM-1", Some("Caravel"), true).contains("OCT- and OCT+ buttons together for 5 seconds"));
     }
 
     #[test]
     fn stock_firmware_on_stock_bootloader_has_no_keys() {
-        let t = how_to("no", "M-VAVE 015", "FM-1", None);
-        assert!(t.contains("its keys can't do it"));
+        let t = how_to("no", "M-VAVE 015", "FM-1", None, true);
+        assert!(t.contains("its buttons can't do it"));
         assert!(!t.contains("Hold REC"));
     }
 
     #[test]
     fn unknown_unit_lists_every_way() {
-        let t = how_to("", "", "", None);
+        let t = how_to("", "", "", None, true);
         assert!(t.contains("With m-bootloader") && t.contains("OCT-") && t.contains("M-VAVE's own firmware"));
-        assert!(t.contains("Nothing is written until you press WRITE"));
+        assert!(t.ends_with("M-Flasher needs Download Mode to check your FM-1 properly."));
+        assert!(how_to("", "", "", None, false).contains("press CHECK FM1 STATUS again"));
     }
+}
+
+/// The library's old folder ("M-Flasher Library") is adopted once by the new one.
+mod library_folder {
+    use crate::library::adopt_old_library;
+    use std::fs;
+
+    #[test]
+    fn what_the_new_folder_lacks_comes_over_and_the_old_is_set_aside() {
+        let root = std::env::temp_dir().join(format!("mflr-adopt-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        let (old, new) = (root.join("M-Flasher Library"), root.join("M-Flasher").join("library"));
+        fs::create_dir_all(old.join("packages")).unwrap();
+        fs::create_dir_all(old.join("stock")).unwrap();
+        fs::create_dir_all(new.join("packages")).unwrap();
+        fs::write(old.join("packages/amb-1.3.2.fwsc"), b"old amb").unwrap();
+        fs::write(old.join("packages/felucca-1.8.2.fwsc"), b"old felucca").unwrap();
+        fs::write(old.join("packages/index.json"),
+                  br#"{"amb-1.3.2.fwsc": {"id": "amb", "version": "1.3.2"}, "felucca-1.8.2.fwsc": {"id": "felucca", "version": "old"}}"#).unwrap();
+        fs::write(old.join("stock/mvave-016.fwsc"), b"016").unwrap();
+        fs::write(old.join("favorites.json"), br#"["zen", "orbit"]"#).unwrap();
+        fs::write(new.join("packages/felucca-1.8.2.fwsc"), b"new felucca").unwrap();
+        fs::write(new.join("packages/index.json"), br#"{"felucca-1.8.2.fwsc": {"id": "felucca", "version": "1.8.2"}}"#).unwrap();
+        fs::write(new.join("favorites.json"), br#"["orbit", "amb"]"#).unwrap();
+
+        adopt_old_library(&new, &old);
+
+        assert_eq!(fs::read(new.join("packages/amb-1.3.2.fwsc")).unwrap(), b"old amb");
+        assert_eq!(fs::read(new.join("packages/felucca-1.8.2.fwsc")).unwrap(), b"new felucca", "the new folder's file stays");
+        assert!(new.join("stock/mvave-016.fwsc").exists());
+        let index: serde_json::Value = serde_json::from_slice(&fs::read(new.join("packages/index.json")).unwrap()).unwrap();
+        assert_eq!(index["amb-1.3.2.fwsc"]["id"], "amb");
+        assert_eq!(index["felucca-1.8.2.fwsc"]["version"], "1.8.2", "the new index's entry stays");
+        let fav: Vec<String> = serde_json::from_slice(&fs::read(new.join("favorites.json")).unwrap()).unwrap();
+        assert_eq!(fav, ["amb", "orbit", "zen"]);
+        assert!(!old.exists(), "the old folder is set aside");
+        assert!(root.join("M-Flasher Library (moved)").is_dir());
+        // nothing more to adopt: a second start changes nothing
+        adopt_old_library(&new, &old);
+        assert!(new.join("packages/amb-1.3.2.fwsc").exists());
+        let _ = fs::remove_dir_all(&root);
+    }
+}
+
+/// The operation log on disk: every line, with its date, next to the backups.
+mod log_file {
+    use crate::controller::log_to_file;
+
+    #[test]
+    fn lines_go_to_m_flasher_log_next_to_the_backups() {
+        let root = std::env::temp_dir().join(format!("mflr-log-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        let backups = root.join("M-Flasher").join("backups");
+        log_to_file(&backups, "Restarting the unit: it leaves download mode and starts what was written");
+        log_to_file(&backups, "Running: the Caravel is on USB MIDI");
+        let text = std::fs::read_to_string(root.join("M-Flasher").join("m-flasher.log")).unwrap();
+        let lines: Vec<&str> = text.lines().collect();
+        assert_eq!(lines.len(), 2);
+        assert!(lines[0].ends_with(" Restarting the unit: it leaves download mode and starts what was written"));
+        assert!(lines[1].ends_with(" Running: the Caravel is on USB MIDI"));
+        assert_eq!(lines[1].len() - "Running: the Caravel is on USB MIDI".len(), 20, "a date and time before each line");
+        let _ = std::fs::remove_dir_all(&root);
+    }
+}
+
+#[test]
+fn an_installed_firmware_is_named_by_its_fingerprint() {
+    use crate::formats::SECTOR;
+    let dir = std::env::temp_dir().join(format!("mflasher-installed-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    let mut image = vec![0u8; 64 * SECTOR];
+    image[4 * SECTOR..10 * SECTOR].fill(0x5A);
+    let sectors: Vec<usize> = (4..10).map(|i| i * SECTOR).collect();
+    crate::library::remember_installed(&dir, &image, &sectors, "zp12 2.5").unwrap();
+    assert_eq!(crate::library::installed_name(&dir, &image).as_deref(), Some("zp12 2.5"));
+    // its settings change with use: outside the fingerprint
+    image[20 * SECTOR] = 1;
+    assert_eq!(crate::library::installed_name(&dir, &image).as_deref(), Some("zp12 2.5"));
+    // another firmware's code: not that one
+    image[5 * SECTOR] = 1;
+    assert_eq!(crate::library::installed_name(&dir, &image), None);
+    // the newest install of the same code wins, once
+    image[5 * SECTOR] = 0x5A;
+    crate::library::remember_installed(&dir, &image, &sectors, "zp12 2.5 (my build)").unwrap();
+    assert_eq!(crate::library::installed_name(&dir, &image).as_deref(), Some("zp12 2.5 (my build)"));
+    let n = std::fs::read_to_string(dir.join("installed.json")).unwrap().matches("sha256").count();
+    assert_eq!(n, 1);
+    let _ = std::fs::remove_dir_all(&dir);
 }

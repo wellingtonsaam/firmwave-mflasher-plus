@@ -47,9 +47,8 @@ public class MainActivity extends Activity {
     private static final int PID = 0x8057;
 
     // the desktop's colors (src/ui.rs), as in the Figma variables
-    private static final int BG = 0xFF28221F, PANEL = 0xFF1F1A18, INK = 0xFFE9E4DC, DIM = 0xFF8D837B,
-            LAV = 0xFFB6A2E6, MINT = 0xFF7BE8BB, WARN = 0xFFF2B44C, BAD = 0xFFFF6A5A,
-            KEY = 0xFF2C7A70, KEYDARK = 0xFF2A2421, KEYINK = 0xFFD6EFE8, LCD = 0xFFC3D66B, LCDINK = 0xFF1D2310;
+    private static final int BG = Ui.BG, PANEL = Ui.PANEL, INK = Ui.INK, DIM = Ui.DIM, LAV = Ui.LAV, MINT = Ui.MINT,
+            WARN = Ui.WARN, BAD = Ui.BAD, NOW = Ui.NOW, LCD = Ui.LCD, LCDINK = Ui.LCDINK;
 
     /** A safety check: name, passed, what it says, the action that fixes it ("" for none). */
     private static final class Check {
@@ -69,20 +68,50 @@ public class MainActivity extends Activity {
     private float dp;
     private TextView unit, lcdTitle, lcdStatus, lcdDetail, summary, log;
     private LinearLayout checks, info;
-    private Button read;
+    private OpKey read;
+    /** The App Bar's LED, the LCD's progress bar (Figma LCD Display, State=Writing). */
+    private View unitLed;
+    private LinearLayout lcdBar;
+    private View lcdBarFill, lcdBarRest;
     private ScrollView device;
     private LibraryView library;
     private BackupsView backups;
     /** The backup being put back (PLAN_RESTORE, WRITE_RESTORE). */
     private File restoreFile;
-    private LinearLayout foot;
+    /** Device tab (Figma A1–A12): the LCD's last line, the bootloader key, the warning, what shows once checked. */
+    private TextView lcdPrompt, formLabel, field;
+    private View warn;
+    private OpKey bootBtn;
+    private Button formChoose, formPrimary, formOther;
+    private OpKey[] opKeys;
+    /** The last write: its sectors, its backup's path, the sectors it plans; the bundled m-bootloader's version. */
+    private int lastSectors, writeTotal, bootSectors;
+    private String lastBackupPath = "", bootVersion = "", flashId = "";
+    private LinearLayout checkedPart, form;
+    private final TextView[] steps = new TextView[4];
+    /** A unit read on this connection, and whether it has m-bootloader. */
+    private boolean checked, bootOpen;
+    /** The operation whose form is open (FW_OP, RESTORE_OP), -1 none: chosen only once the unit is checked. */
+    private int opChosen = -1;
+    private static final int FW_OP = 1, RESTORE_OP = 2;
+    /** The plan the form's key reviews; its firmware from a file on the phone (else the library). */
+    private String planResult;
+    private boolean fromFile;
+    private File chosenFile;
+    /** The library's firmware chosen ("Hortator 1.0.1"), null for a file. */
+    private String libraryChoice;
+    /** The plan is step 2 of 2: its review opens as soon as it is made. */
+    private boolean reviewAfterPlan;
+    private static final int PICK_FILE = 7;
     private TextView[] tabs;
     private volatile boolean running, writing;
     /** What reading the unit is for: its diagnosis, a backup, or a plan to review. */
     private static final int DIAGNOSE = 0, BACKUP = 1, PLAN = 2, WRITE = 3, WRITE_BOOT = 4, PLAN_RESTORE = 5, WRITE_RESTORE = 6,
-            SWITCH = 7, RESTART = 8;
+            SWITCH = 7, RESTART = 8, PLAN_FILE = 9, PLAN_BOOT = 10, WRITE_BOOT_ONLY = 11;
     /** What to do once the user grants the USB permission. */
     private int pendingMode;
+    /** The USB permission was asked for pendingMode: it may come by the system's broadcast or with the unit's attach. */
+    private boolean awaitingPermission;
     /** The firmware being planned (PLAN). */
     private String planId;
     /** The unit's USB connection, kept open while it is plugged in (the core keeps what it read). */
@@ -121,6 +150,8 @@ public class MainActivity extends Activity {
             UsbDevice d = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
             if (intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false) && d != null) {
                 say("USB permission granted");
+                if (!awaitingPermission || running) return;
+                awaitingPermission = false;
                 start(d, pendingMode);
             } else {
                 say("USB permission refused");
@@ -135,7 +166,12 @@ public class MainActivity extends Activity {
             if (!lines.isEmpty()) say(lines);
             if (running) {
                 int p = Native.progress();
-                read.setText((writing ? "WRITING… " : "READING… ") + p + "%");
+                if (writing) {
+                    setSteps(p == 0 ? "DAII" : p < 100 ? "DDAI" : "DDDA");
+                    lcdStatus.setText(writeTotal > 0 ? writeTotal * p / 100 + " / " + writeTotal + " · " + p + " %" : p + " %");
+                    lcdDetail.setText(p == 0 ? "SAVING A BACKUP FIRST" : "BACKUP SAVED FIRST");
+                    setLcdBar(p);
+                }
                 if (busy != null && writing) {
                     busyText.setText(p == 0 ? "Backing up your FM-1 on this phone…" : p < 100 ? "Installing… " + p + "%"
                             : "Checking what was written…");
@@ -173,8 +209,15 @@ public class MainActivity extends Activity {
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
-        // a unit in download mode was plugged in: read it, unless INSTALL is waiting for it
-        if (UsbManager.ACTION_USB_DEVICE_ATTACHED.equals(intent.getAction()) && afterSwitch < 0) readUnit(false);
+        if (!UsbManager.ACTION_USB_DEVICE_ATTACHED.equals(intent.getAction()) || running) return;
+        if (awaitingPermission) {
+            // the permission came with the attach (the app is the unit's default): go on with what asked for it
+            awaitingPermission = false;
+            run(pendingMode);
+        } else if (afterSwitch < 0) {
+            // a unit in download mode was plugged in: read it, unless INSTALL or CHECK is waiting for it
+            readUnit(false);
+        }
     }
 
     @Override
@@ -191,12 +234,36 @@ public class MainActivity extends Activity {
     }
 
     private TextView text(String s, int color, float size, boolean bold) {
+        return Ui.text(this, s, color, size, bold);
+    }
+
+    /** LCD/Large (40) and LCD/Body (24): VT323, capitals. */
+    private TextView lcdText(float size) {
         TextView t = new TextView(this);
-        t.setText(s);
-        t.setTextColor(color);
+        t.setTextColor(LCDINK);
         t.setTextSize(size);
-        t.setTypeface(Typeface.MONOSPACE, bold ? Typeface.BOLD : Typeface.NORMAL);
+        t.setTypeface(Ui.font(this, Ui.LCDFONT));
+        t.setAllCaps(true);
+        t.setLetterSpacing(1f / size);
+        t.setIncludeFontPadding(false);
         return t;
+    }
+
+    /** A fill with a line on one edge (the App Bar's bottom, the Bottom Nav's top, a Safety Row's bottom). */
+    private android.graphics.drawable.Drawable edge(int fill, int line, boolean top) {
+        GradientDrawable l = new GradientDrawable();
+        l.setColor(line);
+        android.graphics.drawable.LayerDrawable d = new android.graphics.drawable.LayerDrawable(
+                new android.graphics.drawable.Drawable[] {new android.graphics.drawable.ColorDrawable(fill), l});
+        d.setLayerHeight(1, px(1));
+        d.setLayerGravity(1, top ? Gravity.TOP : Gravity.BOTTOM);
+        return d;
+    }
+
+    private static LinearLayout.LayoutParams below(int w, int h, int top) {
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(w, h);
+        lp.setMargins(0, top, 0, 0);
+        return lp;
     }
 
     private GradientDrawable box(int fill, int stroke, float radius) {
@@ -208,21 +275,11 @@ public class MainActivity extends Activity {
     }
 
     private Button key(String label, boolean primary) {
-        Button k = new Button(this);
-        k.setText(label);
-        k.setAllCaps(true);
-        k.setTextColor(primary ? KEYINK : INK);
-        k.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
-        k.setBackground(box(primary ? KEY : KEYDARK, primary ? 0 : DIM, 3));
-        k.setStateListAnimator(null);
-        return k;
+        return Ui.key(this, label, primary);
     }
 
     private View section(String label) {
-        TextView t = text(label, LAV, 11, false);
-        t.setLetterSpacing(0.25f);
-        t.setPadding(0, px(18), 0, px(6));
-        return t;
+        return Ui.section(this, label);
     }
 
     private View build() {
@@ -230,23 +287,39 @@ public class MainActivity extends Activity {
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(BG);
 
+        // App Bar (Figma 15:222): the name, the unit, its LED
         LinearLayout bar = new LinearLayout(this);
         bar.setGravity(Gravity.CENTER_VERTICAL);
-        bar.setPadding(px(16), px(12), px(16), px(12));
-        TextView name = text("M-FLASHER +", MINT, 20, true);
+        bar.setPadding(px(12), px(6), px(12), px(6));
+        bar.setBackground(edge(BG, Ui.LINE, false));
+        TextView name = text("M-FLASHER +", MINT, 24, false);
+        name.setTypeface(Ui.font(this, Ui.HEAD));
+        name.setLetterSpacing(1f / 24);
         name.setOnClickListener(v -> about());
-        name.setTypeface(Typeface.create("sans-serif-condensed", Typeface.BOLD_ITALIC));
         bar.addView(name);
-        unit = text("NO UNIT", DIM, 11, false);
+        // About: the ⓘ beside the name, its touch area 40 dp
+        android.widget.ImageView about = new android.widget.ImageView(this);
+        about.setImageResource(getResources().getIdentifier("ic_info", "drawable", getPackageName()));
+        about.setPadding(px(10), px(10), px(10), px(10));
+        about.setContentDescription("About M-Flasher +");
+        about.setOnClickListener(v -> about());
+        bar.addView(about, new LinearLayout.LayoutParams(px(40), px(40)));
+        unit = text("NO UNIT", DIM, 14, false);
         unit.setGravity(Gravity.END);
-        bar.addView(unit, new LinearLayout.LayoutParams(0, -2, 1));
-        root.addView(bar);
+        unit.setSingleLine(true);
+        unit.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        LinearLayout.LayoutParams up = new LinearLayout.LayoutParams(0, -2, 1);
+        up.setMargins(px(6), 0, px(6), 0);
+        bar.addView(unit, up);
+        unitLed = Ui.led(this);
+        bar.addView(unitLed, new LinearLayout.LayoutParams(px(10), px(10)));
+        root.addView(bar, new LinearLayout.LayoutParams(-1, px(56)));
 
         FrameLayout content = new FrameLayout(this);
         device = new ScrollView(this);
         LinearLayout body = new LinearLayout(this);
         body.setOrientation(LinearLayout.VERTICAL);
-        body.setPadding(px(16), px(4), px(16), px(16));
+        body.setPadding(px(12), px(12), px(12), px(16));
         device.addView(body);
         content.addView(device);
         library = new LibraryView(this, new File(getFilesDir(), "library"), this::install);
@@ -255,76 +328,162 @@ public class MainActivity extends Activity {
         backups = new BackupsView(this, new File(getExternalFilesDir(null), "backups"), f -> {
             restoreFile = f;
             showTab(0);
+            chooseOp(RESTORE_OP);
             run(PLAN_RESTORE);
         });
         backups.setVisibility(View.GONE);
         content.addView(backups);
         root.addView(content, new LinearLayout.LayoutParams(-1, 0, 1));
 
+        // LCD Display (Figma 7:51): a dark bezel around the green screen, VT323
+        LinearLayout bezel = new LinearLayout(this);
+        bezel.setPadding(px(8), px(8), px(8), px(8));
+        bezel.setBackground(Ui.box(this, Ui.BEZEL, Ui.BEZELLINE, 1, 0));
         LinearLayout lcd = new LinearLayout(this);
         lcd.setOrientation(LinearLayout.VERTICAL);
-        lcd.setPadding(px(14), px(12), px(14), px(12));
-        lcd.setBackground(box(LCD, 0xFF111111, 2));
-        lcdTitle = text("NO UNIT", LCDINK, 26, true);
-        lcdStatus = text("", LCDINK, 13, false);
-        lcdDetail = text("", LCDINK, 13, false);
+        lcd.setPadding(px(16), px(12), px(16), px(12));
+        lcd.setBackground(Ui.box(this, LCD, Ui.LCDLINE, 2, 0));
+        lcdTitle = lcdText(40);
+        lcdStatus = lcdText(24);
+        lcdDetail = lcdText(24);
         lcd.addView(lcdTitle);
-        lcd.addView(lcdStatus);
-        lcd.addView(lcdDetail);
-        body.addView(lcd);
+        lcd.addView(lcdStatus, below(-2, -2, px(4)));
+        lcd.addView(lcdDetail, below(-2, -2, px(4)));
+        // State=Writing: the bar, framed in ink
+        lcdBar = new LinearLayout(this);
+        lcdBar.setPadding(px(3), px(3), px(3), px(3));
+        lcdBar.setBackground(Ui.box(this, LCD, LCDINK, 2, 0));
+        lcdBarFill = new View(this);
+        lcdBarFill.setBackgroundColor(LCDINK);
+        lcdBar.addView(lcdBarFill, new LinearLayout.LayoutParams(0, px(10), 0));
+        lcdBarRest = new View(this);
+        lcdBar.addView(lcdBarRest, new LinearLayout.LayoutParams(0, px(10), 100));
+        lcdBar.setVisibility(View.GONE);
+        lcd.addView(lcdBar, below(-1, -2, px(4)));
+        View rule = new View(this);
+        rule.setBackgroundColor(LCDINK);
+        lcd.addView(rule, below(-1, px(2), px(4)));
+        lcdPrompt = lcdText(24);
+        lcd.addView(lcdPrompt, below(-2, -2, px(4)));
+        bezel.addView(lcd, new LinearLayout.LayoutParams(-1, -2));
+        body.addView(bezel);
 
-        LinearLayout head = new LinearLayout(this);
-        head.setGravity(Gravity.BOTTOM);
-        head.addView(section("SAFETY CHECK"), new LinearLayout.LayoutParams(0, -2, 1));
-        summary = text("", DIM, 11, true);
-        summary.setPadding(0, 0, 0, px(6));
-        head.addView(summary);
-        body.addView(head);
-        checks = new LinearLayout(this);
-        checks.setOrientation(LinearLayout.VERTICAL);
-        body.addView(checks);
+        // check, then protect, then operate: CHECK FM1 STATUS switches a running unit to download mode and reads it
+        read = new OpKey(this, "CHECK FM1 STATUS", "ic_firmware");
+        read.setOnClickListener(v -> switchThen(DIAGNOSE));
+        body.addView(read, keyParams(12));
+        bootBtn = new OpKey(this, "INSTALL M-BOOTLOADER", "ic_bootloader");
+        bootBtn.setOnClickListener(v -> run(PLAN_BOOT));
+        body.addView(bootBtn, keyParams(6));
+        LinearLayout w = new LinearLayout(this);
+        android.widget.ImageView wi = new android.widget.ImageView(this);
+        wi.setImageResource(getResources().getIdentifier("ic_check_attention", "drawable", getPackageName()));
+        w.addView(wi, new LinearLayout.LayoutParams(px(18), px(18)));
+        TextView wt = text("You don't have m-bootloader · It's a safeguard to prevent bricks", WARN, 14, false);
+        LinearLayout.LayoutParams wp = new LinearLayout.LayoutParams(0, -2, 1);
+        wp.setMargins(px(8), 0, 0, 0);
+        w.addView(wt, wp);
+        warn = w;
+        body.addView(warn, below(-1, -2, px(12)));
 
-        body.addView(section("DEVICE INFO"));
+        checkedPart = new LinearLayout(this);
+        checkedPart.setOrientation(LinearLayout.VERTICAL);
+        body.addView(checkedPart);
+        checkedPart.addView(section("DEVICE INFO"), below(-1, px(18), px(12)));
         info = new LinearLayout(this);
         info.setOrientation(LinearLayout.VERTICAL);
-        body.addView(info);
+        checkedPart.addView(info, below(-1, -2, px(12)));
+        checkedPart.addView(section("OPERATIONS"), below(-1, px(18), px(12)));
+        OpKey bk = new OpKey(this, "BACKUP FULL FLASH", "ic_backup"), rs = new OpKey(this, "RESTORE FULL FLASH", "ic_restore"),
+                fwk = new OpKey(this, "FLASH FIRMWARE", "ic_firmware");
+        bk.setOnClickListener(v -> {
+            chooseOp(-1);
+            readUnit(true);
+        });
+        rs.setOnClickListener(v -> chooseOp(RESTORE_OP));
+        fwk.setOnClickListener(v -> chooseOp(FW_OP));
+        opKeys = new OpKey[] {bk, rs, fwk};
+        for (int i = 0; i < opKeys.length; i++) checkedPart.addView(opKeys[i], keyParams(i == 0 ? 12 : 6));
 
-        body.addView(section("LOG"));
-        log = text("", DIM, 10, false);
+        // the chosen operation's form (Figma A7, A8): a file of its own, its review, OR the other source
+        form = new LinearLayout(this);
+        form.setOrientation(LinearLayout.VERTICAL);
+        View formHead = section("");
+        formLabel = Ui.sectionText(formHead);
+        form.addView(formHead, new LinearLayout.LayoutParams(-1, px(18)));
+        LinearLayout row = new LinearLayout(this);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        formChoose = key("CHOOSE FILE", false);
+        row.addView(formChoose, new LinearLayout.LayoutParams(-2, px(38)));
+        field = text("no file chosen", DIM, 14, false);
+        field.setPadding(px(8), 0, px(8), 0);
+        field.setGravity(Gravity.CENTER_VERTICAL);
+        field.setSingleLine(true);
+        field.setEllipsize(android.text.TextUtils.TruncateAt.MIDDLE);
+        field.setBackground(Ui.box(this, Ui.FIELD, Ui.SECLINE, 1, 0));
+        LinearLayout.LayoutParams fp = new LinearLayout.LayoutParams(0, px(38), 1);
+        fp.setMargins(px(6), 0, 0, 0);
+        row.addView(field, fp);
+        form.addView(row, below(-1, -2, px(8)));
+        formPrimary = key("FLASH FIRMWARE", true);
+        form.addView(formPrimary, below(-1, px(38), px(8)));
+        TextView or = Ui.mono(this, "OR", DIM, 12);
+        or.setGravity(Gravity.CENTER);
+        form.addView(or, below(-1, -2, px(8)));
+        formOther = key("INSTALL FROM LIBRARY", true);
+        form.addView(formOther, below(-1, px(38), px(8)));
+        checkedPart.addView(form, below(-1, -2, px(12)));
+
+        LinearLayout head = new LinearLayout(this);
+        head.setGravity(Gravity.CENTER_VERTICAL);
+        head.addView(section("SAFETY CHECK"), new LinearLayout.LayoutParams(0, px(18), 1));
+        summary = Ui.label(this, "", DIM);
+        summary.setPadding(px(8), 0, 0, 0);
+        head.addView(summary);
+        checkedPart.addView(head, below(-1, -2, px(12)));
+        checks = new LinearLayout(this);
+        checks.setOrientation(LinearLayout.VERTICAL);
+        checkedPart.addView(checks, below(-1, -2, px(12)));
+
+        // progress and log: always
+        body.addView(section("TRANSFER PROGRESS"), below(-1, px(18), px(12)));
+        LinearLayout st = new LinearLayout(this);
+        String[] sn = {"READ", "BACKUP", "WRITE", "VERIFY"};
+        for (int i = 0; i < 4; i++) {
+            steps[i] = Ui.label(this, sn[i], DIM);
+            steps[i].setGravity(Gravity.CENTER);
+            steps[i].setSingleLine(true);
+            LinearLayout.LayoutParams sp = new LinearLayout.LayoutParams(0, px(28), 1);
+            sp.setMargins(i == 0 ? 0 : px(4), 0, 0, 0);
+            st.addView(steps[i], sp);
+        }
+        body.addView(st, below(-1, -2, px(12)));
+        body.addView(section("LOG"), below(-1, px(18), px(12)));
+        log = Ui.mono(this, "", DIM, 12);
         log.setTextIsSelectable(true);
-        body.addView(log);
+        body.addView(log, below(-1, -2, px(12)));
 
-        foot = new LinearLayout(this);
-        foot.setPadding(px(16), px(10), px(16), px(10));
-        foot.setBackgroundColor(PANEL);
-        read = key("READ UNIT", true);
-        // as the desktop's DOWNLOAD MODE: a running FM-1 is switched first
-        read.setOnClickListener(v -> switchThen(DIAGNOSE));
-        foot.addView(read, new LinearLayout.LayoutParams(-1, px(48)));
-        root.addView(foot);
-
-        // bottom navigation (Figma Bottom Nav): DEVICE, LIBRARY
+        // Bottom Nav (Figma 15:211): DEVICE, LIBRARY, BACKUPS
         LinearLayout nav = new LinearLayout(this);
-        nav.setBackgroundColor(PANEL);
+        nav.setBackground(edge(PANEL, Ui.LINE, true));
         String[] names = {"DEVICE", "LIBRARY", "BACKUPS"};
         tabs = new TextView[names.length];
         for (int i = 0; i < names.length; i++) {
             final int tab = i;
-            TextView t = text(names[i], DIM, 12, false);
+            TextView t = text(names[i], DIM, 14, false);
             t.setGravity(Gravity.CENTER);
-            t.setPadding(0, px(14), 0, px(14));
             t.setOnClickListener(v -> showTab(tab));
             tabs[i] = t;
-            nav.addView(t, new LinearLayout.LayoutParams(0, -2, 1));
+            nav.addView(t, new LinearLayout.LayoutParams(0, px(64), 1));
         }
         root.addView(nav);
         showTab(0);
         return root;
     }
 
+
     private void showTab(int tab) {
         device.setVisibility(tab == 0 ? View.VISIBLE : View.GONE);
-        foot.setVisibility(tab == 0 ? View.VISIBLE : View.GONE);
         library.setVisibility(tab == 1 ? View.VISIBLE : View.GONE);
         backups.setVisibility(tab == 2 ? View.VISIBLE : View.GONE);
         if (tab == 2) backups.load();
@@ -344,6 +503,190 @@ public class MainActivity extends Activity {
         return l;
     }
 
+    private LinearLayout.LayoutParams keyParams(float top) {
+        return below(-1, px(52), px(top));
+    }
+
+    private void lit(OpKey k, boolean on) {
+        k.setLit(on);
+    }
+
+    /** The progress steps: D done, A active, I idle (READ, BACKUP, WRITE, VERIFY). */
+    private void setSteps(String states) {
+        for (int i = 0; i < 4; i++) {
+            char c = states.charAt(i);
+            // Figma Step: Current, Done, Pending
+            steps[i].setBackground(box(c == 'A' ? Ui.KEY : c == 'D' ? Ui.KEYDARK : Ui.STEPIDLE, 0, 2));
+            steps[i].setTextColor(c == 'A' ? Ui.KEYINK : c == 'D' ? MINT : DIM);
+            String n = steps[i].getText().toString().replace("✓ ", "");
+            steps[i].setText(c == 'D' ? "✓ " + n : n);
+        }
+    }
+
+    /** The LCD's last line: what to do next. */
+    private void updatePrompt() {
+        int n = planCount(planResult);
+        lcdPrompt.setText(!checked ? "CONNECT IT AND TAP CHECK"
+                : opChosen < 0 && !bootOpen ? "INSTALL M-BOOTLOADER FIRST"
+                : opChosen < 0 ? "CHECKED · CHOOSE AN OPERATION"
+                : n > 0 ? "PLAN READY: " + n + " SECTORS"
+                : n == 0 ? "NOTHING TO WRITE · ALREADY ON THE UNIT"
+                : opChosen == FW_OP ? "CHOOSE A FIRMWARE" : "CHOOSE A BACKUP");
+    }
+
+    /** Sectors the plan writes, or -1 without a plan. */
+    private static int planCount(String r) {
+        if (r == null || !r.startsWith("OK")) return -1;
+        for (String l : r.split("\n")) {
+            String[] p = l.split("\\|", -1);
+            if (p[0].equals("PLAN") && p.length >= 6) return Integer.parseInt(p[3]);
+        }
+        return -1;
+    }
+
+    /** Opens an operation's form (-1: none), its choices cleared. */
+    private void chooseOp(int op) {
+        opChosen = op;
+        planResult = null;
+        if (op != FW_OP) {
+            libraryChoice = null;
+            chosenFile = null;
+        }
+        if (op != RESTORE_OP) restoreFile = null;
+        refreshForm();
+    }
+
+    private void refreshForm() {
+        if (opKeys != null) {
+            lit(opKeys[1], opChosen == RESTORE_OP);
+            lit(opKeys[2], opChosen == FW_OP);
+        }
+        form.setVisibility(opChosen < 0 ? View.GONE : View.VISIBLE);
+        int n = planCount(planResult);
+        boolean fw = opChosen == FW_OP;
+        formLabel.setText(fw ? "FIRMWARE FILE" : "BACKUP TO RESTORE");
+        formChoose.setText(fw ? "CHOOSE FILE" : "CHOOSE BACKUP");
+        formChoose.setOnClickListener(v -> {
+            if (fw) pickFile(); else chooseBackup();
+        });
+        String chosen = fw ? (libraryChoice != null ? libraryChoice + " · library · SHA-256 OK"
+                : chosenFile != null ? chosenFile.getName() : null)
+                : restoreFile != null ? restoreFile.getName() : null;
+        field.setText(chosen == null ? "no file chosen" : chosen);
+        field.setTextColor(chosen == null ? DIM : INK);
+        String verb = fw ? "FLASH FIRMWARE" : "RESTORE BACKUP";
+        formPrimary.setText(n > 0 ? verb + " · REVIEW " + n + " SECTORS" : n == 0 ? "NOTHING TO WRITE" : verb);
+        Ui.enable(formPrimary, n > 0);
+        formPrimary.setOnClickListener(v -> {
+            if (fw) review(planResult); else reviewRestore(planResult);
+        });
+        formOther.setText(fw ? "INSTALL FROM LIBRARY" : "FROM BACKUPS TAB");
+        formOther.setOnClickListener(v -> showTab(fw ? 1 : 2));
+        updatePrompt();
+    }
+
+    /** CHOOSE FILE: a firmware package from the phone, copied into the app before it is planned. */
+    private void pickFile() {
+        Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*");
+        startActivityForResult(i, PICK_FILE);
+    }
+
+    @Override
+    protected void onActivityResult(int request, int result, Intent data) {
+        super.onActivityResult(request, result, data);
+        if (request != PICK_FILE || result != RESULT_OK || data == null || data.getData() == null) return;
+        android.net.Uri uri = data.getData();
+        String name = "package.fwsc";
+        try (android.database.Cursor c = getContentResolver().query(uri, null, null, null, null)) {
+            if (c != null && c.moveToFirst()) {
+                int i = c.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME);
+                if (i >= 0) name = c.getString(i);
+            }
+        }
+        File dir = new File(getCacheDir(), "chosen");
+        dir.mkdirs();
+        File out = new File(dir, name.replaceAll("[/\\\\]", "_"));
+        try (java.io.InputStream in = getContentResolver().openInputStream(uri);
+             java.io.OutputStream o = new java.io.FileOutputStream(out)) {
+            byte[] buf = new byte[65536];
+            int n;
+            while ((n = in.read(buf)) > 0) o.write(buf, 0, n);
+        } catch (Exception e) {
+            say("Could not read " + name + ": " + e.getMessage());
+            return;
+        }
+        say(name + " chosen");
+        chosenFile = out;
+        libraryChoice = null;
+        fromFile = true;
+        planResult = null;
+        refreshForm();
+        run(PLAN_FILE);
+    }
+
+    /** CHOOSE BACKUP: the backups on this phone, newest first. */
+    private void chooseBackup() {
+        File dir = new File(getExternalFilesDir(null), "backups");
+        File[] all = dir.listFiles((d, n) -> n.endsWith(".bin"));
+        if (all == null || all.length == 0) {
+            dialog("No backups yet", "Save one with BACKUP FULL FLASH first.").setPositiveButton("OK", null).show();
+            return;
+        }
+        java.util.Arrays.sort(all, (x, y) -> y.getName().compareTo(x.getName()));
+        String[] names = new String[all.length];
+        for (int i = 0; i < all.length; i++) {
+            // fm1-20261116-102922.bin: saved 16/11/2026 10:29
+            java.util.regex.Matcher m = java.util.regex.Pattern.compile("(\\d{4})(\\d{2})(\\d{2})-(\\d{2})(\\d{2})").matcher(all[i].getName());
+            names[i] = m.find() ? m.group(3) + "/" + m.group(2) + "/" + m.group(1) + " " + m.group(4) + ":" + m.group(5)
+                    : all[i].getName();
+        }
+        Ui.list(this, Ui.dialog(this).setTitle("Choose a backup"), names, w -> {
+            restoreFile = all[w];
+            planResult = null;
+            refreshForm();
+            run(PLAN_RESTORE);
+        }).show();
+    }
+
+    /** The bundled m-bootloader on its own (INSTALL M-BOOTLOADER), reviewed as any write. */
+    private void reviewBoot(String result) {
+        String[] lines = result.split("\n");
+        if (!lines[0].equals("OK")) {
+            dialog("Can't install m-bootloader", result.substring(Math.min(result.length(), 6))).setPositiveButton("OK", null).show();
+            return;
+        }
+        String[] plan = null;
+        for (String l : lines) {
+            String[] p = l.split("\\|", -1);
+            if (p[0].equals("PLAN") && p.length >= 6) plan = p;
+        }
+        if (plan == null) return;
+        int n = Integer.parseInt(plan[3]);
+        bootVersion = plan[2];
+        bootSectors = n;
+        showReview(dialog("Install m-bootloader " + plan[2] + "?",
+                "Your FM-1 gets its rescue mode: holding REC while switching on always reaches download mode, whatever "
+                + "the firmware does.\n\n"
+                + "✓  Your FM-1 is backed up on this phone first.\n"
+                + "✓  Only the start-up area is written (" + n * 4 + " KiB); the firmware and your settings stay.\n"
+                + "✓  Everything written is checked by the FM-1 itself.")
+                .setNegativeButton("CANCEL", null)
+                .setPositiveButton("INSTALL", (x, w) -> run(WRITE_BOOT_ONLY)).create());
+    }
+
+    /** The flash chip of the unit last checked, by name ("UCUN UC25HQ80"). */
+    private String flashName() {
+        return flashId.equalsIgnoreCase("0x856014") ? "Puya P25Q80H" : flashId.equalsIgnoreCase("0xB36014") ? "UCUN UC25HQ80"
+                : flashId.isEmpty() ? "FLASH" : flashId;
+    }
+
+    /** The flash chip as owners know it: "Puya P25Q80H · 0x856014 (old)". */
+    private static String chipName(String id) {
+        if (id.equalsIgnoreCase("0x856014")) return "Puya P25Q80H · 0x856014 (old)";
+        if (id.equalsIgnoreCase("0xB36014")) return "UCUN UC25HQ80 · 0xB36014 (new)";
+        return id;
+    }
+
     /** About: what this app is, and whose work it builds on. */
     private void about() {
         String version;
@@ -352,16 +695,12 @@ public class MainActivity extends Activity {
         } catch (Exception e) {
             version = "";
         }
-        new AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
+        Ui.dialog(this)
                 .setTitle("M-Flasher + " + version)
                 .setMessage("Back up, restore and install the firmware of an M-VAVE FM-1 from this phone, through the "
                         + "chip's USB download mode.\n\n"
-                        + "M-Flasher + by Wellington Saam: the firmware library, m-bootloader before a firmware "
-                        + "(REQ-BOOT-01), the Device tab's checks and this Android app. Based on M-Flasher by Julius "
-                        + "Vitkauskas (MIT).\n\n"
-                        + "Bootloader and flash loader: m-bootloader (MIT). Firmware list: The Firmware Hub "
-                        + "(CC BY 4.0).\n\nUnofficial: not affiliated with M-VAVE or JieLi.")
-                .setPositiveButton("OK", null).show();
+                        + "M-Flasher + by Wellington Saam. Based on M-Flasher by Julius Vitkauskas (MIT).")
+                .setPositiveButton("CLOSE", null).show();
     }
 
     // ---- state shown
@@ -370,24 +709,53 @@ public class MainActivity extends Activity {
         for (String l : s.split("\n")) {
             Log.i(TAG, l);
             logLines.add(l);
+            logToFile(l);
         }
         while (logLines.size() > 14) logLines.remove(0);
         if (log != null) log.setText(String.join("\n", logLines));
     }
 
+    /**
+     * The log kept on the phone too (Android/data/…/files/m-flasher.log, next to the backups): the screen shows only
+     * its last lines. Past 1 MiB the file starts again, the last one kept as m-flasher.log.1.
+     */
+    private void logToFile(String line) {
+        File dir = getExternalFilesDir(null);
+        if (dir == null) return;
+        File f = new File(dir, "m-flasher.log");
+        if (f.length() > (1 << 20)) f.renameTo(new File(dir, "m-flasher.log.1"));
+        String when = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.ROOT).format(new java.util.Date());
+        try (java.io.FileWriter w = new java.io.FileWriter(f, true)) {
+            w.write(when + " " + line + "\n");
+        } catch (java.io.IOException ignored) {
+            // the screen's log still has it
+        }
+    }
+
     private void showWaiting() {
         unit.setText("NO UNIT");
-        unit.setTextColor(DIM);
+        Ui.setLed(this, unitLed, 0);
         lcdTitle.setText("NO UNIT");
-        lcdStatus.setText("WAITING FOR DOWNLOAD MODE");
-        lcdDetail.setText("HOLD REC WHILE SWITCHING ON");
+        lcdStatus.setText("WAITING FOR THE FM-1");
+        lcdDetail.setText("USB OTG");
         summary.setText("");
         checks.removeAllViews();
         info.removeAllViews();
         library.setUnit(null);
         if (backups != null) backups.setUnit(false);
-        checks.addView(text("Connect an FM-1 in download mode with an OTG cable: m-bootloader, hold REC while "
-                + "switching on; Felucca and others, hold OCT- and OCT+ for 5 s.", DIM, 12, false));
+        // nothing but CHECK until the unit is checked
+        checked = false;
+        bootOpen = false;
+        opChosen = -1;
+        planResult = null;
+        checkedPart.setVisibility(View.GONE);
+        warn.setVisibility(View.GONE);
+        lit(read, true);
+        bootBtn.setText("INSTALL M-BOOTLOADER");
+        lit(bootBtn, false);
+        Ui.enable(bootBtn, false);
+        setSteps("IIII");
+        updatePrompt();
     }
 
     private void show(String result) {
@@ -421,11 +789,22 @@ public class MainActivity extends Activity {
 
         if (facts.containsKey("firmware")) remember("firmware", facts.get("firmware"));
         String model = facts.containsKey("model") ? facts.get("model") : "UNIT";
+        for (Check c : found) if (c.name.equals("RECOVERY")) bootOpen = c.ok;
+        checked = true;
+        checkedPart.setVisibility(View.VISIBLE);
+        warn.setVisibility(bootOpen ? View.GONE : View.VISIBLE);
+        lit(read, false);
+        String bl = facts.getOrDefault("bootloader", "");
+        String ver = bl.startsWith("m-bootloader") && bl.split(" ").length > 1 ? bl.split(" ")[1].split("-")[0] : "";
+        bootBtn.setText(bootOpen ? "M-BOOTLOADER " + ver + " INSTALLED ✓" : "INSTALL M-BOOTLOADER");
+        lit(bootBtn, !bootOpen);
+        Ui.enable(bootBtn, !bootOpen);
+        if (!writing) setSteps("DIII");
         unit.setText(model + " · DOWNLOAD MODE");
-        unit.setTextColor(MINT);
+        Ui.setLed(this, unitLed, 1);
         lcdTitle.setText(model);
         lcdStatus.setText("USB OTG · DOWNLOAD MODE");
-        lcdDetail.setText(facts.getOrDefault("firmware", "") + " · FLASH 1 MiB");
+        lcdDetail.setText("FLASH 1 MiB");
 
         int need = 0;
         checks.removeAllViews();
@@ -437,38 +816,52 @@ public class MainActivity extends Activity {
         summary.setTextColor(need == 0 ? MINT : WARN);
 
         info.removeAllViews();
-        for (Map.Entry<String, String> e : facts.entrySet()) {
+        String[][] rows = {{"MODEL", facts.getOrDefault("model", "")}, {"FIRMWARE", facts.getOrDefault("firmware", "")},
+                {"FIRMWARE CHECK", facts.getOrDefault("app", "")}, {"BOOTLOADER", bl},
+                {"FLASH CHIP", chipName(flashId = facts.getOrDefault("flash", ""))}, {"CHIP KEY", facts.getOrDefault("chip key", "")}};
+        // Figma Info Row: the key in lavender capitals, the value (Ok mint, Warn amber)
+        for (String[] e : rows) {
             LinearLayout r = new LinearLayout(this);
-            r.setPadding(0, px(3), 0, px(3));
-            r.addView(text(e.getKey().toUpperCase(), LAV, 11, false), new LinearLayout.LayoutParams(px(118), -2));
-            boolean app = e.getKey().equals("app");
-            r.addView(text(e.getValue(), app ? (e.getValue().equals("OK") ? MINT : BAD) : INK, 12, false),
-                    new LinearLayout.LayoutParams(0, -2, 1));
+            r.setGravity(Gravity.CENTER_VERTICAL);
+            r.setMinimumHeight(px(24));
+            r.setPadding(0, px(1), 0, px(1));
+            r.addView(Ui.label(this, e[0], Ui.LAVKEY), new LinearLayout.LayoutParams(px(150), -2));
+            int col = e[0].equals("FIRMWARE CHECK") ? (e[1].equals("OK") ? MINT : BAD)
+                    : e[0].equals("BOOTLOADER") && !bootOpen ? WARN : INK;
+            LinearLayout.LayoutParams vp = new LinearLayout.LayoutParams(0, -2, 1);
+            vp.setMargins(px(12), 0, 0, 0);
+            r.addView(text(e[1], col, 14, false), vp);
             info.addView(r);
         }
+        refreshForm();
     }
 
+    /** Figma Safety Row: the check's icon, its name and detail, its action; a line under it. */
     private View checkRow(Check c) {
         LinearLayout r = new LinearLayout(this);
         r.setGravity(Gravity.CENTER_VERTICAL);
-        r.setPadding(0, px(8), 0, px(8));
-        r.addView(text(c.ok ? "✓" : "⚠", c.ok ? MINT : WARN, 16, true), new LinearLayout.LayoutParams(px(26), -2));
+        r.setPadding(px(2), px(4), px(2), px(4));
+        r.setBackground(edge(BG, Ui.LINE, false));
+        android.widget.ImageView icon = new android.widget.ImageView(this);
+        icon.setImageResource(getResources().getIdentifier(c.ok ? "ic_check_ok" : "ic_check_attention", "drawable",
+                getPackageName()));
+        r.addView(icon, new LinearLayout.LayoutParams(px(18), px(18)));
         LinearLayout col = new LinearLayout(this);
         col.setOrientation(LinearLayout.VERTICAL);
-        col.addView(text(c.name, LAV, 11, false));
-        col.addView(text(c.detail, c.ok ? INK : WARN, 12, false));
-        r.addView(col, new LinearLayout.LayoutParams(0, -2, 1));
+        col.addView(text(c.name, LAV, 14, false));
+        col.addView(Ui.mono(this, c.detail, c.ok ? INK : WARN, 12));
+        LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(0, -2, 1);
+        cp.setMargins(px(6), px(2), px(6), px(2));
+        r.addView(col, cp);
         if (!c.action.isEmpty()) {
             Button k = key(c.action, false);
-            k.setTextSize(12);
             if (c.action.equals("SAVE")) {
                 k.setOnClickListener(v -> readUnit(true));
             } else {
-                // installing m-bootloader writes the unit: it comes with the write review (T15.5)
-                k.setEnabled(false);
-                k.setAlpha(0.45f);
+                // INSTALL: m-bootloader, reviewed as any write
+                k.setOnClickListener(v -> run(PLAN_BOOT));
             }
-            r.addView(k, new LinearLayout.LayoutParams(-2, px(40)));
+            r.addView(k, new LinearLayout.LayoutParams(-2, px(38)));
         }
         return r;
     }
@@ -499,6 +892,7 @@ public class MainActivity extends Activity {
         }
         if (!usb.hasPermission(d)) {
             pendingMode = mode;
+            awaitingPermission = true;
             Intent i = new Intent(ACTION_PERMISSION).setPackage(getPackageName());
             int flags = Build.VERSION.SDK_INT >= 31 ? PendingIntent.FLAG_MUTABLE : 0;
             usb.requestPermission(d, PendingIntent.getBroadcast(this, 0, i, flags));
@@ -519,45 +913,69 @@ public class MainActivity extends Activity {
         final UsbEndpoint fIn = epInUsed, fOut = epOutUsed;
         final File dir = new File(getExternalFilesDir(null), "backups");
         running = true;
-        read.setEnabled(false);
-        writing = mode == WRITE || mode == WRITE_BOOT || mode == WRITE_RESTORE;
-        read.setText(mode == BACKUP ? "SAVING BACKUP…" : mode == PLAN ? "PLANNING…" : writing ? "WRITING…" : "READING…");
-        if (writing) {
-            lcdStatus.setText("WRITING · DO NOT UNPLUG");
-            lcdStatus.setTextColor(0xFF6B2A00);
-        }
+        writing = mode == WRITE || mode == WRITE_BOOT || mode == WRITE_RESTORE || mode == WRITE_BOOT_ONLY;
+        writeTotal = mode == WRITE_BOOT || mode == WRITE_BOOT_ONLY ? bootSectors : Math.max(0, planCount(planResult));
+        if (mode == DIAGNOSE) setSteps("AIII");
+        setRunningUi(mode);
         final String lib = new File(getFilesDir(), "library").getAbsolutePath();
         final String id = planId;
         final String file = restoreFile == null ? "" : restoreFile.getAbsolutePath();
+        final String pkg = chosenFile == null ? "" : chosenFile.getAbsolutePath();
+        final boolean ownFile = fromFile;
         ui.post(poll);
         new Thread(() -> {
             int fd = c.getFileDescriptor();
             int epIn = fIn.getAddress(), epOut = fOut.getAddress(), packet = fIn.getMaxPacketSize();
             String r = mode == BACKUP ? Native.backup(fd, fIntf.getId(), epIn, epOut, packet, dir.getAbsolutePath())
                     : mode == PLAN ? Native.planInstall(fd, fIntf.getId(), epIn, epOut, packet, dir.getAbsolutePath(), lib, id)
+                    : mode == PLAN_FILE ? Native.planPackage(fd, fIntf.getId(), epIn, epOut, packet, dir.getAbsolutePath(), pkg, "file")
+                    : mode == PLAN_BOOT ? Native.planPackage(fd, fIntf.getId(), epIn, epOut, packet, dir.getAbsolutePath(), "", "boot")
+                    : mode == WRITE_BOOT_ONLY ? Native.installPackage(fd, fIntf.getId(), epIn, epOut, packet, dir.getAbsolutePath(), "", "boot", false)
+                    : writing && mode != WRITE_RESTORE && ownFile
+                            ? Native.installPackage(fd, fIntf.getId(), epIn, epOut, packet, dir.getAbsolutePath(), pkg, "file", mode == WRITE_BOOT)
                     : mode == PLAN_RESTORE ? Native.planRestore(fd, fIntf.getId(), epIn, epOut, packet, dir.getAbsolutePath(), file)
                     : mode == WRITE_RESTORE ? Native.restore(fd, fIntf.getId(), epIn, epOut, packet, dir.getAbsolutePath(), file)
                     : writing ? Native.install(fd, fIntf.getId(), epIn, epOut, packet, dir.getAbsolutePath(), lib, id, mode == WRITE_BOOT)
                     : Native.diagnose(fd, fIntf.getId(), epIn, epOut, packet, dir.getAbsolutePath());
             // the firmware's library name, before the review opens
-            String named = r.startsWith("OK") ? Native.identify(lib) : "";
+            String named = r.startsWith("OK") ? Native.identify(lib, dir.getAbsolutePath()) : "";
             ui.post(() -> {
                 running = false;
                 hideBusy();
                 String lines = Native.takeLog();
                 if (!lines.isEmpty()) say(lines);
                 Log.i(TAG, "RESULT " + r.replace('\n', ';'));
+                setRunningUi(-1);
                 show(r);
                 name(named);
-                read.setEnabled(true);
-                read.setText("READ UNIT");
-                lcdStatus.setTextColor(LCDINK);
-                if (mode == PLAN) review(r);
-                if (mode == PLAN_RESTORE) reviewRestore(r);
-                if (writing) written(r, mode == WRITE_BOOT, mode == WRITE_RESTORE);
+                if (mode == PLAN && opChosen != FW_OP) {
+                    opChosen = FW_OP;
+                }
+                if (mode == PLAN || mode == PLAN_FILE || mode == PLAN_RESTORE) {
+                    // the form's key shows the plan; its review opens when tapped (step 2 of 2: at once)
+                    planResult = r;
+                    if (mode == PLAN) {
+                        for (String l : r.split("\n")) {
+                            String[] p = l.split("\\|", -1);
+                            if (p[0].equals("PLAN") && p.length >= 6) libraryChoice = p[1] + " " + p[2];
+                        }
+                    }
+                    refreshForm();
+                    if (!r.startsWith("OK")) say("Can't plan this: " + r.substring(Math.min(r.length(), 6)));
+                    if (reviewAfterPlan) {
+                        reviewAfterPlan = false;
+                        review(r);
+                    }
+                }
+                if (mode == PLAN_BOOT) reviewBoot(r);
+                if (writing) {
+                    planResult = null;
+                    written(r, mode == WRITE_BOOT, mode == WRITE_RESTORE);
+                    if (r.startsWith("OK")) setSteps("DDDD");
+                }
                 writing = false;
             });
-        }, mode == BACKUP ? "mflr-backup" : mode == PLAN || mode == PLAN_RESTORE ? "mflr-plan" : writing ? "mflr-write"
+        }, mode == BACKUP ? "mflr-backup" : mode == PLAN || mode == PLAN_RESTORE || mode == PLAN_FILE || mode == PLAN_BOOT ? "mflr-plan" : writing ? "mflr-write"
                 : "mflr-diagnose").start();
     }
 
@@ -571,15 +989,15 @@ public class MainActivity extends Activity {
             {
                 String[] p = r.split("\\|", -1);
                 if (p.length < 3) return;
-                String named = p[1] + " " + p[2];
+                String named = (p[1] + " " + p[2]).trim();
                 currentFirmware = named;
-                lcdDetail.setText(named + " · FLASH 1 MiB");
                 say("Firmware: " + named + (internal.isEmpty() ? "" : " (the unit calls it " + internal + ")"));
                 for (int i = 0; i < info.getChildCount(); i++) {
                     View row = info.getChildAt(i);
                     if (!(row instanceof LinearLayout) || ((LinearLayout) row).getChildCount() < 2) continue;
                     TextView k = (TextView) ((LinearLayout) row).getChildAt(0), v = (TextView) ((LinearLayout) row).getChildAt(1);
-                    if (k.getText().toString().equals("FIRMWARE")) v.setText(named + (internal.isEmpty() ? "" : "  (" + internal + ")"));
+                    // the name it was chosen by first, then what it calls itself (Figma: name flow, 79:3143)
+                    if (k.getText().toString().equals("FIRMWARE")) v.setText(named + (internal.isEmpty() || internal.equals(named) ? "" : " · " + internal));
                 }
                 for (int i = 0; i < checks.getChildCount(); i++) {
                     View row = checks.getChildAt(i);
@@ -646,9 +1064,18 @@ public class MainActivity extends Activity {
     // ---- INSTALL from the library: download mode first, by the soft key or by hand; then the review
 
     /** Plans installing a saved firmware, switching the FM-1 to download mode first when it is running. */
+    /**
+     * The LIBRARY tab's INSTALL: the unit is checked (switched to download mode first when running) and the
+     * firmware planned, and its review opens right there, over the LIBRARY tab. The Device tab's form follows.
+     */
     private void install(String id) {
         planId = id;
-        showTab(0);
+        fromFile = false;
+        chosenFile = null;
+        opChosen = FW_OP;
+        planResult = null;
+        if (checked) refreshForm();
+        reviewAfterPlan = true;
         switchThen(PLAN);
     }
 
@@ -710,15 +1137,14 @@ public class MainActivity extends Activity {
 
     /** The keys that switch this FM-1, from what was last read on it; the app keeps waiting and carries on by itself. */
     private void showHowTo(boolean seenRunning) {
-        String why = seenRunning ? "Your FM-1 (" + midiName + ") didn't switch by itself: its firmware may not know "
-                + "the message from this phone. Switch it by hand:\n\n"
-                : "This phone can't see your FM-1 running. Check it is connected and switched on, or switch it by hand:\n\n";
+        // the unit by its model: the name its firmware gives the MIDI port ("Caravel") is metadata, kept for the log
+        String why = seenRunning ? "The M-Vave FM-1 did not switch automatically to Download Mode. Switch it manually "
+                + "following these steps:\n"
+                : "M-Flasher can't see your M-Vave FM-1 running. Check it is connected and switched on, or switch it "
+                + "manually following these steps:\n";
         String last = recalled("firmware");
-        howTo = dialog("Put your FM-1 in download mode", why
-                + DownloadMode.howTo(recalled("rescue"), last, midiName)
-                + (afterSwitch == PLAN ? "\n\nThis app is waiting: once the FM-1 is in download mode it reads it and "
-                        + "shows what it will install. Nothing is written until you tap INSTALL there."
-                        : "\n\nThis app is waiting: once the FM-1 is in download mode it reads it."))
+        howTo = dialog("Manual Action: put FM-1 in Download Mode for checking", why
+                + DownloadMode.howTo(recalled("rescue"), last, midiName))
                 .setNegativeButton("CANCEL", (d, w) -> {
                     say(afterSwitch == PLAN ? "Install cancelled" : "Cancelled");
                     afterSwitch = -1;
@@ -746,7 +1172,9 @@ public class MainActivity extends Activity {
         busyBar = new android.widget.ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
         busyBar.setIndeterminate(true);
         busyBar.setMax(100);
-        busyText = text(mode == RESTART ? "Starting your FM-1…"
+        busyText = text(mode == WRITE_BOOT_ONLY ? "Backing up your FM-1 on this phone…"
+                : mode == PLAN_FILE || mode == PLAN_BOOT ? "Reading your FM-1 and preparing the installation…"
+                : mode == RESTART ? lastSectors + " sectors written, read back and verified. Restarting the FM-1…"
                 : mode == SWITCH ? "Asking your FM-1 to switch to download mode…"
                 : mode == PLAN ? "Reading your FM-1 and preparing the installation…"
                 : mode == PLAN_RESTORE ? "Checking the backup and comparing it with your FM-1…"
@@ -755,11 +1183,12 @@ public class MainActivity extends Activity {
                 : "Reading your FM-1…", INK, 14, false);
         box.addView(busyText);
         box.addView(busyBar);
-        String title = mode == RESTART ? "Starting" : mode == SWITCH ? "Download mode" : mode == PLAN || mode == PLAN_RESTORE ? "Preparing"
+        String title = mode == WRITE_BOOT_ONLY ? "Installing m-bootloader" : mode == PLAN_FILE || mode == PLAN_BOOT ? "Preparing"
+                : mode == RESTART ? "RESTARTING FM-1" : mode == SWITCH ? "CHECKING FM-1" : mode == PLAN || mode == PLAN_RESTORE ? "Preparing"
                 : mode == BACKUP ? "Saving a backup"
                 : mode == WRITE_RESTORE ? "Restoring"
                 : mode == WRITE_BOOT ? "Installing m-bootloader" : mode == WRITE ? "Installing" : "Reading";
-        busy = new AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
+        busy = Ui.dialog(this, mode == RESTART ? MINT : LAV)
                 .setTitle(title).setView(box).setCancelable(false).create();
         busy.show();
     }
@@ -784,7 +1213,7 @@ public class MainActivity extends Activity {
         if (!lines[0].equals("OK")) {
             String why = result.substring(Math.min(result.length(), 6));
             say("WRITE FAILED: " + why);
-            dialog("Installation stopped", why + "\n\nDon't switch the FM-1 off. Try again, with another cable if it "
+            dialog("Installation stopped", NOW, why + "\n\nDon't switch the FM-1 off. Try again, with another cable if it "
                     + "happens again: the backup taken first is on this phone, and the rescue mode (REC while switching "
                     + "on) is still there.")
                     .setPositiveButton("OK", null).show();
@@ -793,20 +1222,29 @@ public class MainActivity extends Activity {
         String done = "", backup = "";
         for (String l : lines) {
             String[] p = l.split("\\|", -1);
-            if (p[0].equals("DONE") && p.length >= 3) done = p[1] + " sectors (" + p[2] + ")";
-            if (p[0].equals("BACKUP") && p.length >= 2) backup = new File(p[1]).getName();
+            if (p[0].equals("DONE") && p.length >= 3) {
+                done = p[1] + " sectors (" + p[2] + ")";
+                lastSectors = Integer.parseInt(p[1]);
+            }
+            if (p[0].equals("BACKUP") && p.length >= 2) {
+                backup = new File(p[1]).getName();
+                lastBackupPath = p[1];
+            }
         }
         say("Written and verified: " + done + " · backup " + backup);
-        lcdDetail.setText("DONE · CHECKED");
         if (restored) {
             restartThenSay("Restored", "Your FM-1 holds again what this backup saved, and everything written was "
                     + "checked.", "What was there just before is saved on this phone (" + backup + ").");
         } else if (step1) {
-            dialog("Step 1 of 2 done", "m-bootloader is installed and checked. Your FM-1 now has its rescue mode."
-                    + "\n\nNext: the firmware.")
-                    .setPositiveButton("CONTINUE", (d, w) -> run(PLAN)).setCancelable(false).show();
+            dialog("m-bootloader " + bootVersion + " INSTALLED", MINT, "FM-1 bootloader is now protected with m-bootloader "
+                    + bootVersion + ". It was written and verified (" + lastSectors + " sectors). Next Step: Confirm "
+                    + "firmware install.")
+                    .setPositiveButton("CONTINUE", (d, w) -> {
+                        reviewAfterPlan = true;
+                        run(fromFile ? PLAN_FILE : PLAN);
+                    }).setCancelable(false).show();
         } else {
-            restartThenSay("Installed", "Everything was written and checked.",
+            restartThenSay("FIRMWARE RUNNING", "Everything was written and checked.",
                     "What was there before is saved on this phone (" + backup + ").");
         }
     }
@@ -819,6 +1257,8 @@ public class MainActivity extends Activity {
         showBusy(RESTART);
         final String fw = currentFirmware;
         new Thread(() -> {
+            // the MIDI devices before: what shows up after the restart is the unit, whatever its firmware calls it
+            final List<String> before = DownloadMode.seen(MainActivity.this);
             String r = Native.restart();
             ui.post(() -> {
                 String lines = Native.takeLog();
@@ -833,35 +1273,47 @@ public class MainActivity extends Activity {
                 final long started = System.currentTimeMillis();
                 ui.postDelayed(new Runnable() {
                     boolean gone;
+                    /** The result's title: the write's, or what to do when it can't be confirmed. */
+                    // Figma scenario 11: the firmware by the name it was chosen by
+                    String shown = title.equals("FIRMWARE RUNNING") && !fw.isEmpty() ? fw + " running" : title;
+                    int color = title.equals("FIRMWARE RUNNING") ? MINT : LAV;
 
                     @Override
                     public void run() {
                         long t = System.currentTimeMillis() - started;
                         String name = DownloadMode.running(MainActivity.this);
+                        if (name == null) {
+                            for (String n : DownloadMode.seen(MainActivity.this)) if (!before.contains(n)) name = n;
+                        }
                         boolean inDownload = find() != null;
                         if (!inDownload) gone = true;
                         String end = null;
                         if (name != null) {
                             say("Running: " + name + " on USB MIDI");
                             end = done + "\n\nYour FM-1 restarted and is running" + (fw.isEmpty() ? "" : " " + fw) + ".";
+                            showDone(fw);
                         } else if (gone && inDownload) {
                             say("The FM-1 came back in download mode: what was written did not start");
-                            end = done + "\n\n⚠  But the FM-1 came back in download mode: what was written did not "
-                                    + "start. Restore the backup from BACKUPS, or install another firmware.";
+                            hideBusy();
+                            firmwareError();
+                            return;
                         } else if (!gone && t > 5000) {
                             say("The FM-1 did not leave download mode");
                             end = done + "\n\nThe FM-1 did not restart: switch it off and on to start it.";
                         } else if (t > 60000) {
                             say("Restarted; not on USB MIDI within 60 s");
-                            end = done + "\n\nYour FM-1 restarted; it hasn't shown up on USB within 60 s (not every "
-                                    + "firmware has USB MIDI): look at its screen.";
+                            shown = "Check FM-1 display";
+                            color = LAV;
+                            end = done + "\n\nYour FM-1 restarted, but M-Flasher couldn't confirm it's running: it didn't "
+                                    + "show up on USB within 60 seconds. Look at the FM-1 display: if the new firmware "
+                                    + "shows up, it's ready. If not, switch the FM-1 off and on.";
                         }
                         if (end == null) {
                             ui.postDelayed(this, 500);
                             return;
                         }
                         hideBusy();
-                        dialog(title, end + "\n\n" + backupLine).setPositiveButton("OK", null).show();
+                        dialog(shown, color, end + "\n\n" + backupLine).setPositiveButton("OK", null).show();
                     }
                 }, 500);
             });
@@ -871,14 +1323,88 @@ public class MainActivity extends Activity {
     // ---- review (Figma A03 and the desktop's REVIEW): nothing is written yet
 
     private AlertDialog.Builder dialog(String title, String message) {
-        return new AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert).setTitle(title).setMessage(message);
+        return dialog(title, LAV, message);
     }
 
-    /** The write key in mint, the others in ink: the review is the confirmation, as on the desktop. */
+    /** A dialog whose title has the Figma color of its kind: lavender, mint when done, red when refused or failed. */
+    private AlertDialog.Builder dialog(String title, int color, String message) {
+        return Ui.dialog(this, color).setTitle(title).setMessage(message);
+    }
+
+    /** FIRMWARE ERROR (Figma 46:666): written and verified, but the FM-1 came back in download mode. */
+    private void firmwareError() {
+        final File saved = lastBackupPath.isEmpty() ? null : new File(lastBackupPath);
+        Ui.rows(this, dialog("FIRMWARE ERROR", BAD, lastSectors + " sectors written, read back and verified. But the "
+                + "unit came back in download mode: what was written did not start. Its backup is saved: restore it, or "
+                + "install another firmware."), new Ui.Key[][] {
+                {new Ui.Key("RESTORE BACKUP", "primary", () -> {
+                    if (saved == null) {
+                        showTab(2);
+                        return;
+                    }
+                    restoreFile = saved;
+                    showTab(0);
+                    chooseOp(RESTORE_OP);
+                    restoreFile = saved;
+                    run(PLAN_RESTORE);
+                })},
+                {new Ui.Key("INSTALL FIRMWARE", "secondary", () -> showTab(1)), new Ui.Key("OK", "tertiary", null)}})
+                .show();
+    }
+
+    /** Figma A10: the FM-1 restarted and runs what was written. */
+    private void showDone(String fw) {
+        lcdTitle.setText("DONE");
+        lcdStatus.setText(lastSectors + " SECTORS VERIFIED");
+        lcdDetail.setText("RESTARTED" + (fw.isEmpty() ? "" : " · " + fw + " RUNNING"));
+        lcdPrompt.setText("TAP CHECK TO READ IT AGAIN");
+        unit.setText("FM-1 RUNNING");
+        Ui.setLed(this, unitLed, 0);
+        setSteps("DDDD");
+    }
+
+    /** While the app works: the keys keep their labels, disabled; the LCD and App Bar say what happens (A3, A9). */
+    private void setRunningUi(int mode) {
+        boolean on = mode >= 0;
+        Ui.enable(read, !on);
+        Ui.enable(bootBtn, !on && checked && !bootOpen);
+        if (opKeys != null) for (OpKey k : opKeys) Ui.enable(k, !on || k.isLit());
+        Ui.enable(formChoose, !on);
+        Ui.enable(formOther, !on);
+        lcdBar.setVisibility(on && writing ? View.VISIBLE : View.GONE);
+        if (!on) {
+            refreshForm();
+            return;
+        }
+        Ui.enable(formPrimary, false);
+        if (writing) {
+            formPrimary.setText("WRITING…");
+            lcdTitle.setText("WRITING");
+            lcdStatus.setText(writeTotal > 0 ? "0 / " + writeTotal + " · 0 %" : "0 %");
+            lcdDetail.setText("SAVING A BACKUP FIRST");
+            lcdPrompt.setText("DO NOT UNPLUG");
+            setLcdBar(0);
+            unit.setText("WRITING");
+            Ui.setLed(this, unitLed, 1);
+        } else {
+            lcdTitle.setText(mode == BACKUP ? "SAVING…" : mode == DIAGNOSE ? "CHECKING…" : "PREPARING…");
+            lcdStatus.setText(mode == BACKUP ? "COPYING THE FLASH" : "READING THE FLASH");
+            lcdDetail.setText(mode == BACKUP ? "TO THIS PHONE" : mode == DIAGNOSE ? "AND CHECKING IT" : "PLANNING THE WRITE");
+            lcdPrompt.setText("DO NOT UNPLUG");
+            unit.setText(mode == BACKUP ? "SAVING…" : mode == DIAGNOSE ? "CHECKING…" : "PREPARING…");
+            Ui.setLed(this, unitLed, 0);
+        }
+    }
+
+    private void setLcdBar(int percent) {
+        ((LinearLayout.LayoutParams) lcdBarFill.getLayoutParams()).weight = Math.max(0, Math.min(100, percent));
+        ((LinearLayout.LayoutParams) lcdBarRest.getLayoutParams()).weight = 100 - Math.max(0, Math.min(100, percent));
+        lcdBar.requestLayout();
+    }
+
+    /** The review is the confirmation, as on the desktop: its write key is the Primary one (Ui.keys). */
     private void showReview(AlertDialog d) {
         d.show();
-        android.widget.Button w = d.getButton(DialogInterface.BUTTON_POSITIVE);
-        if (w != null) w.setTextColor(MINT);
     }
 
     /** The review of putting back a backup, in plain words; DETAILS has the plan. */
@@ -916,7 +1442,7 @@ public class MainActivity extends Activity {
                 + "✓  Everything written is checked by the FM-1 itself.\n"
                 + (rescue ? "✓  Its rescue mode (m-bootloader) stays.\n"
                           : "⚠  This backup has M-VAVE's original start-up program: restoring it removes the rescue mode.\n")
-                + warnings + "\nTakes about " + seconds(n) + " seconds. Keep the FM-1 connected and this screen open.")
+                + warnings.toString().trim())
                 .setNegativeButton("CANCEL", null)
                 .setNeutralButton("DETAILS", null)
                 .setPositiveButton("RESTORE", (x, w) -> run(WRITE_RESTORE)).create();
@@ -934,7 +1460,13 @@ public class MainActivity extends Activity {
     private void review(String result) {
         String[] lines = result.split("\n");
         if (!lines[0].equals("OK")) {
-            dialog("Can't install this", result.substring(Math.min(result.length(), 6))).setPositiveButton("OK", null).show();
+            String why = result.substring(Math.min(result.length(), 6));
+            if (why.contains("older flash chip")) {
+                dialog("WARNING: NEW " + flashName() + " CHIP", BAD, "Refused: " + why.replace("; this unit has the newer one",
+                        ". This FM-1 has a new chip (" + flashName() + ")")).setPositiveButton("OK", null).show();
+            } else {
+                dialog("Can't install this", BAD, why).setPositiveButton("OK", null).show();
+            }
             return;
         }
         String[] plan = null, boot = null;
@@ -942,31 +1474,32 @@ public class MainActivity extends Activity {
         for (String l : lines) {
             String[] p = l.split("\\|", -1);
             if (p[0].equals("PLAN") && p.length >= 6) plan = p;
-            if (p[0].equals("BOOT") && p.length >= 4) boot = p;
+            if (p[0].equals("BOOT") && p.length >= 4) {
+                boot = p;
+                bootSectors = Integer.parseInt(p[1]);
+                if (p.length >= 5 && !p[4].isEmpty()) bootVersion = p[4];
+            }
             if ((p[0].equals("PNOTE") || p[0].equals("PWARN")) && p.length >= 2) notes.append(p[1]).append("\n");
         }
         if (plan == null) return;
         final String[] fw = plan;
         int n = Integer.parseInt(fw[3]);
-        lcdDetail.setText("INSTALL " + fw[1] + " " + fw[2] + " · " + n + " SECTORS");
         say("Plan: " + fw[5] + " · " + n + " sectors · " + fw[4]);
         if (n == 0) {
-            dialog(fw[1] + " " + fw[2] + " is already installed", "Nothing to write: your FM-1 already holds this firmware.")
+            dialog(fw[1] + " " + fw[2] + " is already installed", NOW, "Nothing to write: your FM-1 already holds this firmware.")
                     .setPositiveButton("OK", null).show();
             return;
         }
         if (boot != null) {
-            final String[] b = boot;
-            showReview(dialog("First, protect your FM-1",
-                    "Your FM-1 has M-VAVE's original start-up program. If a new firmware fails to start, only a special "
-                    + "USB dongle can rescue it."
-                    + "\n\nStep 1 · m-bootloader (about " + seconds(Integer.parseInt(b[1])) + " s). Afterwards, holding REC "
-                    + "while switching on always opens the rescue mode."
-                    + "\nStep 2 · " + fw[1] + " " + fw[2] + "."
-                    + "\n\nEach step backs up your FM-1 first and checks what it writes.")
-                    .setNegativeButton("CANCEL", null)
-                    .setNeutralButton("SKIP STEP 1", (d, w) -> reviewFirmware(fw, notes.toString()))
-                    .setPositiveButton("START STEP 1", (d, w) -> run(WRITE_BOOT)).create());
+            String target = (fw[1] + " " + fw[2]).trim();
+            Ui.rows(this, dialog("STOCK BOOTLOADER DETECTED", "Replace the stock bootloader with m-bootloader for FM-1 "
+                    + "safeguards.\n\nStep 1: Install m-bootloader. After that, it's easier to access FM-1 safeguards. "
+                    + "Before switching on the FM-1, hold PLAY button for Recovery Mode.\nStep 2: App shows the " + target
+                    + " confirmation box. App only installs the firmware with your authorization."), new Ui.Key[][] {
+                    {new Ui.Key("CANCEL", "tertiary", null)},
+                    {new Ui.Key("SKIP M-BOOTLOADER", "secondary", () -> reviewFirmware(fw, notes.toString()))},
+                    {new Ui.Key(("INSTALL M-BOOTLOADER " + bootVersion).trim(), "primary", () -> run(WRITE_BOOT))}})
+                    .show();
         } else {
             reviewFirmware(fw, notes.toString());
         }
@@ -975,7 +1508,7 @@ public class MainActivity extends Activity {
     private void reviewFirmware(String[] fw, String notes) {
         int n = Integer.parseInt(fw[3]);
         String replaces = currentFirmware.isEmpty() ? "" : "This replaces " + currentFirmware + " on your FM-1.\n\n";
-        AlertDialog d = dialog("Install " + fw[1] + " " + fw[2] + "?", replaces
+        AlertDialog d = dialog("Install " + (fw[1] + " " + fw[2]).trim() + "?", replaces
                 + "✓  Your FM-1 is backed up on this phone first.\n"
                 + "✓  Everything written is checked by the FM-1 itself.\n"
                 + "✓  Its rescue mode (m-bootloader) stays as it is.\n\n"

@@ -1,6 +1,6 @@
 #!/bin/sh
-# Makes M-Flasher.app (ad-hoc signed: no Apple certificate) and the disk image
-# M-Flasher-VERSION-macos.dmg from an m-flasher binary. macOS only.
+# Makes "M-Flasher +.app" (ad-hoc signed: no Apple certificate) and the disk image
+# M-Flasher-plus-VERSION-macos.dmg from an m-flasher binary. macOS only.
 #   macos/package.sh target/release/m-flasher 0.3.0 [OUTDIR]
 set -e
 bin=$(cd "$(dirname "$1")" && pwd)/$(basename "$1")
@@ -9,7 +9,7 @@ here=$(cd "$(dirname "$0")" && pwd)
 out=${3:-$here/../target/macos}
 rm -rf "$out" && mkdir -p "$out" && out=$(cd "$out" && pwd)
 
-app="$out/M-Flasher.app"
+app="$out/M-Flasher +.app"
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
 cp "$bin" "$app/Contents/MacOS/M-Flasher"
 chmod 755 "$app/Contents/MacOS/M-Flasher"
@@ -30,9 +30,9 @@ cat > "$app/Contents/Info.plist" <<EOF
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  <key>CFBundleIdentifier</key><string>io.github.jvitkauskas.m-flasher</string>
-  <key>CFBundleName</key><string>M-Flasher</string>
-  <key>CFBundleDisplayName</key><string>M-Flasher</string>
+  <key>CFBundleIdentifier</key><string>io.github.wellingtonsaam.m-flasher-plus</string>
+  <key>CFBundleName</key><string>M-Flasher +</string>
+  <key>CFBundleDisplayName</key><string>M-Flasher +</string>
   <key>CFBundleExecutable</key><string>M-Flasher</string>
   <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>CFBundlePackageType</key><string>APPL</string>
@@ -59,12 +59,12 @@ if [ -n "$DMGBUILD" ]; then
 else
   "$out/venv/bin/pip" install -q --require-hashes -r "$here/requirements-dmg.txt"
 fi
-dmg="$out/M-Flasher-$version-macos.dmg"
+dmg="$out/M-Flasher-plus-$version-macos.dmg"
 "$out/venv/bin/python" - "$app" "$dmg" "$here/dmg/background.png" <<'EOF'
 import sys
 import dmgbuild
 app, dmg, background = sys.argv[1:]
-dmgbuild.build_dmg(dmg, 'M-Flasher', settings={
+dmgbuild.build_dmg(dmg, 'M-Flasher +', settings={
     'format': 'UDZO',
     'filesystem': 'HFS+',
     'files': [app],
@@ -73,7 +73,7 @@ dmgbuild.build_dmg(dmg, 'M-Flasher', settings={
     # background@2x.png next to it makes it sharp on Retina screens
     'background': background,
     # the icons where background.svg leaves room for them
-    'icon_locations': {'M-Flasher.app': (184, 210), 'Applications': (536, 210)},
+    'icon_locations': {'M-Flasher +.app': (184, 210), 'Applications': (536, 210)},
     # 720 x 500 of content, plus Finder's title bar
     'window_rect': ((160, 160), (720, 528)),
     'default_view': 'icon-view',

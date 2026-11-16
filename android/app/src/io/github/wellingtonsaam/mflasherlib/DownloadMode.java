@@ -104,19 +104,18 @@ final class DownloadMode {
         boolean octKeys = fw.contains("felucca") || fw.contains("caravel") || fw.contains("sloop") || fw.contains("snoop");
         StringBuilder s = new StringBuilder();
         if (rescue.equals("yes")) {
-            s.append("1. Switch the FM-1 off.\n2. Hold REC and switch it on.\n3. Let go of REC once this phone finds it.");
-            if (octKeys) s.append("\n\nOr, with it running: hold OCT- and OCT+ together for 5 s.");
+            s.append("1 · Switch it off.\n2 · Hold REC and switch FM-1 on.\n3 · When M-Flasher finds your FM-1, release the REC button.");
+            if (octKeys) s.append("\nOr, if your FM-1 is running, hold OCT- and OCT+ buttons together for 5 seconds.");
         } else if (octKeys) {
-            s.append("With it running: hold OCT- and OCT+ together for 5 s.");
+            s.append("If your FM-1 is running, hold OCT- and OCT+ buttons together for 5 seconds.");
         } else if (rescue.equals("no")) {
-            s.append("Your FM-1 has M-VAVE's original start-up program: its keys can't do it. Only the message from "
-                    + "this phone can.\n\nSwitch it on, connect it with a data cable (some cables only charge) and "
-                    + "tap INSTALL again.");
+            s.append("It has M-VAVE's original bootloader: its buttons can't do it, only the message from M-Flasher. "
+                    + "Switch it on, connect it with a data cable (some cables only charge) and tap again.");
         } else {
-            s.append("• With m-bootloader: hold REC while switching it on.\n"
-                    + "• With Felucca, SLOOP or Snoop37 running: hold OCT- and OCT+ together for 5 s.\n"
-                    + "• With M-VAVE's own firmware: switch it on, connect it with a data cable and tap INSTALL again: "
-                    + "this phone switches it.");
+            s.append("• With m-bootloader: hold REC while switching FM-1 on.\n"
+                    + "• With Felucca, SLOOP or Snoop37 running: hold OCT- and OCT+ buttons together for 5 seconds.\n"
+                    + "• With M-VAVE's own firmware: switch it on, connect it with a data cable and tap again: "
+                    + "M-Flasher switches it.");
         }
         return s.toString();
     }

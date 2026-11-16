@@ -48,6 +48,68 @@ can be skipped, with a clear warning.
 
 ![REQ-BOOT-01: install a firmware, check the FM-1, then by its bootloader: the original one gets m-bootloader first in two steps, m-bootloader goes straight to the firmware; then the firmware is written and the FM-1 restarts](docs/img/req-boot-01-flow.png)
 
+## The new flash chip: no firmware that would brick it
+
+**M-Flasher + checks your FM-1's flash chip, and refuses a firmware made only
+for the older one before anything is written.**
+
+FM-1s sold from late 2026 have a new flash chip:
+
+| | Older FM-1 | Newer FM-1 |
+|---|---|---|
+| Flash chip | Puya P25Q80H · `0x856014` | UCUN UC25HQ80 · `0xB36014` |
+
+Some community firmwares are made for the older chip only. On a newer FM-1
+they may not start, and the unit is bricked until it is reflashed. So, for
+every firmware of the library:
+
+- M-Flasher + reads the chip when it checks the FM-1, and shows it under
+  **DEVICE INFO** by name, such as *UCUN UC25HQ80 · 0xB36014 (new)*.
+- **This unit only** hides the firmwares marked for the older chip.
+- **INSTALL refuses them** on a newer FM-1, with *WARNING: NEW UCUN UC25HQ80
+  CHIP*: nothing is written.
+
+The marks come from [The Firmware Hub](https://thefirmwarehub.com)'s list. A
+package you choose yourself (**CHOOSE FILE**) carries no such mark: check its
+author's notes for the chip.
+
+## Which firmware is on your FM-1
+
+**M-Flasher + shows the firmware by the name you chose it by, not only by
+what it calls itself.**
+
+A firmware names itself inside its code, and one built from another keeps
+that one's name: a firmware made from Felucca shows as *Felucca*, and one made
+from M-VAVE's SDK as *FM-1 901*. So, under **DEVICE INFO › FIRMWARE**,
+M-Flasher + looks for its name in this order:
+
+1. **What it installed.** After every install, M-Flasher + keeps a
+   fingerprint of the firmware's code (the SHA-256 of its sectors, not of its
+   settings, which change as you play) with the name it was chosen by, in
+   `installed.json` next to the backups. Read later, the same code shows by
+   that name: *zp12 2.5 · Felucca*.
+2. **The library.** Otherwise, a package saved in the **LIBRARY** that is
+   identical to what is on the FM-1.
+3. **What the firmware calls itself**, as before: *SLOOP 2.8.5*, *Felucca*,
+   *FM-1 901*.
+
+The name it was chosen by comes first, and what the firmware calls itself
+after it. The notice at the end of an install says it too: *ZP12-2.5 RUNNING*.
+
+## Suggestion for firmware authors: give your firmware its own name
+
+If you make a firmware for the FM-1, here is a small suggestion that would
+help people recognise it by its own name, in M-Flasher + and in other tools:
+
+- a line with your firmware's name and version somewhere in its code, such as
+  `zp12 2.5`, much as SLOOP does with `SLOOP 2.8.5`;
+- your firmware's own name for its USB MIDI port, rather than the name of the
+  firmware it started from.
+
+Only if it suits your project, of course. If you would like M-Flasher + to
+recognise your firmware by that line, you are welcome to open an issue with
+it.
+
 ## What's new in M-Flasher +
 
 - **Firmware library** (LIBRARY tab): the community firmwares listed by
@@ -56,6 +118,10 @@ can be skipped, with a clear warning.
   firmware for the older flash chip). **GET** downloads and checks by
   SHA-256; **INSTALL** plans it and opens its review.
 - **REQ-BOOT-01**: m-bootloader before a firmware, as above.
+- **Chip check**: a firmware made for the older flash chip is refused on a
+  newer FM-1, as above.
+- **Firmware names**: the firmware is shown by the name it was installed by
+  (*zp12 2.5 · Felucca*), as above.
 - **SAFETY CHECK**: recovery, backup, firmware and chip, at a glance.
 - **No keys to remember**: INSTALL (and READ UNIT on Android) switches a
   running unit to download mode by a MIDI message. If its firmware does not

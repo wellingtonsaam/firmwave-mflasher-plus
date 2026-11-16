@@ -18,6 +18,10 @@ mod jl;
 mod ops;
 #[path = "../../../src/library.rs"]
 mod library;
+// the firmware's sectors, for its fingerprint (library::firmware_sectors)
+#[path = "../../../src/sectormap.rs"]
+#[allow(dead_code)]
+mod sectormap;
 
 mod bridge;
 mod libbridge;
