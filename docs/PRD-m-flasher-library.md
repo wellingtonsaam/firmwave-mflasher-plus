@@ -345,8 +345,8 @@ Critérios de Aceite:
 
 ## 14. Perguntas em Aberto
 
-- [ ] **Q1.** O campo `chip` do catálogo corresponde a JEDEC `0x856014` (old) e `0xB36014` (new)? Confirmar com o hub ou pela página `/kb/`.
-- [ ] **Q2.** Pacotes `"chip": "new"` podem ser instalados no chip antigo, ou "new" significa "só no chip novo"?
+- [x] **Q1.** Respondida em 2026-11-16 (thefirmwarehub.com/kb): `old` = o firmware só conhece o chip antigo `0x856014`; num FM-1 com `0xB36014` ele não grava a flash (configurações somem, atualizações falham). Regra do hub: nunca instalar `"chip": "old"` num FM-1 com o chip novo. O app já bloqueia exatamente isso.
+- [x] **Q2.** Respondida em 2026-11-16: `new` = conhece o chip novo e serve nos dois (o hub fala em firmwares "que suportam os dois chips"). Confirmado na prática: Felucca 1.8.2 (`new`) instalado pela biblioteca no FM-1 preto (`0x856014`) e funcionando. `any` (5 firmwares) não depende do chip. Catálogo de 2026-11-16: 141 `new`, 71 `old`, 5 `any`.
 - [ ] **Q3.** O soft key MIDI funciona no modo MIDI do m-bootloader, ou só no firmware? Isso afeta o fluxo de entrada no modo download.
 - [ ] **Q4.** Os itens com `loader` preenchido no catálogo exigem um bootloader específico? Interação com o REQ-BOOT-01.
 - [ ] **Q5.** O app deve permitir importar firmwares fora do catálogo (arquivo `.fwsc` avulso)? Se sim, com quais checagens além de `Package::parse` e `check_boot_area`?
