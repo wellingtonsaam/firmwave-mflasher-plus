@@ -16,6 +16,9 @@ mod scsi;
 mod jl;
 #[path = "../../../src/ops.rs"]
 mod ops;
+#[path = "../../../src/library.rs"]
+mod library;
 
 mod bridge;
+mod libbridge;
 mod usbfs;

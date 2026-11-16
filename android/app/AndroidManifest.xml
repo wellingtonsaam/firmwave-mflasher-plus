@@ -2,13 +2,19 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="io.github.wellingtonsaam.mflasherlib"
     android:versionCode="1"
-    android:versionName="0.1-spike">
+    android:versionName="0.3-library">
 
     <uses-feature android:name="android.hardware.usb.host" android:required="true" />
+    <!-- INSTALL switches a running FM-1 to download mode over USB MIDI (the soft key) -->
+    <uses-feature android:name="android.software.midi" android:required="false" />
+    <!-- the firmware list (The Firmware Hub) and the firmwares (their authors' releases) -->
+    <uses-permission android:name="android.permission.INTERNET" />
 
     <application
         android:label="@string/app_name"
-        android:allowBackup="false">
+        android:allowBackup="false"
+        android:debuggable="true"
+        android:theme="@android:style/Theme.Material.NoActionBar">
         <activity
             android:name=".MainActivity"
             android:exported="true"
