@@ -2,85 +2,118 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>M-Flasher + for the web</title>
-<meta name="description" content="Back up, restore and install firmware on an M-VAVE FM-1 or SMK-37 from your browser, over USB MIDI.">
+<meta name="description" content="Back up, restore and install firmware on an M-VAVE FM-1 or SMK-37 from your browser, over USB MIDI, with the community firmware library.">
 <link rel="icon" href="assets/icon-256.png">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<header>
-  <h1>M-Flasher + <span>for the web</span></h1>
-  <p>Back up, restore and install firmware on an M-VAVE FM-1 or SMK-37, over USB MIDI, from a computer or a phone. Nothing leaves your device.</p>
-</header>
-<main>
-  <section id="test-notice">
-    <h2>Experimental beta</h2>
-    <p>This page is an experimental beta, and has had far less testing than M-Flasher + on a computer. Save a backup first, and keep M-Flasher + at hand.</p>
-  </section>
-  <section id="unsupported" hidden>
-    <h2>This browser can't reach MIDI devices</h2>
-    <p>Use Chrome, Edge, Brave or Firefox on a computer or Android. On iOS, use an app with Web MIDI, such as MIDIWeb. Safari doesn't support it.</p>
-  </section>
+<div class="wrap">
+  <div class="app" id="app">
+    <div class="head">
+      <div class="brand">M-FLASHER +</div>
+      <small>USB MIDI firmware utility<br>for the FM-1 and SMK-37 · web</small>
+      <nav class="tabs" role="tablist">
+        <button role="tab" id="t-device" data-tab="device" aria-selected="true" aria-controls="tab-device">DEVICE</button>
+        <button role="tab" id="t-library" data-tab="library" aria-selected="false" aria-controls="tab-library">LIBRARY</button>
+        <button role="tab" id="t-about" data-tab="about" aria-selected="false" aria-controls="tab-about">ABOUT</button>
+      </nav>
+      <span class="ver">web 1.0.2 · beta</span>
+    </div>
 
-  <section id="connect">
-    <h2>Connect the unit</h2>
-    <p id="hint">Plug it in directly with a USB data cable, and switch it on. Close M-UPGRADE, other editors and music apps first.</p>
-    <button id="connect-button" type="button">Connect</button>
-    <label id="port-row" hidden>Port <select id="port-select"></select></label>
-  </section>
+    <div class="body">
+      <section id="tab-device" role="tabpanel" aria-labelledby="t-device">
+        <div class="cols">
+          <div class="col">
+            <div class="sec">Connected device</div>
+            <div class="lcdbox"><div class="lcd" id="lcd" aria-live="polite"></div></div>
+            <div class="notice bad" id="unsupported" hidden><div>This browser can't reach MIDI devices. Use Chrome, Edge, Brave or Firefox on a computer or Android. On iOS, an app with Web MIDI, such as MIDIWeb. Safari doesn't support it.</div></div>
+            <div class="notice" id="status" role="status" hidden><div id="status-text"></div></div>
+            <button class="key" id="connect-button" type="button"></button>
+            <label class="tick" id="port-row" hidden>Port <select id="port-select"></select></label>
+            <div class="col" id="action-list"></div>
+            <div class="col" id="info" hidden>
+              <div class="sec">Device info</div>
+              <dl class="rows" id="unit-facts"></dl>
+              <ul class="warnlist" id="unit-notes"></ul>
+            </div>
+          </div>
+          <div class="col">
+            <div class="col mapwrap">
+              <div class="sec">Flash map · 1 MiB = 256 × 4 KiB</div>
+              <div class="map" id="map"></div>
+              <div class="legend"><span><i class="c s-boot"></i>Boot 00–03</span><span><i class="c s-used"></i>In use</span><span><i class="c s-empty"></i>Empty</span><span><i class="c s-plan"></i>To write</span></div>
+            </div>
+            <div class="col" id="checks-box" hidden>
+              <div class="sec">Safety check <em id="needs"></em></div>
+              <div class="checks" id="checks"></div>
+            </div>
+            <details class="logbox"><summary>Log</summary><pre id="log"></pre></details>
+          </div>
+        </div>
+      </section>
 
-  <section id="unit" hidden>
-    <h2>This unit</h2>
-    <dl id="unit-facts"></dl>
-    <ul id="unit-notes"></ul>
-  </section>
+      <section id="tab-library" role="tabpanel" aria-labelledby="t-library" hidden>
+        <div class="col">
+          <div class="sec">Firmware library</div>
+          <div class="libtools">
+            <input class="search" id="q" type="search" placeholder="Search name, author, kind" aria-label="Search the library">
+            <label class="tick"><input type="checkbox" id="only" checked> This unit only</label>
+            <label class="tick"><input type="checkbox" id="betas" checked> Betas</label>
+            <span class="count" id="count"></span>
+          </div>
+          <div class="hidden-note" id="hidden-note" hidden></div>
+          <div class="list" id="list"><div class="empty">Loading the firmware list…</div></div>
+          <p class="note">INSTALL fetches the firmware from its author's GitHub, checks its SHA-256 against the list, and opens its review: nothing is written before WRITE. Nothing is kept: the next INSTALL fetches it again. <span id="attribution"></span></p>
+        </div>
+      </section>
 
-  <section id="actions" hidden>
-    <h2>What to do</h2>
-    <div id="action-list"></div>
-    <input id="backup-file" type="file" accept=".bin" hidden>
-    <input id="firmware-file" type="file" accept=".fwsc" hidden>
-  </section>
+      <section id="tab-about" role="tabpanel" aria-labelledby="t-about" hidden>
+        <div class="about">
+          <h3>M-Flasher + for the web</h3>
+          <p>Back up, restore and install firmware on an M-VAVE FM-1 or SMK-37 from a browser, over USB MIDI, with the community firmware library. An experimental beta: it has had far less testing than M-Flasher + on a computer. Save a backup first.</p>
+          <p><b>How it reaches the unit.</b> A browser can't use the chip's download mode, so this page works through MIDI: with m-bootloader, hold PLAY (SEQ PLAY on the SMK-37) at power-on and choose MIDI MODE; with normal firmware running, START THE TOOLS sends a small helper through the firmware's own update route, which runs from RAM and goes back to the firmware afterwards. The boot area, the key area, and the SMK-37's calibration and Bluetooth data are never written from here.</p>
+          <p><b>Where the firmware comes from.</b> The list of firmwares is The Firmware Hub's, used as an index. Each package is fetched from its author's GitHub: files in a repository directly, release files through this site, because GitHub doesn't let a page read them. Either way the SHA-256 the list gives is checked before anything is written.</p>
+          <p><b>What stays with you.</b> Backups go to your downloads. Nothing about you or your unit is sent anywhere.</p>
+          <p>You still need <a href="https://github.com/wellingtonsaam/m-flasher-plus/releases/latest" target="_blank" rel="noopener">M-Flasher + on a computer</a> for a unit that won't start and has no m-bootloader, and to put the stock bootloader back.</p>
+          <p>M-Flasher + is maintained by Wellington Saam: questions and bug reports go to <a href="https://github.com/wellingtonsaam/m-flasher-plus/issues" target="_blank" rel="noopener">its issues</a>. Based on <a href="https://github.com/jvitkauskas/m-flasher" target="_blank" rel="noopener">M-Flasher</a> by Julius Vitkauskas (MIT), who does not support this version. Bootloader and helper: <a href="https://github.com/jvitkauskas/m-bootloader" target="_blank" rel="noopener">m-bootloader</a> (MIT). Each firmware belongs to its author, under its own license.</p>
+          <p class="note">Unofficial: not affiliated with M-VAVE or JieLi. Every write is checked by the unit before anything is erased, but use it at your own risk.</p>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
 
-  <section id="progress" hidden aria-live="polite">
-    <h2 id="progress-title"></h2>
-    <progress id="progress-bar" max="100" value="0"></progress>
-    <p id="progress-text"></p>
-    <p id="keep-open"><strong>Keep this tab in front, and don't unplug the unit.</strong></p>
-  </section>
-
-  <p id="status" role="status"></p>
-
-  <details>
-    <summary>What this page can and can't do</summary>
-    <ul>
-      <li><strong>On a unit running normal firmware:</strong> it starts a small helper program through the firmware's own update route. That writes a few KiB to the area firmware keeps for updates, then the unit runs the helper from RAM. When you finish, or after 5 minutes without this page asking anything, it goes back to its firmware.</li>
-      <li><strong>With m-bootloader:</strong> hold PLAY (SEQ PLAY on the SMK-37) at power-on, choose MIDI MODE, and connect. That works with no firmware at all, and writes nothing until you ask.</li>
-      <li><strong>Backups</strong> are the whole flash, byte for byte, in the same format as M-Flasher + on a computer, and checked with a CRC the chip computes. Keep them safe.</li>
-      <li><strong>Restoring</strong> covers firmware, settings and presets. The bootloader and key area are never written from here, nor the SMK-37's calibration and Bluetooth data.</li>
-      <li><strong>You still need M-Flasher + on a computer</strong> for a unit that won't start and has no m-bootloader, for download mode, and to put the stock bootloader back. <a href="https://github.com/wellingtonsaam/m-flasher-plus/releases/latest">Get M-Flasher +</a>.</li>
-    </ul>
-  </details>
-
-  <details id="log-box">
-    <summary>Details</summary>
-    <pre id="log"></pre>
-  </details>
-</main>
-
-<dialog id="confirm">
+<dialog id="confirm" class="dlg">
   <form method="dialog">
-    <h2 id="confirm-title"></h2>
-    <pre id="confirm-text"></pre>
-    <ul id="confirm-warnings"></ul>
-    <label id="confirm-check-row"><input id="confirm-check" type="checkbox"> <span id="confirm-check-text"></span></label>
-    <menu>
-      <button id="confirm-cancel" value="cancel" type="submit">Cancel</button>
-      <button id="confirm-ok" value="ok" type="submit" class="danger"></button>
-    </menu>
+    <h3 id="confirm-title"></h3>
+    <p id="confirm-text"></p>
+    <ul class="warnlist" id="confirm-warnings"></ul>
+    <label class="tick" id="confirm-check-row"><input id="confirm-check" type="checkbox"> <span id="confirm-check-text"></span></label>
+    <div class="btns">
+      <button class="key small dark" id="confirm-cancel" value="cancel" type="submit">Cancel</button>
+      <button class="key small" id="confirm-ok" value="ok" type="submit"></button>
+    </div>
   </form>
 </dialog>
+
+<dialog id="fallback" class="dlg">
+  <form method="dialog">
+    <h3 id="fallback-title"></h3>
+    <p id="fallback-why"></p>
+    <p>Get it yourself from its author's GitHub, then choose the file here. Its SHA-256 is checked against the list before anything is written.</p>
+    <p class="lcdline" id="fallback-sha"></p>
+    <div class="btns">
+      <button class="key small dark" value="cancel" type="submit">Cancel</button>
+      <a class="key small dark" id="fallback-link" target="_blank" rel="noopener">1 · Open the author's release</a>
+      <button class="key small" value="choose" type="submit">2 · Choose the downloaded file</button>
+    </div>
+  </form>
+</dialog>
+
+<input id="backup-file" type="file" accept=".bin" hidden>
+<input id="firmware-file" type="file" accept=".fwsc" hidden>
 <script type="module" src="app.js"></script>
 </body>
 </html>

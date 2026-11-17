@@ -4,8 +4,9 @@ import { BOOT_AREA, appFilesStatus, crc32, hex, packageImage, sha256Hex } from "
 import { FINISH, Link, Unit, UnitLost, findPorts } from "./lib/protocol.js";
 import { analyse, describePlan, flashTested, flashText, planFirmware, planRestore } from "./lib/unit.js";
 import { loadManifest, loadPackage, hasOwnUpdater, variantOf } from "./lib/assets.js";
+import { ATTRIBUTION, FetchFailed, HUB, checkPackage, fetchPackage, fitsChip, matchesSearch, parseCatalog } from "./lib/library.js";
 
-const TOOL = "m-flasher-plus web 0.1";
+const TOOL = "m-flasher-plus web 1.0.2";
 /** Firmware whose update route has run the helper on real hardware. */
 const ROUTE_TESTED = new Set(["FM-1_015", "FM-1_016", "FM-1_102", "FM-1_918", "FM-1_900", "FM-1_920", "FM-1_91061", "SMK-37 Pro_016", "SMK-37+VA_102", "SMK-37 Pro_920", "SMK-37 Elite_016"]);
 const OTHER_WAYS = "With m-bootloader installed, hold PLAY (SEQ PLAY on the SMK-37) at power-on and choose MIDI MODE. Otherwise, use M-Flasher + on a computer.";
@@ -23,7 +24,27 @@ const state = {
   analysis: null,
   busy: false,
   backupSaved: false,
+  progress: null, // { title, done, total, text }
+  plan: null, // sectors about to be written, outlined on the map
+  tab: "device",
+  catalog: null,
+  catalogError: null,
+  getting: {}, // firmware id -> percent fetched
+  q: "",
+  onlyUnit: true,
+  betas: true,
+  fav: new Set(),
 };
+
+const ICON = {
+  chip: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="4" y="4" width="8" height="8"/><path d="M6 1v3M10 1v3M6 12v3M10 12v3M1 6h3M1 10h3M12 6h3M12 10h3"/></svg>',
+  boot: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="8" cy="8" r="5.5"/><circle cx="8" cy="8" r="2"/></svg>',
+  down: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M8 2v8M4.5 6.5 8 10l3.5-3.5M2.5 13.5h11"/></svg>',
+  up: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M8 11V3M4.5 6.5 8 3l3.5 3.5M2.5 13.5h11"/></svg>',
+  fw: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 8h3l1.5-4 3 8L11 8h3"/></svg>',
+  out: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 8h9M8.5 4.5 12 8l-3.5 3.5"/></svg>',
+};
+const esc = (t) => String(t ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
 function log(text) {
   $("log").textContent += `${new Date().toLocaleTimeString()} ${text}\n`;
@@ -31,23 +52,22 @@ function log(text) {
 }
 
 function status(text, kind = "") {
-  $("status").textContent = text;
-  $("status").className = kind;
+  $("status-text").textContent = text;
+  $("status").hidden = !text;
+  $("status").dataset.kind = kind;
+  $("status").className = `notice ${kind === "error" ? "bad" : kind === "done" ? "good" : ""}`;
   if (text) log(text);
 }
 
 /** A finished install's message, which stays when the unit restarts and reappears. */
-const finished = () => $("status").className === "done";
+const finished = () => $("status").dataset.kind === "done";
 
 function progress(title, done, total, text = "") {
-  $("progress").hidden = false;
-  $("progress-title").textContent = title;
-  $("progress-bar").max = total;
-  $("progress-bar").value = done;
-  $("progress-text").textContent = text || `${Math.round((done * 100) / total)}%`;
+  state.progress = { title, done, total, text };
+  renderLcd();
 }
 
-const hideProgress = () => { $("progress").hidden = true; };
+const hideProgress = () => { state.progress = null; renderLcd(); };
 
 // ---- finding the unit ----
 
@@ -347,6 +367,8 @@ async function applyPlan(plan) {
     status("Nothing to write: the flash already holds this.", "done");
     return;
   }
+  state.plan = new Set(plan.sectors.map((a) => a >> 12));
+  renderMap();
   const warnings = [...plan.warnings];
   if (state.info.kind === "stage" && state.analysis.bootloaderKind !== "open") warnings.push("This unit has the stock bootloader, so it has no hold-REC or MIDI mode. If this write is interrupted, it may need M-Flasher + in download mode or a USB_KEY dongle.");
   const ok = await confirmWrite({
@@ -356,7 +378,11 @@ async function applyPlan(plan) {
     okLabel: "Write",
     check: "I understand this changes the unit",
   });
-  if (!ok) return;
+  if (!ok) {
+    state.plan = null;
+    renderMap();
+    return;
+  }
   await run(async () => {
     if (!state.backupSaved) await saveBackup();
     const size = Math.max(plan.size, BOOT_AREA + 0x1000);
@@ -377,6 +403,7 @@ async function applyPlan(plan) {
     log(`Written in ${((Date.now() - started) / 1000).toFixed(0)} s; the unit checked each sector it wrote.`);
     progress("Finishing", 1, 1, "The unit is restarting");
     state.backupSaved = false;
+    state.plan = null;
     const port = await reconnect(60);
     if (port) await rejoin(port);
     status(port ? "Done, and the unit is back." : "Done. The unit has restarted, but it hasn't reappeared on USB: this can be normal for firmware without USB MIDI. Check it starts.", "done");
@@ -448,20 +475,136 @@ function leave(what, message) {
   render();
 }
 
+// ---- the library ----
+
+/** The list: this site's /api/catalog (read from the hub with its own User-Agent, at most once a day). */
+async function loadLibrary() {
+  const local = ["localhost", "127.0.0.1"].includes(location.hostname);
+  try {
+    let r = await fetch("api/catalog", { headers: { accept: "application/json" } }).catch(() => null);
+    // served without the site's functions (python -m http.server, for development): the hub itself
+    if ((!r || !r.ok || !r.headers.get("content-type")?.includes("json")) && local) r = await fetch(HUB);
+    if (!r?.ok) throw new Error(`the list couldn't be read (${r ? r.status : "no answer"})`);
+    state.catalog = parseCatalog(await r.json());
+    log(`Firmware list: ${state.catalog.entries.length} firmwares, updated ${state.catalog.updated || "?"}`);
+  } catch (cause) {
+    state.catalogError = cause.message;
+    log(`Firmware list: ${cause.message}`);
+  }
+  renderLibrary();
+}
+
+const FAV_KEY = "m-flasher-plus-web.favorites";
+try { state.fav = new Set(JSON.parse(localStorage.getItem(FAV_KEY) ?? "[]")); } catch { state.fav = new Set(); }
+function toggleFav(id) {
+  if (state.fav.has(id)) state.fav.delete(id); else state.fav.add(id);
+  try { localStorage.setItem(FAV_KEY, JSON.stringify([...state.fav])); } catch { /* kept for this visit only */ }
+  renderLibrary();
+}
+
+/** What INSTALL from the library needs: a unit read here, an FM-1. Says what's missing, or null. */
+function cantInstall() {
+  if (state.mode === "none") return "Connect the unit first: DEVICE › CONNECT.";
+  if (hasOwnUpdater(state.identity)) return "This firmware only updates from its own kind of package: use M-Flasher + on a computer.";
+  if (state.mode === "firmware") return "Start the tools first (DEVICE › START THE TOOLS): INSTALL reads the unit and saves a backup before it writes.";
+  if (state.mode === "loader") return state.model && !/^(FM-1|MiniFM)$/.test(state.model) ? `The library is for the FM-1; this unit says ${state.model}.` : null;
+  if (!state.flash) return "The unit hasn't been read yet.";
+  if (state.analysis.board?.key !== "fm1") return "The library is for the FM-1: its firmwares don't run on this unit.";
+  return null;
+}
+
+async function installFromLibrary(id) {
+  const e = state.catalog?.entries.find((x) => x.id === id);
+  if (!e || state.busy) return;
+  const missing = cantInstall();
+  if (missing) {
+    state.tab = "device";
+    status(missing, "error");
+    render();
+    return;
+  }
+  if (state.info && !fitsChip(e, state.info.jedec)) {
+    status(`Refused: ${e.name} is marked for the FM-1's older flash chip (0x856014) only; this FM-1 has the newer one. Nothing was written.`, "error");
+    return;
+  }
+  let data = null;
+  state.busy = true;
+  state.getting[id] = 0;
+  render();
+  try {
+    const got = await fetchPackage(e, {
+      log,
+      onProgress: (done, total) => {
+        state.getting[id] = total ? Math.round((done * 100) / total) : 50;
+        progress(`Fetching ${e.name}`, done, total || done, "From its author's GitHub");
+        const bar = document.getElementById(`pg-${CSS.escape(id)}`);
+        if (bar) bar.style.width = `${state.getting[id]}%`;
+      },
+    });
+    data = got.data;
+    log(`${e.name} ${e.version}: SHA-256 matches the list (${got.from})`);
+  } catch (cause) {
+    log(`Fetch: ${cause.message}`);
+    if (!(cause instanceof FetchFailed)) status(cause.message, "error");
+    else data = await fallback(e, cause);
+  } finally {
+    delete state.getting[id];
+    state.busy = false;
+    hideProgress();
+    render();
+  }
+  if (!data) return;
+  state.tab = "device";
+  render();
+  if (state.mode === "loader") await attempt(() => installOnLoader(data));
+  else await attempt(() => applyPlan(planFirmware(session(), data)));
+}
+
+/** Plan B: the author's release page, and the file the user downloaded from it, checked against the list. */
+async function fallback(e, cause) {
+  $("fallback-title").textContent = `Get ${e.name} ${e.version} yourself`;
+  $("fallback-why").textContent = `This page couldn't fetch it: ${cause.message}.`;
+  $("fallback-sha").textContent = `SHA-256 ${e.sha256}`;
+  const link = $("fallback-link");
+  link.hidden = !cause.page;
+  if (cause.page) link.href = cause.page;
+  const dialog = $("fallback");
+  dialog.returnValue = "cancel";
+  const choice = await new Promise((resolve) => {
+    dialog.onclose = () => resolve(dialog.returnValue);
+    dialog.showModal();
+  });
+  if (choice !== "choose") return null;
+  const data = await chooseFile($("firmware-file"));
+  if (!data) return null;
+  try {
+    const check = await checkPackage(e, data);
+    if (check.ok) {
+      log(`${e.name} ${e.version}: the chosen file's SHA-256 matches the list`);
+      return data;
+    }
+    status(`That file isn't ${e.name} ${e.version} as the list names it: ${check.why}. Nothing was written.`, "error");
+  } catch (err) {
+    status(`That file isn't a firmware package: ${err.message}. Nothing was written.`, "error");
+  }
+  return null;
+}
+
 // ---- showing ----
 
-function action(label, about, onClick, className = "") {
+function action(label, about, onClick, { quiet = false, icon = ICON.fw } = {}) {
   const box = document.createElement("div");
   box.className = "action";
-  const p = document.createElement("p");
-  p.textContent = about;
   const button = document.createElement("button");
   button.type = "button";
-  button.textContent = label;
-  button.className = className;
+  button.className = quiet ? "key quiet" : "key";
+  button.innerHTML = `${icon} <span></span> <span class="dot"></span>`;
+  button.children[1].textContent = label;
   button.disabled = state.busy;
   button.onclick = onClick;
-  box.append(p, button);
+  const p = document.createElement("p");
+  p.textContent = about;
+  box.append(button, p);
   return box;
 }
 
@@ -473,11 +616,120 @@ function fact(list, name, value) {
   list.push(dt, dd);
 }
 
+/** The unit's LCD: what is connected, or what is happening. */
+function renderLcd() {
+  const a = state.analysis;
+  let lines;
+  let bar = null;
+  if (state.progress) {
+    const { title, done, total, text } = state.progress;
+    const pct = total ? Math.min(100, Math.round((done * 100) / total)) : 0;
+    lines = [title, `${pct} %`, text || "Keep this tab in front", "Don't unplug the unit"];
+    bar = pct;
+  } else if (state.mode === "none") {
+    lines = ["No unit", "USB MIDI", "", state.access ? "Connect it and switch it on" : "Press connect to start"];
+  } else if (state.flash) {
+    lines = [a.board?.name ?? "Unit", state.info.kind === "stage" ? "Web tools · from RAM" : `MIDI mode ${state.info.version}`,
+      a.firmwareText, a.board ? "Ready" : "Model uncertain: read only"];
+  } else if (state.mode === "loader") {
+    lines = [state.model ?? "Unit", "Update loader", state.identity, "Install firmware"];
+  } else {
+    lines = [state.model ?? "Unit", "USB MIDI · running", state.identity ?? "", hasOwnUpdater(state.identity) ? "Use a computer" : "Start the tools"];
+  }
+  const div = (t, cls = "") => `<div class="${cls}">${esc(t) || "&nbsp;"}</div>`;
+  $("lcd").innerHTML = div(lines[0], "big") + div(lines[1]) + div(lines[2])
+    + (bar == null ? "" : `<div class="bar"><span style="width:${bar}%"></span></div>`)
+    + '<div class="rule"></div>' + div(lines[3]);
+}
+
+/** The flash, a cell per 4 KiB sector: boot area, in use, empty, and what a plan would write. */
+function renderMap() {
+  const flash = state.flash;
+  let h = "<span></span>";
+  for (let c = 0; c < 16; c++) h += `<span>${c.toString(16).toUpperCase()}</span>`;
+  for (let r = 0; r < 16; r++) {
+    h += `<span>${r.toString(16).toUpperCase()}0</span>`;
+    for (let c = 0; c < 16; c++) {
+      const i = r * 16 + c;
+      let cls = "";
+      if (flash && i * 0x1000 < flash.length) {
+        if (i < BOOT_AREA >> 12) cls = "s-boot";
+        else {
+          const s = flash.subarray(i * 0x1000, (i + 1) * 0x1000);
+          cls = s.every((b) => b === 0xff) ? "s-empty" : "s-used";
+        }
+      }
+      if (state.plan?.has(i)) cls += " s-plan";
+      h += `<div class="c ${cls}"></div>`;
+    }
+  }
+  $("map").innerHTML = h;
+}
+
+function chk(ok, title, text) {
+  return `<div class="chk"><span class="${ok ? "ok" : "att"}">${ok ? "✓" : "!"}</span><div><b>${esc(title)}</b>${esc(text)}</div></div>`;
+}
+
+function renderChecks() {
+  const a = state.analysis;
+  $("checks-box").hidden = !state.flash;
+  if (!state.flash) return;
+  const items = [
+    [a.bootloaderKind === "open", "Recovery", a.bootloaderKind === "open" ? `${a.bootloaderText} · REC: download mode · PLAY: recovery menu` : "Stock bootloader: no buttons reach download mode if a firmware fails."],
+    [state.backupSaved, "Backup", state.backupSaved ? "Saved to your downloads in this session." : "None this session yet. Every write saves one first anyway."],
+    [a.appStatus === "OK", "Firmware", `${a.firmwareText} · ${a.appStatusText}`],
+    [flashTested(state.info.jedec), "Chip", flashText(state.info.jedec)],
+  ];
+  const needs = items.filter((i) => !i[0]).length;
+  $("needs").textContent = needs ? `${needs} need attention` : "";
+  $("checks").innerHTML = items.map((i) => chk(...i)).join("");
+}
+
+function renderLibrary() {
+  const list = $("list");
+  $("attribution").textContent = `${ATTRIBUTION}. Each firmware belongs to its author.`;
+  if (!state.catalog) {
+    list.innerHTML = `<div class="empty">${esc(state.catalogError ? `The firmware list couldn't be read: ${state.catalogError}` : "Loading the firmware list…")}</div>`;
+    $("count").textContent = "";
+    return;
+  }
+  const all = state.catalog.entries;
+  let items = all.filter((e) => matchesSearch(state.q, e) && (state.betas || !e.beta));
+  const jedec = state.info?.jedec;
+  let hidden = 0;
+  if (state.onlyUnit && jedec != null) {
+    const fits = items.filter((e) => fitsChip(e, jedec));
+    hidden = items.length - fits.length;
+    items = fits;
+  }
+  items.sort((a, b) => (state.fav.has(b.id) - state.fav.has(a.id)) || (b.stock - a.stock) || a.name.localeCompare(b.name));
+  $("count").textContent = `${items.length} of ${all.length}`;
+  $("hidden-note").hidden = !hidden;
+  $("hidden-note").textContent = `${hidden} more hidden by this unit only (made for the older flash chip)`;
+  list.innerHTML = items.map((e) => {
+    const pct = state.getting[e.id];
+    const where = e.elsewhere ? "" : e.repo ? `<a href="https://github.com/${esc(e.repo)}" target="_blank" rel="noopener">${esc(e.repo)}</a>` : e.stock ? "m-vave/fm1_open" : "";
+    const act = pct != null ? `<div class="prog" aria-label="Fetching"><span id="pg-${esc(e.id)}" style="width:${pct}%"></span></div>`
+      : e.elsewhere ? `<a class="key dark" href="${esc(e.site ?? "#")}" target="_blank" rel="noopener">Author's installer</a>`
+        : `<button class="key" type="button" data-install="${esc(e.id)}" ${state.busy ? "disabled" : ""}>Install</button>`;
+    return `<div class="fw">
+      <button class="star" type="button" data-fav="${esc(e.id)}" aria-pressed="${state.fav.has(e.id)}" aria-label="Favorite ${esc(e.name)}">★</button>
+      <div><h4>${esc(e.name)}<small>${esc(e.version)}</small></h4>
+        <p>${esc(e.author)} · ${esc(e.license)}${e.kinds.length ? ` · ${esc(e.kinds.join(", ").toUpperCase())}` : ""}${e.beta ? " · BETA" : ""}${e.chip === "old" ? ' · <span class="old">OLDER CHIP ONLY</span>' : ""}${where ? ` · ${where}` : ""}</p></div>
+      <div class="acts">${act}</div></div>`;
+  }).join("") || '<div class="empty">No firmware matches.</div>';
+  list.querySelectorAll("[data-install]").forEach((b) => { b.onclick = () => installFromLibrary(b.dataset.install); });
+  list.querySelectorAll("[data-fav]").forEach((b) => { b.onclick = () => toggleFav(b.dataset.fav); });
+}
+
 function render() {
-  $("unit").hidden = state.mode === "none";
-  $("actions").hidden = state.mode === "none";
-  $("connect-button").textContent = state.access ? "Look again" : "Connect";
+  for (const t of ["device", "library", "about"]) {
+    $(`tab-${t}`).hidden = state.tab !== t;
+    $(`t-${t}`).setAttribute("aria-selected", String(state.tab === t));
+  }
+  $("connect-button").innerHTML = `${ICON.chip} <span>${state.access ? "Look again" : "Connect"}</span> <span class="dot"></span>`;
   $("connect-button").disabled = state.busy;
+  $("info").hidden = state.mode === "none";
   const facts = [];
   const notes = [];
   if (hasOwnUpdater(state.identity)) {
@@ -510,30 +762,51 @@ function render() {
     li.textContent = n;
     return li;
   }));
+  const toLibrary = () => { state.tab = "library"; render(); };
+  const toComputer = () => leave("downloadMode", "Asked for download mode. Open M-Flasher + on a computer.");
   const list = [];
   if (hasOwnUpdater(state.identity)) {
-    list.push(action("Switch to download mode", "For M-Flasher + on a computer. A browser can't use this mode.", () => leave("downloadMode", "Asked for download mode. Open M-Flasher + on a computer.")));
+    list.push(action("Switch to download mode", "For M-Flasher + on a computer. A browser can't use this mode.", toComputer, { icon: ICON.out }));
   } else if (state.mode === "firmware") {
-    list.push(action("Start the tools", "Back up, restore, or install firmware. Your firmware stays, and the unit goes back to it afterwards.", startTools));
-    list.push(action("Install m-bootloader", "Adds hold-REC download mode, a recovery menu, and MIDI mode for when firmware won't start.", installBootloader, "quiet"));
-    list.push(action("Switch to download mode", "For M-Flasher + on a computer. A browser can't use this mode.", () => leave("downloadMode", "Asked for download mode. Open M-Flasher + on a computer."), "quiet"));
+    list.push(action("Start the tools", "Back up, restore, or install firmware. Your firmware stays, and the unit goes back to it afterwards.", startTools, { icon: ICON.chip }));
+    list.push(action("Install m-bootloader", "Adds hold-REC download mode, a recovery menu, and MIDI mode for when firmware won't start.", installBootloader, { quiet: true, icon: ICON.boot }));
+    list.push(action("Switch to download mode", "For M-Flasher + on a computer. A browser can't use this mode.", toComputer, { quiet: true, icon: ICON.out }));
   } else if (state.mode === "loader") {
-    list.push(action("Install firmware…", "From an .fwsc package.", installFirmware));
-    list.push(action("Switch to download mode", "For M-Flasher + on a computer.", () => leave("downloadMode", "Asked for download mode. Open M-Flasher + on a computer."), "quiet"));
+    list.push(action("Flash firmware", "From the LIBRARY, fetched from its author's GitHub.", toLibrary));
+    list.push(action("Install from a file…", "An .fwsc package you have.", installFirmware, { quiet: true }));
+    list.push(action("Switch to download mode", "For M-Flasher + on a computer.", toComputer, { quiet: true, icon: ICON.out }));
   } else if (state.flash) {
-    list.push(action("Save a backup", "The whole flash, as read, in M-Flasher +'s format.", saveBackup));
+    list.push(action("Backup full flash", "The whole flash, as read, to your downloads, in M-Flasher +'s format.", saveBackup, { icon: ICON.down }));
     if (state.analysis.board) {
-      list.push(action("Restore a backup…", "Firmware, settings and presets from a backup of this unit. Checks everything before erasing anything.", restoreBackup, "quiet"));
-      list.push(action("Install firmware…", "From an .fwsc package for this model.", installFirmware, "quiet"));
+      list.push(action("Restore full flash…", "Firmware, settings and presets from a backup of this unit. Checks everything before erasing anything.", restoreBackup, { icon: ICON.up }));
+      if (state.analysis.board.key === "fm1") list.push(action("Flash firmware", "From the LIBRARY, fetched from its author's GitHub.", toLibrary));
+      list.push(action("Install from a file…", "An .fwsc package for this model.", installFirmware, { quiet: true }));
     }
-    list.push(action("Restart", "Leaves this mode, and starts the firmware.", () => leave("restart", "Restarting."), "quiet"));
-    list.push(action("Switch to download mode", "For M-Flasher + on a computer.", () => leave("downloadMode", "Asked for download mode. Open M-Flasher + on a computer."), "quiet"));
+    list.push(action("Restart", "Leaves this mode, and starts the firmware.", () => leave("restart", "Restarting."), { quiet: true, icon: ICON.out }));
+    list.push(action("Switch to download mode", "For M-Flasher + on a computer.", toComputer, { quiet: true, icon: ICON.out }));
   }
   $("action-list").replaceChildren(...list);
+  renderLcd();
+  renderMap();
+  renderChecks();
+  renderLibrary();
   document.body.dataset.mode = state.mode;
   document.body.dataset.busy = String(state.busy);
 }
 
+// #library or #about opens that tab; the tabs keep the address up to date
+const TABS = ["device", "library", "about"];
+if (TABS.includes(location.hash.slice(1))) state.tab = location.hash.slice(1);
+document.querySelectorAll(".tabs button").forEach((b) => {
+  b.onclick = () => {
+    state.tab = b.dataset.tab;
+    history.replaceState(null, "", state.tab === "device" ? location.pathname : `#${state.tab}`);
+    render();
+  };
+});
+$("q").oninput = (e) => { state.q = e.target.value; renderLibrary(); };
+$("only").onchange = (e) => { state.onlyUnit = e.target.checked; renderLibrary(); };
+$("betas").onchange = (e) => { state.betas = e.target.checked; renderLibrary(); };
 $("connect-button").onclick = () => {
   status("");
   return state.access ? scan() : connect();
@@ -548,6 +821,7 @@ document.addEventListener("visibilitychange", () => {
 });
 if (!navigator.requestMIDIAccess) {
   $("unsupported").hidden = false;
-  $("connect").hidden = true;
+  $("connect-button").hidden = true;
 }
 render();
+loadLibrary();
