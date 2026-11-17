@@ -38,15 +38,15 @@ jobs:
       - run: cargo build --release
       - name: Package
         run: |
-          mkdir -p pkg/m-flasher
-          cp target/release/m-flasher linux/70-m-flasher.rules linux/m-flasher.png linux/README.txt LICENSE pkg/m-flasher/
-          tar -C pkg -czf m-flasher-linux-${{ matrix.arch }}.tar.gz m-flasher
-          ls -l target/release/m-flasher m-flasher-linux-${{ matrix.arch }}.tar.gz
-          file target/release/m-flasher
+          mkdir -p pkg/m-flasher-plus
+          cp target/release/m-flasher-plus linux/70-m-flasher-plus.rules linux/m-flasher.png linux/README.txt LICENSE pkg/m-flasher-plus/
+          tar -C pkg -czf m-flasher-plus-linux-${{ matrix.arch }}.tar.gz m-flasher-plus
+          ls -l target/release/m-flasher-plus m-flasher-plus-linux-${{ matrix.arch }}.tar.gz
+          file target/release/m-flasher-plus
       - uses: actions/upload-artifact@v7
         with:
           name: m-flasher-linux-${{ matrix.arch }}
-          path: m-flasher-linux-${{ matrix.arch }}.tar.gz
+          path: m-flasher-plus-linux-${{ matrix.arch }}.tar.gz
       - name: Packages (.deb, .rpm)
         env:
           GH_TOKEN: ${{ github.token }}
@@ -112,7 +112,7 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory pkg | Out-Null
-          Copy-Item target/release/m-flasher.exe pkg/M-Flasher.exe
+          Copy-Item target/release/m-flasher-plus.exe pkg/M-Flasher.exe
           Copy-Item windows/README.txt, LICENSE pkg/
       - name: Which signature
         # SignPath signs the program: with the test certificate on branches, with
@@ -183,7 +183,7 @@ jobs:
         run: |
           cargo build --release --target aarch64-apple-darwin
           cargo build --release --target x86_64-apple-darwin
-          lipo -create -output m-flasher target/aarch64-apple-darwin/release/m-flasher target/x86_64-apple-darwin/release/m-flasher
+          lipo -create -output m-flasher target/aarch64-apple-darwin/release/m-flasher-plus target/x86_64-apple-darwin/release/m-flasher-plus
           lipo -info m-flasher
           otool -L m-flasher
       - uses: actions/setup-python@v7
@@ -213,15 +213,15 @@ jobs:
         run: |
           v=${GITHUB_REF_NAME#v}
           mv M-Flasher-windows.zip M-Flasher-$v-windows.zip
-          mv m-flasher-linux-x86_64.tar.gz m-flasher-$v-linux-x86_64.tar.gz
-          mv m-flasher-linux-aarch64.tar.gz m-flasher-$v-linux-aarch64.tar.gz
+          mv m-flasher-plus-linux-x86_64.tar.gz m-flasher-plus-$v-linux-x86_64.tar.gz
+          mv m-flasher-plus-linux-aarch64.tar.gz m-flasher-plus-$v-linux-aarch64.tar.gz
           mv M-Flasher-macos.dmg M-Flasher-$v-macos.dmg
       - uses: softprops/action-gh-release@v3
         with:
           files: |
             M-Flasher-*-windows.zip
-            m-flasher-*-linux-x86_64.tar.gz
-            m-flasher-*-linux-aarch64.tar.gz
+            m-flasher-plus-*-linux-x86_64.tar.gz
+            m-flasher-plus-*-linux-aarch64.tar.gz
             m-flasher-plus_*.deb
-            m-flasher-*.rpm
+            m-flasher-plus-*.rpm
             M-Flasher-*-macos.dmg

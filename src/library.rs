@@ -29,7 +29,7 @@ pub const CATALOG_URL: &str = "https://thefirmwarehub.com/catalog.json";
 pub const ATTRIBUTION: &str = "Firmware list: The Firmware Hub – https://thefirmwarehub.com (CC BY 4.0)";
 /// The hub asks for one read a day at most.
 const CATALOG_MAX_AGE: chrono::TimeDelta = chrono::TimeDelta::hours(24);
-const USAGE: &str = "usage: m-flasher library sync | list [--chip old|new] [--kind KIND] [--beta] | get ID | import-stock DIR |
+const USAGE: &str = "usage: m-flasher-plus library sync | list [--chip old|new] [--kind KIND] [--beta] | get ID | import-stock DIR |
                          install ID [--skip-bootloader | --stock-bootloader] [--yes] [--restart] [--device PATH]
        sync          fetch The Firmware Hub's list (at most once a day)
        list          the FM-1 firmwares in it, and the official ones imported; --chip new: marks those for the
@@ -117,7 +117,7 @@ pub fn bootloader_step<F: Flash>(s: &Session<F>, inst: &Installable, o: &Install
 pub fn after_install_note<F: Flash>(s: &Session<F>, o: &InstallOptions) -> Option<String> {
     (!o.stock_bootloader && s.bootloader_suggestion().is_some()).then(|| {
         "This unit still has M-VAVE's stock bootloader: if a firmware ever fails to start, only a USB_KEY dongle reaches \
-         download mode. `m-flasher bootloader` installs m-bootloader.".into()
+         download mode. `m-flasher-plus bootloader` installs m-bootloader.".into()
     })
 }
 
@@ -720,7 +720,7 @@ impl Library {
                                         official: true, credit: "M-VAVE".into(), path: p });
             }
         }
-        let cat = self.catalog()?.ok_or("no firmware list yet: run `m-flasher library sync`")?;
+        let cat = self.catalog()?.ok_or("no firmware list yet: run `m-flasher-plus library sync`")?;
         let e = cat.find(id).ok_or_else(|| format!("{id} is neither in the firmware list nor an imported official package"))?;
         if !self.downloaded(e) {
             println!("Downloading {} {} from {}", e.name, e.version, e.release.as_deref().or(e.source.as_deref()).unwrap_or("its author"));
@@ -738,7 +738,7 @@ impl Library {
     }
 }
 
-/// `m-flasher library ...`
+/// `m-flasher-plus library ...`
 pub fn cli(args: &[String]) -> Result<(), String> {
     let lib = Library::new(default_dir());
     let (mut chip, mut kind, mut beta, mut pos) = (None, None, false, vec![]);
@@ -759,7 +759,7 @@ pub fn cli(args: &[String]) -> Result<(), String> {
     if chip.as_deref().is_some_and(|c| c != "old" && c != "new") {
         return Err(format!("--chip is old (0x856014) or new (0xB36014)\n{USAGE}"));
     }
-    let need_catalog = || lib.catalog()?.ok_or_else(|| "no firmware list yet: run `m-flasher library sync`".to_string());
+    let need_catalog = || lib.catalog()?.ok_or_else(|| "no firmware list yet: run `m-flasher-plus library sync`".to_string());
     match pos.first().map(String::as_str) {
         Some("sync") => {
             match lib.sync(&Http::new(), chrono::Utc::now())? {
@@ -822,7 +822,7 @@ pub fn cli(args: &[String]) -> Result<(), String> {
             }
             Ok(())
         }
-        Some("install") => Err("install talks to the unit: run `m-flasher library install ID`".into()),
+        Some("install") => Err("install talks to the unit: run `m-flasher-plus library install ID`".into()),
         _ => Err(USAGE.into()),
     }
 }

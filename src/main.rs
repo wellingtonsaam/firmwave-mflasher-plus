@@ -111,7 +111,7 @@ fn linux_display_problem() -> Option<String> {
         ""
     };
     if !set("WAYLAND_DISPLAY") && !set("DISPLAY") {
-        return Some(format!("no desktop session (neither WAYLAND_DISPLAY nor DISPLAY is set).{sudo} The command line works without one: m-flasher --help"));
+        return Some(format!("no desktop session (neither WAYLAND_DISPLAY nor DISPLAY is set).{sudo} The command line works without one: m-flasher-plus --help"));
     }
     // X11 (no Wayland session): the keyboard library's X11 part, which a
     // Wayland desktop may not have installed

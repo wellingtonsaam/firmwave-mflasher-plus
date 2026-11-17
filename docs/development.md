@@ -66,7 +66,7 @@ flash loader, the m-bootloader builds and the fonts are all inside it.
 ## Building
 
 ```sh
-cargo build --release          # target/release/m-flasher
+cargo build --release          # target/release/m-flasher-plus
 cargo test --release           # FLASHER_TEST_DATA=DIR adds the tests with real flash images
 ```
 

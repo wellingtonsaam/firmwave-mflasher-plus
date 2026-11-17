@@ -1,5 +1,5 @@
 #!/bin/sh
-# Makes the .deb and .rpm from target/release/m-flasher, with nFPM:
+# Makes the .deb and .rpm from target/release/m-flasher-plus, with nFPM:
 #   linux/package/build.sh VERSION ARCH [OUTDIR]     (ARCH: amd64 or arm64)
 set -eu
 cd "$(dirname "$0")/../.."
@@ -25,7 +25,7 @@ cat > "$gen/changelog.yml" <<CHANGELOG
     - note: "M-Flasher Plus $version, see its release notes:"
     - note: "https://github.com/wellingtonsaam/m-flasher-plus/releases/tag/v$version"
 CHANGELOG
-gzip -9n -c linux/package/m-flasher.1 > "$gen/m-flasher.1.gz"
+gzip -9n -c linux/package/m-flasher-plus.1 > "$gen/m-flasher-plus.1.gz"
 # the metainfo, with this release
 sed "s|</component>|  <releases>\n    <release version=\"$version\" date=\"$(date -u -d "@$epoch" +%F)\"/>\n  </releases>\n</component>|" \
     linux/package/io.github.wellingtonsaam.m-flasher-plus.metainfo.xml > "$gen/io.github.wellingtonsaam.m-flasher-plus.metainfo.xml"

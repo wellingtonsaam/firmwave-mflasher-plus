@@ -7,6 +7,11 @@ license = "MIT"
 authors = ["Wellington Saam", "Julius Vitkauskas"]
 build = "build.rs"
 
+# the command is m-flasher-plus, so that it is never mistaken for M-Flasher's
+[[bin]]
+name = "m-flasher-plus"
+path = "src/main.rs"
+
 [dependencies]
 rfd = "0.17"
 sha2 = "0.11"

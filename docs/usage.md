@@ -42,10 +42,10 @@ everything: the program, the udev rule that lets you reach the unit without
 root, the SCSI generic driver, and a launcher in the app menu.
 
 - Debian 12+, Ubuntu 22.04+, Linux Mint, Raspberry Pi OS (64-bit):
-  `sudo apt install ./m-flasher_…_amd64.deb` (`_arm64.deb` for ARM64)
+  `sudo apt install ./m-flasher-plus_…_amd64.deb` (`_arm64.deb` for ARM64)
 - Fedora, RHEL / AlmaLinux / Rocky 10, openSUSE Tumbleweed and Leap 16:
-  `sudo dnf install ./m-flasher-….x86_64.rpm`, or `sudo zypper install
-  ./m-flasher-….x86_64.rpm` (`.aarch64.rpm` for ARM64)
+  `sudo dnf install ./m-flasher-plus-….x86_64.rpm`, or `sudo zypper install
+  ./m-flasher-plus-….x86_64.rpm` (`.aarch64.rpm` for ARM64)
 
 Install through the package manager, as above, rather than with `sudo dpkg -i`:
 the libraries the window loads when it starts are recommended rather than
@@ -54,15 +54,15 @@ none can be required -- and `dpkg` on its own does not bring recommended
 packages in, leaving a program that will not open a window.
 
 Connect the unit after installing (again, if it was connected), and start
-M-Flasher from the app menu, or `m-flasher` in a terminal, as yourself: under
+M-Flasher + from the app menu, or `m-flasher-plus` in a terminal, as yourself: under
 sudo the window cannot reach the desktop. The packages do not update
 themselves: install the new one from each release.
 
-On other distributions, use `m-flasher-…-linux-x86_64.tar.gz` (or
+On other distributions, use `m-flasher-plus-…-linux-x86_64.tar.gz` (or
 `-aarch64`; `uname -m` tells which) and follow its `README.txt`: install the
-udev rule once, connect the unit, and run `./m-flasher`. M-Flasher talks to
+udev rule once, connect the unit, and run `./m-flasher-plus`. M-Flasher talks to
 the unit through the SCSI generic driver: run `sudo modprobe sg` if there is
-no `/dev/sg*`, and `echo sg | sudo tee /etc/modules-load.d/m-flasher.conf` to
+no `/dev/sg*`, and `echo sg | sudo tee /etc/modules-load.d/m-flasher-plus.conf` to
 load it at every start (the packages do this themselves). M-Flasher says so when
 a unit is in download mode without it. `m-flasher.png` is the icon, for a
 launcher of your own.
@@ -78,7 +78,7 @@ when the firmware does not. To enter it:
 
 - with the unit running normally and connected: M-Flasher finds it on USB
   MIDI and offers **DOWNLOAD MODE**, which restarts it into download mode
-  with a MIDI message (`m-flasher download-mode` on the command line). This
+  with a MIDI message (`m-flasher-plus download-mode` on the command line). This
   works with M-VAVE's own firmware (FM-1 015, SMK-37 Pro and Elite 016) and
   Felucca, whichever bootloader the unit has;
 - with m-bootloader: hold **REC** (SMK-37: **SEQ REC**) while switching the
@@ -98,7 +98,7 @@ not start, the USB_KEY dongle (a Raspberry Pi Pico) still reaches download
 mode.
 
 When you are done, unplug the unit and switch it off and on again, or run
-`m-flasher restart`: it resets the unit from download mode, without touching
+`m-flasher-plus restart`: it resets the unit from download mode, without touching
 the flash, and waits for the firmware to show up on USB MIDI (the SMK-37's
 stock firmware takes about half a minute).
 
@@ -180,7 +180,7 @@ that unit and carries on when it shows up. A unit with M-VAVE's stock
 bootloader gets m-bootloader first ([Safety](safety.md), REQ-BOOT-01). After
 a write the unit is restarted, and the app waits for it on USB MIDI.
 
-On the command line: `m-flasher library sync | list | get ID | install ID`
+On the command line: `m-flasher-plus library sync | list | get ID | install ID`
 (`--skip-bootloader` installs without m-bootloader first).
 
 ## The flash map
@@ -196,15 +196,15 @@ and verified. Hover over a sector to see its address and contents.
 The same executable is a command-line tool when given arguments:
 
 ```sh
-m-flasher find                 # the units in download mode (and those running, on USB MIDI)
-m-flasher download-mode        # switch a running unit to download mode over USB MIDI
-m-flasher restart              # leave download mode: the unit resets and starts its firmware
-m-flasher info                 # what is on the unit
-m-flasher backup [DIR]
-m-flasher restore BACKUP.bin
-m-flasher firmware PACKAGE.fwsc
-m-flasher bootloader [--stock PACKAGE.fwsc | --file UBOOT.boot]
-m-flasher run-ram IMAGE --addr 0x01C28000 [--call FC60]... [--read ADDR:LEN -o OUT]
+m-flasher-plus find                 # the units in download mode (and those running, on USB MIDI)
+m-flasher-plus download-mode        # switch a running unit to download mode over USB MIDI
+m-flasher-plus restart              # leave download mode: the unit resets and starts its firmware
+m-flasher-plus info                 # what is on the unit
+m-flasher-plus backup [DIR]
+m-flasher-plus restore BACKUP.bin
+m-flasher-plus firmware PACKAGE.fwsc
+m-flasher-plus bootloader [--stock PACKAGE.fwsc | --file UBOOT.boot]
+m-flasher-plus run-ram IMAGE --addr 0x01C28000 [--call FC60]... [--read ADDR:LEN -o OUT]
 ```
 
 Options: `--device PATH` (with more than one unit), `--board fm1|smk37` (when
@@ -215,20 +215,20 @@ and need a typed `yes`, or `--yes`.
 
 - Windows: `M-Flasher.exe info`; Windows asks for administrator rights the
   same way, or run it from an administrator prompt.
-- macOS: `/Applications/M-Flasher.app/Contents/MacOS/M-Flasher info`, from
+- macOS: `"/Applications/M-Flasher +.app/Contents/MacOS/M-Flasher" info`, from
   Terminal; it asks for the password the same way, or run it with `sudo`. Not
   over SSH: macOS asks about the removable volume only on the screen.
-- Linux: `m-flasher info` (from the tarball: `./m-flasher info`); `man m-flasher` with the packages.
+- Linux: `m-flasher-plus info` (from the tarball: `./m-flasher-plus info`); `man m-flasher-plus` with the packages.
 
 ## Running your own program in RAM
 
-`m-flasher run-ram` is for developers: it uploads a program of your own to the
+`m-flasher-plus run-ram` is for developers: it uploads a program of your own to the
 chip's RAM through download mode, starts it, and then talks to it. It is how
 m-bootloader's flash loader is started, without M-Flasher's own loader and
 without any flash operation.
 
 ```sh
-m-flasher run-ram prog.bin --addr 0x01C28000 --call FC60 --call FC61 \
+m-flasher-plus run-ram prog.bin --addr 0x01C28000 --call FC60 --call FC61 \
                   --read 0x01C28000:4096 -o ram.bin
 ```
 

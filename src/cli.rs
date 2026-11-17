@@ -1,7 +1,7 @@
 //! Command-line mode (the same operations as the window):
 //!
 //! ```text
-//! m-flasher find | download-mode | restart | info | backup [DIR] | restore BACKUP.bin [--keep-bootloader]
+//! m-flasher-plus find | download-mode | restart | info | backup [DIR] | restore BACKUP.bin [--keep-bootloader]
 //!           firmware PACKAGE.fwsc
 //!           bootloader [--stock PACKAGE.fwsc | --file UBOOT.boot]
 //!           run-ram IMAGE --addr ADDR [--call OPCODE]... [--read ADDR:LEN -o OUT]
@@ -18,7 +18,7 @@ use crate::scsi::{Device, ScsiError, find_devices};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
-const USAGE: &str = "usage: m-flasher [find | download-mode | restart | info | backup [DIR] | restore BACKUP.bin [--keep-bootloader] |
+const USAGE: &str = "usage: m-flasher-plus [find | download-mode | restart | info | backup [DIR] | restore BACKUP.bin [--keep-bootloader] |
                  firmware PACKAGE.fwsc |
                  bootloader [--stock PACKAGE.fwsc | --file UBOOT.boot] |
                  run-ram IMAGE --addr ADDR [--call OPCODE]... [--read ADDR:LEN -o OUT] |
@@ -28,9 +28,9 @@ const USAGE: &str = "usage: m-flasher [find | download-mode | restart | info | b
                 --port NAME (find, download-mode: a MIDI port named otherwise taken for a unit;
                              MFLASHER_MIDI_PORTS=NAME,... does the same, for the window too)
                 --restart (restore, firmware, bootloader: start the unit when written)
-       without arguments: the window (`m-flasher run-ram --help`: the run-ram command)";
+       without arguments: the window (`m-flasher-plus run-ram --help`: the run-ram command)";
 
-const RUN_RAM_HELP: &str = "usage: m-flasher run-ram IMAGE --addr ADDR [--call OPCODE]... [--read ADDR:LEN -o OUT] [--device PATH]
+const RUN_RAM_HELP: &str = "usage: m-flasher-plus run-ram IMAGE --addr ADDR [--call OPCODE]... [--read ADDR:LEN -o OUT] [--device PATH]
 
 Runs your own program in the unit's RAM, through the chip's download mode, and
 talks to it. It does not start M-Flasher's flash loader and does not touch the
@@ -180,7 +180,7 @@ fn pick_device(device: Option<String>) -> Result<String, Error> {
     let devs = find_devices();
     match devs.len() {
         0 if !crate::midi::find_units().is_empty() => {
-            Err(Error::Refused("the unit is running, not in download mode: `m-flasher download-mode` switches it".into()))
+            Err(Error::Refused("the unit is running, not in download mode: `m-flasher-plus download-mode` switches it".into()))
         }
         0 if crate::scsi::needs_sg_driver() => Err(Error::Refused(SG_DRIVER.into())),
         0 => Err(Error::Refused("no unit in download mode found (a USB disk \"WL82 UBOOT1.00\")".into())),
@@ -315,7 +315,7 @@ fn main(args: Vec<String>) -> Result<(), Error> {
             "--with-bootloader" => {
                 return Err(Error::Refused("--with-bootloader was removed: installing firmware keeps the unit's \
                                            bootloader. To put back a package's stock bootloader, use \
-                                           `m-flasher bootloader --stock PACKAGE.fwsc`"
+                                           `m-flasher-plus bootloader --stock PACKAGE.fwsc`"
                     .into()));
             }
             "--wipe-settings" => {
@@ -437,7 +437,7 @@ fn main(args: Vec<String>) -> Result<(), Error> {
         println!("    {} {t}", if *strong { "*" } else { "-" });
     }
     if install.is_none() && cmd != "bootloader" && s.bootloader_suggestion().is_some() {
-        println!("Recommended: this unit has M-VAVE's stock bootloader. `m-flasher bootloader` installs m-bootloader, \
+        println!("Recommended: this unit has M-VAVE's stock bootloader. `m-flasher-plus bootloader` installs m-bootloader, \
                   so that a firmware that fails to start can be reflashed from the unit's keys.");
     }
     if let Some(inst) = install {

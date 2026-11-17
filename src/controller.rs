@@ -933,7 +933,7 @@ impl Controller {
                     "No file dialog: it goes through the XDG desktop portal, which is not \
                      installed here. Add xdg-desktop-portal and the backend for your desktop \
                      (xdg-desktop-portal-gtk, -kde or -gnome). The command line takes the file \
-                     without one: see `m-flasher --help`."
+                     without one: see `m-flasher-plus --help`."
                         .into(),
                 );
             }

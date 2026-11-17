@@ -300,7 +300,7 @@ impl<F: Flash> Session<F> {
         }
         let sha: String = Sha256::digest(&self.flash).iter().map(|b| format!("{b:02x}")).collect();
         json += &format!("  \"sha256\": \"{sha}\",\n");
-        json += &format!("  \"saved\": \"{stamp}\",\n  \"tool\": \"m-flasher {}\"\n}}\n", env!("CARGO_PKG_VERSION"));
+        json += &format!("  \"saved\": \"{stamp}\",\n  \"tool\": \"m-flasher-plus {}\"\n}}\n", env!("CARGO_PKG_VERSION"));
         let json_path = path.with_extension("json");
         let file = create_new(&json_path).map_err(|e| Error::Io(format!("cannot write {}: {e}", json_path.display())))?;
         write_synced(&json_path, file, json.as_bytes())?;

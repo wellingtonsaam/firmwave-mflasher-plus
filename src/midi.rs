@@ -67,7 +67,7 @@ fn known(name: &str) -> bool {
     unit_of(name).is_some()
 }
 
-/// Every MIDI output port's name, units or not (`m-flasher midi-ports`), and
+/// Every MIDI output port's name, units or not (`m-flasher-plus midi-ports`), and
 /// whether it is taken for a unit.
 pub fn port_names() -> Vec<(String, bool)> {
     sys::all_names().into_iter().map(|n| { let k = known(&n); (n, k) }).collect()

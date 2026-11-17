@@ -1492,7 +1492,7 @@ fn permission_advice_follows_what_is_missing() {
     let advice = permission_advice_in(&rule_dirs, &seat_dirs);
     assert!(advice.starts_with("install the udev rule"), "no rule anywhere: {advice}");
 
-    std::fs::write(rules.join("70-m-flasher.rules"), "").unwrap();
+    std::fs::write(rules.join("70-m-flasher-plus.rules"), "").unwrap();
     let advice = permission_advice_in(&rule_dirs, &seat_dirs);
     assert!(advice.contains("plugdev"), "rule installed, no logind: {advice}");
 

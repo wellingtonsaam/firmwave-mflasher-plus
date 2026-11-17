@@ -2,7 +2,7 @@
 # Installs a package in a clean container of a distribution with its own
 # package manager (so its dependencies resolve), then checks that M-Flasher
 # runs and its files are in place. For CI:
-#   docker run --rm -v "$PWD:/w" -w /w debian:12 linux/package/test-install.sh m-flasher_*.deb
+#   docker run --rm -v "$PWD:/w" -w /w debian:12 linux/package/test-install.sh m-flasher-plus_*.deb
 # Run on a machine of your own, it doubles as a check of what the window needs:
 # it names every library that is missing, and the command that installs them.
 set -eu
@@ -27,13 +27,14 @@ fi
 # machine had, not the one the program ended up asking for -- and the loader
 # then warns about versions that are not there on every start. That is for the
 # build to fix, not for whoever installs the package to discover.
-out=$(m-flasher --help 2>&1) || { printf '%s\n' "$out" >&2; echo "m-flasher --help failed" >&2; exit 1; }
+out=$(m-flasher-plus --help 2>&1) || { printf '%s\n' "$out" >&2; echo "m-flasher-plus --help failed" >&2; exit 1; }
 printf '%s\n' "$out"
 case $out in *"not found (required by"*)
     echo "built against a newer system than this package declares: the loader is missing library versions above" >&2
     exit 1 ;;
 esac
-for f in /usr/lib/udev/rules.d/70-m-flasher.rules /usr/lib/modules-load.d/m-flasher.conf \
+for f in /usr/bin/m-flasher-plus /usr/lib/udev/rules.d/70-m-flasher-plus.rules /usr/lib/modules-load.d/m-flasher-plus.conf \
+    /usr/share/man/man1/m-flasher-plus.1.gz \
     /usr/share/applications/io.github.wellingtonsaam.m-flasher-plus.desktop \
     /usr/share/metainfo/io.github.wellingtonsaam.m-flasher-plus.metainfo.xml \
     /usr/share/icons/hicolor/256x256/apps/io.github.wellingtonsaam.m-flasher-plus.png; do

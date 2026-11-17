@@ -1,7 +1,7 @@
 #!/bin/sh
 # Makes "M-Flasher +.app" (ad-hoc signed: no Apple certificate) and the disk image
 # M-Flasher-plus-VERSION-macos.dmg from an m-flasher binary. macOS only.
-#   macos/package.sh target/release/m-flasher 0.3.0 [OUTDIR]
+#   macos/package.sh target/release/m-flasher-plus 0.3.0 [OUTDIR]
 set -e
 bin=$(cd "$(dirname "$1")" && pwd)/$(basename "$1")
 version=$2

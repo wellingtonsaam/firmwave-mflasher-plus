@@ -564,8 +564,9 @@ pub fn permission_advice() -> String {
 /// `permission_advice` over the directories to look in, so that it can be tested.
 #[cfg(target_os = "linux")]
 pub(crate) fn permission_advice_in(rule_dirs: &[&std::path::Path], seats: &[&std::path::Path]) -> String {
-    const RULE: &str = "70-m-flasher.rules";
-    if !rule_dirs.iter().any(|dir| dir.join(RULE).exists()) {
+    // M-Flasher +'s own rule, or M-Flasher's: either gives the unit to the user
+    const RULES: [&str; 2] = ["70-m-flasher-plus.rules", "70-m-flasher.rules"];
+    if !rule_dirs.iter().any(|dir| RULES.iter().any(|rule| dir.join(rule).exists())) {
         return "install the udev rule and reconnect the unit (see README.txt), or run as root".into();
     }
     // logind is what turns the rule's uaccess tag into an ACL; where there is
