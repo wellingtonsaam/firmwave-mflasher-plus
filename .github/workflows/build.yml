@@ -222,6 +222,6 @@ jobs:
             M-Flasher-*-windows.zip
             m-flasher-*-linux-x86_64.tar.gz
             m-flasher-*-linux-aarch64.tar.gz
-            m-flasher_*.deb
+            m-flasher-plus_*.deb
             m-flasher-*.rpm
             M-Flasher-*-macos.dmg
