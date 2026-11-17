@@ -1,9 +1,9 @@
-# Using M-Flasher
+# Using M-Flasher +
 
 ## Installing
 
-**Windows** (10 or 11). Extract `M-Flasher-…-windows.zip` and run
-`M-Flasher.exe`. When it finds the unit in download mode, Windows asks to let
+**Windows** (10 or 11). Extract `M-Flasher-Plus-…-windows.zip` and run
+`M-Flasher-Plus.exe`. When it finds the unit in download mode, Windows asks to let
 it make changes: it needs administrator rights to talk to the unit, and only
 for that, in a helper of its own. Cancelled, it asks again once the unit is
 reconnected. The app is not signed, so the first time Windows may say it
@@ -15,7 +15,7 @@ model). Each release is reported to Microsoft as a false alarm, which
 usually clears it within a few days: then update Defender and download it
 again. If you can't wait and the zip came from this repository's releases,
 open **Windows Security → Virus & threat protection → Protection history**
-and pick the M-Flasher entry:
+and pick the M-Flasher + entry:
 
 - **Threat quarantined**: **Actions → Restore**. Defender finds it again: in
   the new **Threat found - action needed** entry choose **Allow on device**.
@@ -24,14 +24,14 @@ and pick the M-Flasher entry:
 Please open an issue with the threat's name.
 
 **macOS** (11 or newer, Apple silicon and Intel). Open
-`M-Flasher-…-macos.dmg` and drag M-Flasher to Applications. The first time
+`M-Flasher-Plus-…-macos.dmg` and drag M-Flasher + to Applications. The first time
 macOS blocks it, as it is not signed with an Apple certificate: **System
 Settings → Privacy & Security → Open Anyway**. ([Donations](../README.md#support)
 would pay for the certificate.) When the app finds the unit:
 
 - it asks for your password in the system's dialog: only an administrator may
   take a USB device from macOS's disk driver;
-- macOS asks once whether M-Flasher may access files on a removable volume
+- macOS asks once whether M-Flasher + may access files on a removable volume
   (that is the unit): choose **Allow**.
 
 Start the app soon after connecting the unit: left with macOS's disk driver,
@@ -60,11 +60,11 @@ themselves: install the new one from each release.
 
 On other distributions, use `m-flasher-plus-…-linux-x86_64.tar.gz` (or
 `-aarch64`; `uname -m` tells which) and follow its `README.txt`: install the
-udev rule once, connect the unit, and run `./m-flasher-plus`. M-Flasher talks to
+udev rule once, connect the unit, and run `./m-flasher-plus`. M-Flasher + talks to
 the unit through the SCSI generic driver: run `sudo modprobe sg` if there is
 no `/dev/sg*`, and `echo sg | sudo tee /etc/modules-load.d/m-flasher-plus.conf` to
-load it at every start (the packages do this themselves). M-Flasher says so when
-a unit is in download mode without it. `m-flasher.png` is the icon, for a
+load it at every start (the packages do this themselves). M-Flasher + says so when
+a unit is in download mode without it. `m-flasher-plus.png` is the icon, for a
 launcher of your own.
 
 If the window does not open, `linux/package/test-install.sh` names every
@@ -76,7 +76,7 @@ zypper alike.
 The unit's chip has a USB download mode built into its ROM, which works even
 when the firmware does not. To enter it:
 
-- with the unit running normally and connected: M-Flasher finds it on USB
+- with the unit running normally and connected: M-Flasher + finds it on USB
   MIDI and offers **DOWNLOAD MODE**, which restarts it into download mode
   with a MIDI message (`m-flasher-plus download-mode` on the command line). This
   works with M-VAVE's own firmware (FM-1 015, SMK-37 Pro and Elite 016) and
@@ -88,7 +88,7 @@ when the firmware does not. To enter it:
 
 Connect it directly with a USB **data** cable, not through a hub. In download
 mode the unit's screen stays as it was, and nothing appears in Explorer or
-Finder: the system sees an empty disk ("WL82 UBOOT1.00"). M-Flasher finds it
+Finder: the system sees an empty disk ("WL82 UBOOT1.00"). M-Flasher + finds it
 by itself, reads the whole flash and shows the model, the firmware and the
 bootloader; the unit's own screen then shows what is going on.
 
@@ -152,10 +152,10 @@ start normally, including 1.2 from Melodee's or fm1-base's installer option. m-b
 **`FAILED -5` on the unit's screen:** Melodee's **Return to official V15**, and
 M-UPGRADE on an SMK-37 running Felucca-family firmware, stop there because the
 unit's boot area differs from the package's, as it does with any m-bootloader.
-The boot area and firmware stay as they were. Restore a backup with M-Flasher
+The boot area and firmware stay as they were. Restore a backup with M-Flasher +
 instead, or install the firmware and then put back the stock bootloader.
 
-Backups go to `Documents/M-Flasher/backups` in your home folder; the
+Backups go to `Documents/M-Flasher Plus/backups` in your home folder; the
 **Backups** link at the top of the window opens it.
 
 The log of what the app did goes to `Documents/M-Flasher Plus/m-flasher-plus.log`
@@ -170,8 +170,8 @@ The LIBRARY tab lists the community firmwares of
 CC BY 4.0). **This unit only** hides what can't go on the connected unit: a
 firmware marked for the older flash chip, or one that installs only with its
 author's own tool. **GET** downloads a firmware from its author's release and
-checks its SHA-256; it is kept in M-Flasher's folder (`M-Flasher/library`, or
-`MFLASHER_LIBRARY_DIR`) for later, also offline. **INSTALL** chooses it and
+checks its SHA-256; it is kept in M-Flasher +'s folder (`M-Flasher Plus/library`, or
+`MFLASHER_PLUS_LIBRARY_DIR`) for later, also offline. **INSTALL** chooses it and
 plans it, and its review opens: nothing is written before **WRITE**.
 
 With no unit in download mode, INSTALL first switches a running one by the
@@ -213,9 +213,9 @@ the model is uncertain), `--backup-dir DIR`, `--yes`, `--keep-bootloader`
 start the unit once written). Changes are shown first
 and need a typed `yes`, or `--yes`.
 
-- Windows: `M-Flasher.exe info`; Windows asks for administrator rights the
+- Windows: `M-Flasher-Plus.exe info`; Windows asks for administrator rights the
   same way, or run it from an administrator prompt.
-- macOS: `"/Applications/M-Flasher +.app/Contents/MacOS/M-Flasher" info`, from
+- macOS: `"/Applications/M-Flasher +.app/Contents/MacOS/M-Flasher-Plus" info`, from
   Terminal; it asks for the password the same way, or run it with `sudo`. Not
   over SSH: macOS asks about the removable volume only on the screen.
 - Linux: `m-flasher-plus info` (from the tarball: `./m-flasher-plus info`); `man m-flasher-plus` with the packages.
@@ -224,7 +224,7 @@ and need a typed `yes`, or `--yes`.
 
 `m-flasher-plus run-ram` is for developers: it uploads a program of your own to the
 chip's RAM through download mode, starts it, and then talks to it. It is how
-m-bootloader's flash loader is started, without M-Flasher's own loader and
+m-bootloader's flash loader is started, without the flash loader and
 without any flash operation.
 
 ```sh
@@ -238,7 +238,7 @@ m-flasher-plus run-ram prog.bin --addr 0x01C28000 --call FC60 --call FC61 \
   `0x01C7FD80`: the flash loader's two 32 KiB slots, then the app slot from
   `0x01C30000`. The image must end by `0x01C7FD80`, where the retained area
   starts. It is refused otherwise, and also when it would overwrite an
-  M-Flasher loader that is running: use the other slot, or for an image over 32
+  flash loader that is running: use the other slot, or for an image over 32
   KiB, switch the unit off and on in download mode first.
 - `--call OPCODE` (16-bit hex, repeatable) sends the 16-byte command (the
   opcode, then `FF`s) and prints the program's 16-byte answer in hex; the
@@ -255,14 +255,14 @@ m-flasher-plus run-ram prog.bin --addr 0x01C28000 --call FC60 --call FC61 \
 A program doesn't have to go back to the ROM. It can move to its own stack as
 soon as it starts, turn off interrupts and the watchdog, and never return,
 which is how m-bootloader's RAM stage runs. The ROM's USB service stops then,
-before it answers the jump, so M-Flasher says it can't confirm the start and
+before it answers the jump, so M-Flasher + says it can't confirm the start and
 exits with success: go by what the unit does. `--call` and `--read` can't be
 used with such a program, and asking for them gives an error.
 
 This **runs arbitrary code on the chip**: only run programs you trust and
 understand. It does not write to the flash itself, but a program of yours can
 do anything the chip can. Nothing is kept: **switching the unit off and on
-again returns it to normal**. It works whether or not M-Flasher's loader was
+again returns it to normal**. It works whether or not the flash loader was
 started before, and does not start it.
 
 ## Slow USB ports

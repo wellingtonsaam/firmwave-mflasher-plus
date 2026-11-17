@@ -167,7 +167,7 @@ it.
 
 ## More
 
-- [Using M-Flasher](docs/usage.md): each system, download mode, the actions,
+- [Using M-Flasher +](docs/usage.md): each system, download mode, the actions,
   the firmware library, the command line
 - [Safety](docs/safety.md): what is checked before and after every write,
   REQ-BOOT-01
@@ -193,7 +193,7 @@ MIT ([LICENSE](LICENSE)).
   Android app.
 - [m-bootloader](https://github.com/jvitkauskas/m-bootloader) (MIT): the
   bootloader and the flash loader.
-- Firmware list: [The Firmware Hub](https://thefirmwarehub.com) (CC BY 4.0);
+- Firmware list: [The Firmware Hub](https://thefirmwarehub.com) (CC BY 4.0, used unchanged);
   each firmware belongs to its author, under its own license.
 - Bundled files and their licenses: [data/NOTICE.md](data/NOTICE.md) and
   [assets/README.md](assets/README.md). The protocol follows

@@ -97,7 +97,7 @@ fn session(mem: Vec<u8>) -> Session<FakeFlash> {
 fn session_with(f: FakeFlash) -> Session<FakeFlash> {
     static NEXT_SESSION: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
     let id = NEXT_SESSION.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-    let dir = std::env::temp_dir().join(format!("mflasher-test-{}-{id}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("mflasher-plus-test-{}-{id}", std::process::id()));
     Session::open(f, dir, &mut |_| {}, &mut |_, _| {}).ok().unwrap()
 }
 
@@ -323,7 +323,7 @@ fn declared_settings_are_never_erased() {
 
 #[test]
 fn a_backup_that_no_longer_matches_its_checksum_is_refused() {
-    let dir = std::env::temp_dir().join(format!("mflasher-sha-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("mflasher-plus-sha-{}", std::process::id()));
     let mut s = session(vec![0xFF; 0x100000]);
     let path = s.save_backup(Some(&dir)).unwrap();
     let mut data = std::fs::read(&path).unwrap();
@@ -958,7 +958,7 @@ fn unit_id_decides_same_unit() {
 
 #[test]
 fn backups_in_the_same_second_keep_both() {
-    let dir = std::env::temp_dir().join(format!("mflasher-backups-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("mflasher-plus-backups-{}", std::process::id()));
     let mut s = session(vec![0xFF; 0x100000]);
     let a = s.save_backup(Some(&dir)).unwrap();
     s.flash[0] = 0;
@@ -967,7 +967,7 @@ fn backups_in_the_same_second_keep_both() {
     assert_eq!(std::fs::read(&a).unwrap()[0], 0xFF);
     assert_eq!(std::fs::read(&b).unwrap()[0], 0);
     assert!(a.with_extension("json").exists() && b.with_extension("json").exists());
-    // a name another M-Flasher took in the meantime is never written over
+    // a name another M-Flasher + took in the meantime is never written over
     let taken = std::fs::read(&a).unwrap();
     std::fs::remove_file(a.with_extension("json")).unwrap();
     let c = s.save_backup(Some(&dir)).unwrap();
@@ -989,7 +989,7 @@ use crate::scsi::{Data, Scsi};
 #[derive(Default)]
 pub struct MockRom {
     pub log: Vec<(Vec<u8>, Vec<u8>)>,
-    /// A running M-Flasher loader: (version, address); answers FC40 as it does.
+    /// A running flash loader: (version, address); answers FC40 as it does.
     pub loader: Option<(&'static str, u32)>,
     /// Fail this many FD61 commands (a transfer error), then work.
     pub fail_reads: usize,
@@ -1396,7 +1396,7 @@ fn run_ram_read_retries_a_failed_transfer_but_not_a_short_one_silently() {
 
 #[test]
 fn run_ram_command_line_job() {
-    let dir = std::env::temp_dir().join(format!("mflasher-runram-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("mflasher-plus-runram-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let out = dir.join("ram.bin");
     let job = RamJob::new(&[0xAA; 600], Some("0x01C28000"), &["FC60".into(), "0xfc61".into()],
@@ -1460,7 +1460,7 @@ fn restart_avoids_the_running_loader() {
 #[test]
 fn asks_for_the_sg_driver_only_when_a_unit_needs_it() {
     use crate::scsi::sg_missing_for_unit;
-    let root = std::env::temp_dir().join(format!("mflasher-sg-{}", std::process::id()));
+    let root = std::env::temp_dir().join(format!("mflasher-plus-sg-{}", std::process::id()));
     let (class, usb) = (root.join("scsi_generic"), root.join("usb"));
     let device = |name: &str, vendor: &str, product: &str| {
         let d = usb.join(name);
@@ -1484,7 +1484,7 @@ fn asks_for_the_sg_driver_only_when_a_unit_needs_it() {
 #[cfg(target_os = "linux")]
 fn permission_advice_follows_what_is_missing() {
     use crate::scsi::permission_advice_in;
-    let root = std::env::temp_dir().join(format!("mflasher-perm-{}", std::process::id()));
+    let root = std::env::temp_dir().join(format!("mflasher-plus-perm-{}", std::process::id()));
     let (rules, seats) = (root.join("udev"), root.join("seats"));
     let (rule_dirs, seat_dirs) = ([rules.as_path()], [seats.as_path()]);
     std::fs::create_dir_all(&rules).unwrap();
@@ -1508,7 +1508,7 @@ fn permission_advice_follows_what_is_missing() {
 #[cfg(target_os = "linux")]
 fn the_file_dialog_is_called_missing_only_when_it_is() {
     use crate::controller::no_file_dialog_in;
-    let root = std::env::temp_dir().join(format!("mflasher-portal-{}", std::process::id()));
+    let root = std::env::temp_dir().join(format!("mflasher-plus-portal-{}", std::process::id()));
     let share = root.join("share");
     let dirs = [share.as_path()];
     let (services, portals) = (share.join("dbus-1/services"), share.join("xdg-desktop-portal/portals"));
@@ -1712,7 +1712,7 @@ mod download_mode {
     fn felucca_adds_the_oct_keys() {
         let t = how_to("yes", "Felucca", "FM-1", None, true);
         assert!(t.contains("REC") && t.contains("OCT- and OCT+"));
-        assert!(how_to("no", "Felucca", "FM-1", None, true).starts_with("M-Flasher can't see your M-Vave FM-1"));
+        assert!(how_to("no", "Felucca", "FM-1", None, true).starts_with("M-Flasher + can't see your M-Vave FM-1"));
         assert!(how_to("", "", "FM-1", Some("Caravel"), true).contains("OCT- and OCT+ buttons together for 5 seconds"));
     }
 
@@ -1727,7 +1727,7 @@ mod download_mode {
     fn unknown_unit_lists_every_way() {
         let t = how_to("", "", "", None, true);
         assert!(t.contains("With m-bootloader") && t.contains("OCT-") && t.contains("M-VAVE's own firmware"));
-        assert!(t.ends_with("M-Flasher needs Download Mode to check your FM-1 properly."));
+        assert!(t.ends_with("M-Flasher + needs Download Mode to check your FM-1 properly."));
         assert!(how_to("", "", "", None, false).contains("press CHECK FM1 STATUS again"));
     }
 }
@@ -1774,6 +1774,17 @@ mod library_folder {
     }
 }
 
+/// The User-Agent names M-Flasher + alone: never M-Flasher, its author or its repository.
+#[test]
+fn the_user_agent_is_m_flasher_plus_own() {
+    let ua = crate::library::user_agent();
+    assert!(ua.starts_with(&format!("m-flasher-plus/{} ", env!("CARGO_PKG_VERSION"))), "{ua}");
+    assert!(ua.contains("(+https://github.com/wellingtonsaam/m-flasher-plus)"), "{ua}");
+    for not in ["jvitkauskas", "github.com/jvitkauskas", "m-flasher/", "m-flasher-library", "fork"] {
+        assert!(!ua.to_lowercase().contains(not), "{ua} contains {not}");
+    }
+}
+
 /// The operation log on disk: every line, with its date, in M-Flasher +'s own folder.
 mod log_file {
     use crate::controller::log_to_file;
@@ -1785,7 +1796,28 @@ mod log_file {
         let dir = log.parent().unwrap();
         assert_eq!(dir.file_name().unwrap(), "M-Flasher Plus");
         assert!(!log.components().any(|c| c.as_os_str() == "M-Flasher"), "not in M-Flasher's folder: {}", log.display());
-        assert_eq!(dir.parent(), crate::cli::default_backup_dir().parent().unwrap().parent());
+        assert_eq!(Some(dir), crate::cli::default_backup_dir().parent(), "next to the backups");
+    }
+
+    /// The backups kept in M-Flasher's folder before are copied into M-Flasher +'s own, once.
+    #[test]
+    fn old_backups_are_copied_not_moved() {
+        use crate::cli::adopt_old_backups;
+        let root = std::env::temp_dir().join(format!("mflasher-plus-adopt-backups-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        let (old, new) = (root.join("M-Flasher").join("backups"), root.join("M-Flasher Plus").join("backups"));
+        std::fs::create_dir_all(old.join("installed")).unwrap();
+        std::fs::write(old.join("fm1-2026-11-01.bin"), b"flash").unwrap();
+        std::fs::write(old.join("installed").join("memo.json"), b"{}").unwrap();
+        adopt_old_backups(&new, &old);
+        assert_eq!(std::fs::read(new.join("fm1-2026-11-01.bin")).unwrap(), b"flash");
+        assert!(new.join("installed").join("memo.json").exists());
+        assert!(old.join("fm1-2026-11-01.bin").exists(), "M-Flasher's folder keeps its files");
+        // once the new folder exists, nothing more comes over
+        std::fs::write(old.join("later.bin"), b"later").unwrap();
+        adopt_old_backups(&new, &old);
+        assert!(!new.join("later.bin").exists());
+        let _ = std::fs::remove_dir_all(&root);
     }
 
     #[test]
@@ -1808,7 +1840,7 @@ mod log_file {
 #[test]
 fn an_installed_firmware_is_named_by_its_fingerprint() {
     use crate::formats::SECTOR;
-    let dir = std::env::temp_dir().join(format!("mflasher-installed-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("mflasher-plus-installed-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     let mut image = vec![0u8; 64 * SECTOR];
     image[4 * SECTOR..10 * SECTOR].fill(0x5A);

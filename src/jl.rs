@@ -1,4 +1,4 @@
-//! JieLi UBOOT1.00 (mask ROM USB download mode) and M-Flasher's flash loader.
+//! JieLi UBOOT1.00 (mask ROM USB download mode) and the flash loader.
 //!
 //! The ROM accepts memory writes and a jump. The tool writes the loader into
 //! RAM and starts it; the loader then answers the flash commands, plus an
@@ -210,7 +210,7 @@ impl<S: Scsi> Connection<S> {
         }
         let bundled = c.bundled_version();
         if let Some((v, _)) = ours_running.as_ref().filter(|(v, _)| *v == bundled) {
-            log(format!("M-Flasher loader {v} already running"));
+            log(format!("flash loader {v} already running"));
             c.own = v.clone();
         } else {
             c.start_own(ours_running.map(|(_, at)| at), &bundled, log)?;
@@ -264,7 +264,7 @@ impl<S: Scsi> Connection<S> {
             Some(at) if at == OWN_B.0 => OWN_A,
             Some(_) => OWN_B,           // at A, or an older build that does not say where
         };
-        log(format!("Starting the M-Flasher loader {bundled}"));
+        log(format!("Starting the flash loader {bundled}"));
         let scrambled: Vec<Vec<u8>> = image.chunks(512).map(|b| crc_cipher(b, 0xFFFF_FFFF)).collect();
         self.upload(addr, &scrambled)?;
         self.jump_to_loader(addr)?;
@@ -274,7 +274,7 @@ impl<S: Scsi> Connection<S> {
                 Ok(())
             }
             None => Err(ScsiError::Failed(
-                "the M-Flasher loader did not start: switch the unit off and on in download mode, then connect again".into())),
+                "the flash loader did not start: switch the unit off and on in download mode, then connect again".into())),
         }
     }
 
@@ -420,7 +420,7 @@ impl<S: Scsi> Connection<S> {
             let end = addr + image.len() as u32;
             if addr < at + SLOT_SIZE && at < end {
                 return Err(ScsiError::Failed(format!(
-                    "the M-Flasher loader {v} is running at 0x{at:08X}..0x{:08X}, where this would write: \
+                    "the flash loader {v} is running at 0x{at:08X}..0x{:08X}, where this would write: \
                      use an address outside it, or switch the unit off and on in download mode",
                     at + SLOT_SIZE)));
             }
@@ -507,8 +507,8 @@ impl<S: Scsi> Connection<S> {
 impl<S: Scsi> Flash for Connection<S> {
     fn loader(&self) -> String {
         match self.mhz {
-            0 => format!("M-Flasher {}", self.own),
-            mhz => format!("M-Flasher {}, CPU at {mhz} MHz", self.own),
+            0 => format!("m-bootloader flash loader {}", self.own),
+            mhz => format!("m-bootloader flash loader {}, CPU at {mhz} MHz", self.own),
         }
     }
 

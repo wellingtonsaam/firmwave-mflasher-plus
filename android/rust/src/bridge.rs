@@ -1,6 +1,6 @@
-//! The JNI side of io.github.wellingtonsaam.mflasherlib.Native.
+//! The JNI side of io.github.wellingtonsaam.mflasherplus.Native.
 //!
-//! Read only so far. `diagnose` starts M-Flasher's loader, reads the whole
+//! Read only so far. `diagnose` starts the flash loader, reads the whole
 //! flash (checked against the chip's CRC32) and returns what the unit holds
 //! and its safety checks; `backup` does the same and saves a backup with its
 //! .json; `planInstall` plans installing a saved firmware for review;
@@ -250,7 +250,7 @@ fn reply(r: std::thread::Result<Result<String, String>>) -> String {
 }
 
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_io_github_wellingtonsaam_mflasherlib_Native_backup<'l>(
+pub extern "system" fn Java_io_github_wellingtonsaam_mflasherplus_Native_backup<'l>(
     mut env: JNIEnv<'l>,
     _class: JClass<'l>,
     fd: jint,
@@ -266,7 +266,7 @@ pub extern "system" fn Java_io_github_wellingtonsaam_mflasherlib_Native_backup<'
 }
 
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_io_github_wellingtonsaam_mflasherlib_Native_diagnose<'l>(
+pub extern "system" fn Java_io_github_wellingtonsaam_mflasherplus_Native_diagnose<'l>(
     mut env: JNIEnv<'l>,
     _class: JClass<'l>,
     fd: jint,
@@ -282,7 +282,7 @@ pub extern "system" fn Java_io_github_wellingtonsaam_mflasherlib_Native_diagnose
 }
 
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_io_github_wellingtonsaam_mflasherlib_Native_planInstall<'l>(
+pub extern "system" fn Java_io_github_wellingtonsaam_mflasherplus_Native_planInstall<'l>(
     mut env: JNIEnv<'l>,
     _class: JClass<'l>,
     fd: jint,
@@ -304,7 +304,7 @@ pub extern "system" fn Java_io_github_wellingtonsaam_mflasherlib_Native_planInst
 }
 
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_io_github_wellingtonsaam_mflasherlib_Native_install<'l>(
+pub extern "system" fn Java_io_github_wellingtonsaam_mflasherplus_Native_install<'l>(
     mut env: JNIEnv<'l>,
     _class: JClass<'l>,
     fd: jint,
@@ -388,7 +388,7 @@ fn install_package(fd: i32, iface: u8, ep_in: u8, ep_out: u8, in_packet: usize, 
 }
 
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_io_github_wellingtonsaam_mflasherlib_Native_planPackage<'l>(
+pub extern "system" fn Java_io_github_wellingtonsaam_mflasherplus_Native_planPackage<'l>(
     mut env: JNIEnv<'l>,
     _class: JClass<'l>,
     fd: jint,
@@ -410,7 +410,7 @@ pub extern "system" fn Java_io_github_wellingtonsaam_mflasherlib_Native_planPack
 }
 
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_io_github_wellingtonsaam_mflasherlib_Native_installPackage<'l>(
+pub extern "system" fn Java_io_github_wellingtonsaam_mflasherplus_Native_installPackage<'l>(
     mut env: JNIEnv<'l>,
     _class: JClass<'l>,
     fd: jint,
@@ -472,7 +472,7 @@ fn identify(lib_dir: &str, dir: &str) -> String {
 }
 
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_io_github_wellingtonsaam_mflasherlib_Native_identify<'l>(
+pub extern "system" fn Java_io_github_wellingtonsaam_mflasherplus_Native_identify<'l>(
     mut env: JNIEnv<'l>,
     _class: JClass<'l>,
     lib_dir: JString<'l>,
@@ -485,7 +485,7 @@ pub extern "system" fn Java_io_github_wellingtonsaam_mflasherlib_Native_identify
 }
 
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_io_github_wellingtonsaam_mflasherlib_Native_planRestore<'l>(
+pub extern "system" fn Java_io_github_wellingtonsaam_mflasherplus_Native_planRestore<'l>(
     mut env: JNIEnv<'l>, _class: JClass<'l>, fd: jint, iface: jint, ep_in: jint, ep_out: jint, in_packet: jint,
     dir: JString<'l>, file: JString<'l>,
 ) -> jstring {
@@ -498,7 +498,7 @@ pub extern "system" fn Java_io_github_wellingtonsaam_mflasherlib_Native_planRest
 }
 
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_io_github_wellingtonsaam_mflasherlib_Native_restore<'l>(
+pub extern "system" fn Java_io_github_wellingtonsaam_mflasherplus_Native_restore<'l>(
     mut env: JNIEnv<'l>, _class: JClass<'l>, fd: jint, iface: jint, ep_in: jint, ep_out: jint, in_packet: jint,
     dir: JString<'l>, file: JString<'l>,
 ) -> jstring {
@@ -512,7 +512,7 @@ pub extern "system" fn Java_io_github_wellingtonsaam_mflasherlib_Native_restore<
 
 /// The unit went (or its connection is closed): forget what was read.
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_io_github_wellingtonsaam_mflasherlib_Native_close<'l>(_env: JNIEnv<'l>, _class: JClass<'l>) {
+pub extern "system" fn Java_io_github_wellingtonsaam_mflasherplus_Native_close<'l>(_env: JNIEnv<'l>, _class: JClass<'l>) {
     if let Ok(mut kept) = UNIT.lock() {
         *kept = None;
     }
@@ -520,7 +520,7 @@ pub extern "system" fn Java_io_github_wellingtonsaam_mflasherlib_Native_close<'l
 
 /// The log lines since the last call.
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_io_github_wellingtonsaam_mflasherlib_Native_takeLog<'l>(
+pub extern "system" fn Java_io_github_wellingtonsaam_mflasherplus_Native_takeLog<'l>(
     env: JNIEnv<'l>,
     _class: JClass<'l>,
 ) -> jstring {
@@ -529,7 +529,7 @@ pub extern "system" fn Java_io_github_wellingtonsaam_mflasherlib_Native_takeLog<
 }
 
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_io_github_wellingtonsaam_mflasherlib_Native_progress<'l>(
+pub extern "system" fn Java_io_github_wellingtonsaam_mflasherplus_Native_progress<'l>(
     _env: JNIEnv<'l>,
     _class: JClass<'l>,
 ) -> jint {
@@ -540,7 +540,7 @@ pub extern "system" fn Java_io_github_wellingtonsaam_mflasherlib_Native_progress
 /// (the desktop's restart; the firmware is not running yet, so MIDI can't do
 /// it). The unit kept is forgotten: it goes. `OK|address` or `ERR|why`.
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_io_github_wellingtonsaam_mflasherlib_Native_restart<'l>(
+pub extern "system" fn Java_io_github_wellingtonsaam_mflasherplus_Native_restart<'l>(
     env: JNIEnv<'l>,
     _class: JClass<'l>,
 ) -> jstring {

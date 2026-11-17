@@ -79,7 +79,7 @@ fn string(env: &mut JNIEnv, s: &JString) -> String {
 }
 
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_io_github_wellingtonsaam_mflasherlib_Native_librarySync<'l>(
+pub extern "system" fn Java_io_github_wellingtonsaam_mflasherplus_Native_librarySync<'l>(
     mut env: JNIEnv<'l>, _class: JClass<'l>, dir: JString<'l>,
 ) -> jstring {
     let dir = string(&mut env, &dir);
@@ -88,7 +88,7 @@ pub extern "system" fn Java_io_github_wellingtonsaam_mflasherlib_Native_libraryS
 }
 
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_io_github_wellingtonsaam_mflasherlib_Native_libraryGet<'l>(
+pub extern "system" fn Java_io_github_wellingtonsaam_mflasherplus_Native_libraryGet<'l>(
     mut env: JNIEnv<'l>, _class: JClass<'l>, dir: JString<'l>, id: JString<'l>,
 ) -> jstring {
     let (dir, id) = (string(&mut env, &dir), string(&mut env, &id));
@@ -97,7 +97,7 @@ pub extern "system" fn Java_io_github_wellingtonsaam_mflasherlib_Native_libraryG
 }
 
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_io_github_wellingtonsaam_mflasherlib_Native_libraryFavorite<'l>(
+pub extern "system" fn Java_io_github_wellingtonsaam_mflasherplus_Native_libraryFavorite<'l>(
     mut env: JNIEnv<'l>, _class: JClass<'l>, dir: JString<'l>, id: JString<'l>, on: jboolean,
 ) -> jstring {
     let (dir, id) = (string(&mut env, &dir), string(&mut env, &id));
@@ -106,7 +106,7 @@ pub extern "system" fn Java_io_github_wellingtonsaam_mflasherlib_Native_libraryF
 }
 
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_io_github_wellingtonsaam_mflasherlib_Native_libraryDelete<'l>(
+pub extern "system" fn Java_io_github_wellingtonsaam_mflasherplus_Native_libraryDelete<'l>(
     mut env: JNIEnv<'l>, _class: JClass<'l>, dir: JString<'l>, id: JString<'l>,
 ) -> jstring {
     let (dir, id) = (string(&mut env, &dir), string(&mut env, &id));

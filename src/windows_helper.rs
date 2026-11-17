@@ -3,14 +3,14 @@
 //! Finding the unit needs no rights, but sending it SCSI commands needs an
 //! administrator. So the app runs as the user (its window, its files the
 //! user's), and when it first opens a unit without the rights it starts
-//! `M-Flasher --scsi-helper PIPE PID` as administrator, after Windows asks
+//! `M-Flasher + --scsi-helper PIPE PID` as administrator, after Windows asks
 //! (UAC), and passes it each command over a named pipe: the requests and
 //! answers of the macOS helper (macos.rs). The helper runs until the app
 //! closes the pipe, so a unit reconnected later doesn't ask again.
 //!
 //! Each side checks the other: the app creates the pipe and talks only to the
 //! process it started; the helper talks only to the process given on its
-//! command line, and only if that is this same M-Flasher.exe, and opens only a
+//! command line, and only if that is this same M-Flasher-Plus.exe, and opens only a
 //! disk it finds on the unit's USB IDs itself.
 //!
 //! Run as administrator (an administrator prompt), the app uses the unit
@@ -36,9 +36,9 @@ use windows_sys::Win32::System::Threading::{
 };
 use windows_sys::Win32::UI::Shell::{SEE_MASK_NOASYNC, SEE_MASK_NOCLOSEPROCESS, SHELLEXECUTEINFOW, ShellExecuteExW};
 
-/// `M-Flasher --scsi-helper PIPE PID`: the administrator helper.
+/// `M-Flasher + --scsi-helper PIPE PID`: the administrator helper.
 pub const SCSI_HELPER: &str = "--scsi-helper";
-const PIPE_PREFIX: &str = r"\\.\pipe\m-flasher-";
+const PIPE_PREFIX: &str = r"\\.\pipe\m-flasher-plus-";
 
 const OPEN: u8 = 2;
 const EXECUTE: u8 = 3;
@@ -120,7 +120,7 @@ impl Helper {
         };
         if !ok {
             return Err(if error == ERROR_CANCELLED {
-                ScsiError::NeedsAdmin("M-Flasher needs administrator rights to reach the unit: reconnect it to be asked again".into())
+                ScsiError::NeedsAdmin("M-Flasher + needs administrator rights to reach the unit: reconnect it to be asked again".into())
             } else {
                 failed(format!("error {error}"))
             });

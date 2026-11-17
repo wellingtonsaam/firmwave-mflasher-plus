@@ -1,6 +1,6 @@
 #!/bin/sh
 # Installs a package in a clean container of a distribution with its own
-# package manager (so its dependencies resolve), then checks that M-Flasher
+# package manager (so its dependencies resolve), then checks that M-Flasher +
 # runs and its files are in place. For CI:
 #   docker run --rm -v "$PWD:/w" -w /w debian:12 linux/package/test-install.sh m-flasher-plus_*.deb
 # Run on a machine of your own, it doubles as a check of what the window needs:

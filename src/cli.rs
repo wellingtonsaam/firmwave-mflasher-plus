@@ -26,14 +26,14 @@ const USAGE: &str = "usage: m-flasher-plus [find | download-mode | restart | inf
                  library install ID [--skip-bootloader | --stock-bootloader] | midi-ports]
        options: --device PATH  --board fm1|smk37  --backup-dir DIR  --yes
                 --port NAME (find, download-mode: a MIDI port named otherwise taken for a unit;
-                             MFLASHER_MIDI_PORTS=NAME,... does the same, for the window too)
+                             MFLASHER_PLUS_MIDI_PORTS=NAME,... does the same, for the window too)
                 --restart (restore, firmware, bootloader: start the unit when written)
        without arguments: the window (`m-flasher-plus run-ram --help`: the run-ram command)";
 
 const RUN_RAM_HELP: &str = "usage: m-flasher-plus run-ram IMAGE --addr ADDR [--call OPCODE]... [--read ADDR:LEN -o OUT] [--device PATH]
 
 Runs your own program in the unit's RAM, through the chip's download mode, and
-talks to it. It does not start M-Flasher's flash loader and does not touch the
+talks to it. It does not start the flash loader and does not touch the
 flash; it works the same when the loader is already running. The program runs
 until the unit is switched off and on again. A program that doesn't return to
 the ROM takes USB down, so the jump can't be confirmed; that isn't an error.
@@ -43,7 +43,7 @@ the ROM takes USB down, so the jump can't be confirmed; that isn't an error.
   --addr ADDR   hex (0x optional), within 0x01C20000..0x01C7FD80 (the flash
                 loader's two 32 KiB slots and the app slot from 0x01C30000); the
                 image must end by 0x01C7FD80. The uploaded program replaces
-                a running M-Flasher loader that is in the same slot: refused
+                a running flash loader that is in the same slot: refused
   --call OPCODE a 16-bit hex opcode (repeat for more): sends the 16-byte command
                 (opcode big endian, rest FF) and prints the 16-byte answer in hex,
                 in which the program echoes the opcode. Not sent: FB00 FB01 FB04
@@ -62,16 +62,40 @@ pub fn default_backup_dir() -> PathBuf {
     #[cfg(unix)]
     let home = sudo_user_home().unwrap_or(home);
     let docs = home.join("Documents");
-    (if docs.is_dir() { docs } else { home }).join("M-Flasher").join("backups")
+    let base = if docs.is_dir() { docs } else { home };
+    let dir = base.join("M-Flasher Plus").join("backups");
+    static ADOPTED: std::sync::Once = std::sync::Once::new();
+    ADOPTED.call_once(|| adopt_old_backups(&dir, &base.join("M-Flasher").join("backups")));
+    dir
 }
 
-/// The operation log: in a folder of M-Flasher +'s own (Documents/M-Flasher Plus/m-flasher-plus.log), not
-/// M-Flasher's, so that a log from one app never ends up in a report about the other.
+/// M-Flasher + kept its backups in M-Flasher's folder (Documents/M-Flasher/backups) before it had a
+/// folder of its own: the first time that one is missing, they are copied over, so none is lost from
+/// view. Copied, not moved: M-Flasher's own backups may be there too, and stay where it looks for them.
+pub(crate) fn adopt_old_backups(new: &Path, old: &Path) {
+    fn copy(from: &Path, to: &Path) {
+        let _ = std::fs::create_dir_all(to);
+        for e in std::fs::read_dir(from).into_iter().flatten().flatten() {
+            let (src, dst) = (e.path(), to.join(e.file_name()));
+            match e.file_type() {
+                Ok(t) if t.is_dir() => copy(&src, &dst),
+                Ok(t) if t.is_file() && !dst.exists() => {
+                    let _ = std::fs::copy(&src, &dst);
+                }
+                _ => {}
+            }
+        }
+    }
+    if !new.exists() && old.is_dir() {
+        copy(old, new);
+    }
+}
+
+/// The operation log, in M-Flasher +'s own folder (Documents/M-Flasher Plus/m-flasher-plus.log), so
+/// that a log from this app never ends up in a report about M-Flasher.
 pub fn default_log_path() -> PathBuf {
     let backups = default_backup_dir();
-    // Documents/M-Flasher/backups -> Documents (or the home folder without one)
-    let base = backups.parent().and_then(Path::parent).map(Path::to_path_buf).unwrap_or(backups);
-    base.join("M-Flasher Plus").join("m-flasher-plus.log")
+    backups.parent().map(Path::to_path_buf).unwrap_or(backups).join("m-flasher-plus.log")
 }
 
 /// The home folder of the user who ran sudo, when running as root under it.
@@ -361,7 +385,7 @@ fn main(args: Vec<String>) -> Result<(), Error> {
         for (name, unit) in ports {
             println!("{}\t{name}", if unit { "unit" } else { "-" });
         }
-        println!("A unit whose port has another name: --port NAME (or MFLASHER_MIDI_PORTS=NAME for the window).");
+        println!("A unit whose port has another name: --port NAME (or MFLASHER_PLUS_MIDI_PORTS=NAME for the window).");
         return Ok(());
     }
     if cmd == "find" {

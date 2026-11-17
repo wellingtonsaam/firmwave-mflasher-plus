@@ -31,7 +31,7 @@ pub struct MidiUnit {
 }
 
 /// Port names the user gave for firmwares that name their port otherwise
-/// (fm1-dock: "Caravel"): `--port NAME`, or MFLASHER_MIDI_PORTS (comma
+/// (fm1-dock: "Caravel"): `--port NAME`, or MFLASHER_PLUS_MIDI_PORTS (comma
 /// separated), which the window reads too. Lowercase.
 static EXTRA: std::sync::Mutex<Vec<String>> = std::sync::Mutex::new(Vec::new());
 static FROM_ENV: std::sync::Once = std::sync::Once::new();
@@ -49,7 +49,7 @@ pub fn add_port_names(list: &str) {
 
 fn extra_names() -> Vec<String> {
     FROM_ENV.call_once(|| {
-        if let Ok(v) = std::env::var("MFLASHER_MIDI_PORTS") {
+        if let Ok(v) = std::env::var("MFLASHER_PLUS_MIDI_PORTS") {
             add_port_names(&v);
         }
     });
@@ -357,11 +357,11 @@ mod sys {
             ioctl(f, CLIENT_ID, &mut me).map_err(|e| failed("sequencer client", e))?;
             let mut info: ClientInfo = zeroed();
             info.client = me;
-            info.name[..9].copy_from_slice(b"M-Flasher");
+            info.name[..14].copy_from_slice(b"M-Flasher Plus");
             let _ = ioctl(f, SET_CLIENT_INFO, &mut info); // only a name for others to see
             let mut port: PortInfo = zeroed();
             port.addr = Addr { client: me as u8, port: 0 };
-            port.name[..9].copy_from_slice(b"M-Flasher");
+            port.name[..14].copy_from_slice(b"M-Flasher Plus");
             port.capability = CAP_READ | CAP_SUBS_READ;
             port.kind = TYPE_MIDI_GENERIC | TYPE_APPLICATION;
             ioctl(f, CREATE_PORT, &mut port).map_err(|e| failed("sequencer port", e))?;
@@ -429,7 +429,7 @@ mod sys {
     pub fn units() -> Vec<(String, Port)> {
         LISTER.with_borrow_mut(|lister| {
             if lister.is_none() {
-                *lister = MidiOutput::new("M-Flasher").ok();
+                *lister = MidiOutput::new("M-Flasher Plus").ok();
             }
             let Some(out) = lister.as_ref() else { return vec![] };
             refresh();
@@ -442,7 +442,7 @@ mod sys {
     pub fn all_names() -> Vec<String> {
         LISTER.with_borrow_mut(|lister| {
             if lister.is_none() {
-                *lister = MidiOutput::new("M-Flasher").ok();
+                *lister = MidiOutput::new("M-Flasher Plus").ok();
             }
             let Some(out) = lister.as_ref() else { return vec![] };
             refresh();
@@ -451,7 +451,7 @@ mod sys {
     }
 
     pub fn send(p: &Port, msg: &[u8]) -> Result<(), String> {
-        let out = MidiOutput::new("M-Flasher").map_err(|e| e.to_string())?;
+        let out = MidiOutput::new("M-Flasher Plus").map_err(|e| e.to_string())?;
         let mut conn = out.connect(&p.0, "soft key").map_err(|e| e.to_string())?;
         conn.send(msg).map_err(|e| e.to_string())?;
         conn.close();

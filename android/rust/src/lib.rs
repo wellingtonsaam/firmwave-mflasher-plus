@@ -1,4 +1,4 @@
-//! Android spike: M-Flasher's own modules, unchanged, over the USB device
+//! Android spike: M-Flasher +'s own modules, unchanged, over the USB device
 //! Android hands the app (a usbfs file descriptor), and a JNI bridge for the
 //! Java side.
 //!

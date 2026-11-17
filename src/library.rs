@@ -26,7 +26,7 @@ use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};
 
 pub const CATALOG_URL: &str = "https://thefirmwarehub.com/catalog.json";
-pub const ATTRIBUTION: &str = "Firmware list: The Firmware Hub – https://thefirmwarehub.com (CC BY 4.0)";
+pub const ATTRIBUTION: &str = "Firmware list: The Firmware Hub – https://thefirmwarehub.com (CC BY 4.0, unchanged)";
 /// The hub asks for one read a day at most.
 const CATALOG_MAX_AGE: chrono::TimeDelta = chrono::TimeDelta::hours(24);
 const USAGE: &str = "usage: m-flasher-plus library sync | list [--chip old|new] [--kind KIND] [--beta] | get ID | import-stock DIR |
@@ -128,10 +128,15 @@ pub trait Fetch {
 
 pub struct Http(ureq::Agent);
 
+/// Who is asking, as the hub's rules want: M-Flasher + by its own name and address, and nothing else.
+/// Every request of the app (desktop and Android) goes through `Http`, so with this one.
+pub fn user_agent() -> String {
+    format!("m-flasher-plus/{} (+https://github.com/wellingtonsaam/m-flasher-plus)", env!("CARGO_PKG_VERSION"))
+}
+
 impl Http {
     pub fn new() -> Http {
-        let ua = format!("m-flasher-plus/{} (+https://github.com/wellingtonsaam/m-flasher-plus)", env!("CARGO_PKG_VERSION"));
-        Http(ureq::AgentBuilder::new().user_agent(&ua).timeout(std::time::Duration::from_secs(60)).build())
+        Http(ureq::AgentBuilder::new().user_agent(&user_agent()).timeout(std::time::Duration::from_secs(60)).build())
     }
 }
 
@@ -266,31 +271,33 @@ pub fn sha256_hex(data: &[u8]) -> String {
     Sha256::digest(data).iter().map(|b| format!("{b:02x}")).collect()
 }
 
-/// The library's folder: MFLASHER_LIBRARY_DIR, else the system's place for an
+/// The library's folder: MFLASHER_PLUS_LIBRARY_DIR, else the system's place for an
 /// app's data.
 pub fn default_dir() -> PathBuf {
-    if let Some(d) = std::env::var_os("MFLASHER_LIBRARY_DIR") {
+    if let Some(d) = std::env::var_os("MFLASHER_PLUS_LIBRARY_DIR") {
         return PathBuf::from(d);
     }
     let home = std::env::var_os("HOME").or_else(|| std::env::var_os("USERPROFILE")).map(PathBuf::from).unwrap_or_default();
     // under sudo (install talks to the unit as root) the library is still the user's own
     #[cfg(all(unix, not(target_os = "android")))]
     let home = crate::cli::sudo_user_home().unwrap_or(home);
-    let (dir, old) = if cfg!(target_os = "macos") {
-        (home.join("Library/Application Support/M-Flasher/library"), home.join("Library/Application Support/M-Flasher Library"))
+    // its own folder, and the two it was kept in before (in M-Flasher's folder, and before that alone)
+    let (dir, olds) = if cfg!(target_os = "macos") {
+        let base = home.join("Library/Application Support");
+        (base.join("M-Flasher Plus/library"), [base.join("M-Flasher/library"), base.join("M-Flasher Library")])
     } else if cfg!(windows) {
         let base = std::env::var_os("APPDATA").map(PathBuf::from).unwrap_or(home);
-        (base.join("M-Flasher").join("library"), base.join("M-Flasher Library"))
+        (base.join("M-Flasher Plus").join("library"), [base.join("M-Flasher").join("library"), base.join("M-Flasher Library")])
     } else {
         let base = std::env::var_os("XDG_DATA_HOME").map(PathBuf::from).unwrap_or_else(|| home.join(".local/share"));
-        (base.join("m-flasher/library"), base.join("m-flasher-library"))
+        (base.join("m-flasher-plus/library"), [base.join("m-flasher/library"), base.join("m-flasher-library")])
     };
     static ADOPTED: std::sync::Once = std::sync::Once::new();
-    ADOPTED.call_once(|| adopt_old_library(&dir, &old));
+    ADOPTED.call_once(|| olds.iter().for_each(|old| adopt_old_library(&dir, old)));
     dir
 }
 
-/// The library M-Flasher + kept before it moved into M-Flasher's folder:
+/// A library M-Flasher + kept elsewhere before (in M-Flasher's folder, or alone):
 /// what the new one lacks comes over (downloads, official packages, the
 /// catalog), the two indexes and favorites are merged, and the old folder is
 /// renamed so that nothing comes back once deleted.

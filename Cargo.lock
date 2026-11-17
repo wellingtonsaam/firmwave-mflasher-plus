@@ -1599,7 +1599,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "m-flasher"
+name = "m-flasher-plus"
 version = "1.0.1"
 dependencies = [
  "chrono",

@@ -36,7 +36,7 @@ contents:
   - src: target/package-files/io.github.wellingtonsaam.m-flasher-plus.metainfo.xml
     dst: /usr/share/metainfo/io.github.wellingtonsaam.m-flasher-plus.metainfo.xml
     file_info: { mode: 0644 }
-  - src: linux/m-flasher.png
+  - src: linux/m-flasher-plus.png
     dst: /usr/share/icons/hicolor/256x256/apps/io.github.wellingtonsaam.m-flasher-plus.png
     file_info: { mode: 0644 }
   # (documentation is marked as such in the rpm; nFPM leaves files of that

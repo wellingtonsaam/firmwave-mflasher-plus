@@ -107,7 +107,7 @@ or a bootloader file
 .BI run\-ram " image " \-\-addr " addr"
 Upload a program of your own to the chip's RAM (addr within
 0x01C20000..0x01C2FFFF, the image ending before 0x01C30000), start it, and
-talk to it; it does not touch the flash and does not start M-Flasher's flash
+talk to it; it does not touch the flash and does not start the flash
 loader. It runs arbitrary code on the chip, and switching the unit off and on
 returns it to normal.
 .B \-\-call
@@ -129,7 +129,7 @@ The unit to use, when more than one is connected.
 The model, when it cannot be identified for certain.
 .TP
 .BI \-\-backup\-dir " dir"
-Where backups go (default: ~/Documents/M-Flasher/backups).
+Where backups go (default: ~/Documents/M-Flasher Plus/backups).
 .TP
 .B \-\-yes
 Do not ask before writing.

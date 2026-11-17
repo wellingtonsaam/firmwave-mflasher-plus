@@ -417,7 +417,7 @@ function backupsView() {
   const list = S.backups.length ? S.backups.map((b) => `<div class="bk"><code>${esc(b.file)}</code><button class="key small quiet" data-restore="${esc(b.file)}">Restore</button>
     <p>${b.named ? `Firmware name: <b>${esc(b.named)}</b> · ` : ""}1 MiB · checked · ${esc(b.when)}</p></div>`).join("")
     : '<div class="empty">No backups yet. Every write saves one first; BACKUP FULL FLASH saves one now.</div>';
-  return `<div class="col"><div class="sec">Backups · M-Flasher/backups</div>${list}
+  return `<div class="col"><div class="sec">Backups · M-Flasher Plus/backups</div>${list}
     <p class="note">Backups are named by the firmware M-Flasher + installed, not by what its code calls itself.</p></div>`;
 }
 
@@ -517,7 +517,7 @@ function writeFw(f) {
     S.twoStep = false; S.skipped = undefined;
     S.lcd = ["RESTARTING FM-1", "LEAVING DOWNLOAD MODE", "", "WAITING ON USB MIDI"]; render();
     setTimeout(() => {
-      S.lcd = ["M-FLASHER", "CONNECTED · FM-1", `${f.name} ${f.ver}`.toUpperCase(), "READY"];
+      S.lcd = ["M-FLASHER +", "CONNECTED · FM-1", `${f.name} ${f.ver}`.toUpperCase(), "READY"];
       const tag = `${f.name}-${f.ver}`.toUpperCase();
       render();
       const fork = f.fork ? `<p>Its own code calls itself "${esc(f.calls)}". M-Flasher + remembers what it installed, so DEVICE INFO, the FM-1's display and your backups say <span style="color:var(--mint)">${esc(f.name)} ${esc(f.ver)}</span>.</p>` : "";

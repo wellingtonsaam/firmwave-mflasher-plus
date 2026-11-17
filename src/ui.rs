@@ -108,10 +108,10 @@ impl App {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         let fonts = crate::fonts::Fonts::default();
         fonts.install(&cc.egui_ctx);
-        // MFLASHER_DIALOG=about opens the About dialog at start (for screenshots)
-        let dialog = if std::env::var("MFLASHER_DIALOG").as_deref() == Ok("about") { Dialog::About } else { Dialog::None };
-        // MFLASHER_TAB=library opens the Library tab at start (for screenshots)
-        let tab = if std::env::var("MFLASHER_TAB").as_deref() == Ok("library") { Tab::Library } else { Tab::Device };
+        // MFLASHER_PLUS_DIALOG=about opens the About dialog at start (for screenshots)
+        let dialog = if std::env::var("MFLASHER_PLUS_DIALOG").as_deref() == Ok("about") { Dialog::About } else { Dialog::None };
+        // MFLASHER_PLUS_TAB=library opens the Library tab at start (for screenshots)
+        let tab = if std::env::var("MFLASHER_PLUS_TAB").as_deref() == Ok("library") { Tab::Library } else { Tab::Device };
         let ctl = Controller::new(cc.egui_ctx.clone());
         if tab == Tab::Library {
             ctl.load_library();
@@ -1192,7 +1192,7 @@ fn wrap(text: &str, fits: &dyn Fn(&str) -> bool) -> Vec<String> {
 const ICON: &[u8] = if cfg!(target_os = "macos") {
     include_bytes!("../assets/icon-256.png")
 } else {
-    include_bytes!("../linux/m-flasher.png")
+    include_bytes!("../linux/m-flasher-plus.png")
 };
 
 pub fn run() -> eframe::Result {

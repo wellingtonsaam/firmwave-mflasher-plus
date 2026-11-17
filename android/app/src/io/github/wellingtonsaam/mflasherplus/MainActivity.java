@@ -1,4 +1,4 @@
-package io.github.wellingtonsaam.mflasherlib;
+package io.github.wellingtonsaam.mflasherplus;
 
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -37,12 +37,12 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Device screen (Figma A01): finds an FM-1 in download mode on USB, reads it with M-Flasher's core
+ * Device screen (Figma A01): finds an FM-1 in download mode on USB, reads it with M-Flasher +'s core
  * and shows what it holds and its SAFETY CHECK. Read only: diagnose and backup. Nothing is written.
  */
 public class MainActivity extends Activity {
     private static final String TAG = "MFLR";
-    private static final String ACTION_PERMISSION = "io.github.wellingtonsaam.mflasherlib.USB_PERMISSION";
+    private static final String ACTION_PERMISSION = "io.github.wellingtonsaam.mflasherplus.USB_PERMISSION";
     private static final int VID = 0x4C4A;
     private static final int PID = 0x8057;
 
@@ -1145,7 +1145,7 @@ public class MainActivity extends Activity {
         // the unit by its model: the name its firmware gives the MIDI port ("Caravel") is metadata, kept for the log
         String why = seenRunning ? "The M-Vave FM-1 did not switch automatically to Download Mode. Switch it manually "
                 + "following these steps:\n"
-                : "M-Flasher can't see your M-Vave FM-1 running. Check it is connected and switched on, or switch it "
+                : "M-Flasher + can't see your M-Vave FM-1 running. Check it is connected and switched on, or switch it "
                 + "manually following these steps:\n";
         String last = recalled("firmware");
         howTo = dialog("Manual Action: put FM-1 in Download Mode for checking", why
@@ -1309,7 +1309,7 @@ public class MainActivity extends Activity {
                             say("Restarted; not on USB MIDI within 60 s");
                             shown = "Check FM-1 display";
                             color = LAV;
-                            end = done + "\n\nYour FM-1 restarted, but M-Flasher couldn't confirm it's running: it didn't "
+                            end = done + "\n\nYour FM-1 restarted, but M-Flasher + couldn't confirm it's running: it didn't "
                                     + "show up on USB within 60 seconds. Look at the FM-1 display: if the new firmware "
                                     + "shows up, it's ready. If not, switch the FM-1 off and on.";
                         }

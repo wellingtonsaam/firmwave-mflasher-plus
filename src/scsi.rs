@@ -317,7 +317,7 @@ mod imp {
                 if e == ERROR_ACCESS_DENIED {
                     // only with administrator rights: without, the helper is used (Device::open)
                     return Err(ScsiError::Failed(format!(
-                        "command {} refused by Windows (access denied, error 5) although M-Flasher has administrator \
+                        "command {} refused by Windows (access denied, error 5) although M-Flasher + has administrator \
                          rights: security software or a policy that blocks removable drives can do that",
                         cmd_name(cdb)
                     )));
@@ -585,11 +585,11 @@ pub(crate) fn permission_advice_in(rule_dirs: &[&std::path::Path], seats: &[&std
 }
 
 /// What to do when `needs_sg_driver`, for the window and the command line.
-pub const SG_DRIVER: &str = "a unit is in download mode, but Linux's SCSI generic driver, which M-Flasher reaches it \
+pub const SG_DRIVER: &str = "a unit is in download mode, but Linux's SCSI generic driver, which M-Flasher + reaches it \
                              through, is not loaded: run `sudo modprobe sg`, then try again";
 
 /// Linux: a unit is in download mode on USB, but the SCSI generic driver that
-/// M-Flasher finds it through isn't loaded.
+/// M-Flasher + finds it through isn't loaded.
 #[cfg(all(target_os = "linux", not(feature = "usb")))]
 pub fn needs_sg_driver() -> bool {
     use std::path::Path;

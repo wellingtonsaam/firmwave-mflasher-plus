@@ -1,4 +1,4 @@
-//! M-Flasher: back up, restore and reinstall the firmware of the M-VAVE FM-1
+//! M-Flasher +: back up, restore and reinstall the firmware of the M-VAVE FM-1
 //! and SMK-37 Pro / Elite through the chip's USB download mode, and install
 //! m-bootloader. Without arguments: the window; with arguments: the
 //! command line.
@@ -67,7 +67,7 @@ fn main() {
 }
 
 /// The lock one window holds while it is open: Err when another window holds it, Ok(None) when there is
-/// no lock file to take (the window opens anyway). A file every user may open (an M-Flasher started with
+/// no lock file to take (the window opens anyway). A file every user may open (an M-Flasher + started with
 /// sudo runs as root); the system unlocks it when the process ends, however it ends.
 fn one_window() -> Result<Option<std::fs::File>, ()> {
     let path = if cfg!(windows) { std::env::temp_dir() } else { std::path::PathBuf::from("/tmp") }.join("m-flasher-plus.lock");
@@ -94,7 +94,7 @@ fn window_error(error: &str) {
     use windows_sys::Win32::UI::WindowsAndMessaging::{MB_ICONERROR, MB_OK, MessageBoxW};
     let wide = |s: &str| s.encode_utf16().chain(std::iter::once(0)).collect::<Vec<u16>>();
     let text = format!(
-        "Cannot open the window: {error}\n\nIt is drawn with Direct3D 12, which Windows 10 and 11 provide even without a graphics driver that has it.\n\nThe command line works without it: M-Flasher --help"
+        "Cannot open the window: {error}\n\nIt is drawn with Direct3D 12, which Windows 10 and 11 provide even without a graphics driver that has it.\n\nThe command line works without it: M-Flasher + --help"
     );
     // SAFETY: both are valid NUL-terminated strings; no owner window
     unsafe { MessageBoxW(std::ptr::null_mut(), wide(&text).as_ptr(), wide("M-Flasher +").as_ptr(), MB_ICONERROR | MB_OK) };
@@ -106,7 +106,7 @@ fn window_error(error: &str) {
 fn linux_display_problem() -> Option<String> {
     let set = |v| std::env::var_os(v).is_some_and(|s| !s.is_empty());
     let sudo = if set("SUDO_USER") {
-        " sudo hides the desktop session: install the udev rule and run M-Flasher without sudo (see README.txt)."
+        " sudo hides the desktop session: install the udev rule and run M-Flasher + without sudo (see README.txt)."
     } else {
         ""
     };

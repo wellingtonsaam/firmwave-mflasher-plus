@@ -20,12 +20,12 @@ Pro / Elite, and install m-bootloader.
    - with m-bootloader: hold REC (SMK-37: SEQ REC) while switching on;
    - Felucca, SLOOP, Snoop37: hold OCT- and OCT+ for 5 s while it runs.
 4. Start with "Back up the whole flash". Backups go to
-   ~/Documents/M-Flasher/backups.
+   ~/Documents/M-Flasher Plus/backups.
 
 With arguments it is a command-line tool: ./m-flasher-plus info, backup,
 restore, firmware, bootloader (./m-flasher-plus --help).
 
-m-flasher.png is the icon, for a launcher of your own.
+m-flasher-plus.png is the icon, for a launcher of your own.
 
 M-Flasher + is maintained by Wellington Saam. Based on M-Flasher by Julius
 Vitkauskas (MIT).

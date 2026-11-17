@@ -8,7 +8,7 @@ Copyright: 2026 Julius Vitkauskas
  2026 Wellington Saam (M-Flasher + additions)
 License: MIT
 
-Files: usr/bin/m-flasher
+Files: usr/bin/m-flasher-plus
 Comment: The executable also contains the m-bootloader builds and its flash
  loader (MIT, https://github.com/jvitkauskas/m-bootloader), and the fonts
  Barlow Condensed, IBM Plex Mono, Share Tech Mono, VT323 and Saira (OFL-1.1).

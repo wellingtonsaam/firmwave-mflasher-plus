@@ -10,7 +10,7 @@
   </developer>
   <description>
     <p>
-      M-Flasher backs up, restores and reinstalls the firmware of an M-VAVE FM-1 or
+      M-Flasher + backs up, restores and reinstalls the firmware of an M-VAVE FM-1 or
       SMK-37 Pro / Elite over USB, and installs m-bootloader. It talks to the
       chip's built-in USB download mode, so it also works when the firmware on the
       unit is broken.
@@ -33,7 +33,7 @@
     </screenshot>
   </screenshots>
   <provides>
-    <binary>m-flasher</binary>
+    <binary>m-flasher-plus</binary>
     <!-- a unit in download mode -->
     <modalias>usb:v4C4Ap8057d*</modalias>
   </provides>

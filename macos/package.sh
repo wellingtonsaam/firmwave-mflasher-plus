@@ -1,6 +1,6 @@
 #!/bin/sh
 # Makes "M-Flasher +.app" (ad-hoc signed: no Apple certificate) and the disk image
-# M-Flasher-plus-VERSION-macos.dmg from an m-flasher binary. macOS only.
+# M-Flasher-Plus-VERSION-macos.dmg from an m-flasher-plus binary. macOS only.
 #   macos/package.sh target/release/m-flasher-plus 0.3.0 [OUTDIR]
 set -e
 bin=$(cd "$(dirname "$1")" && pwd)/$(basename "$1")
@@ -11,8 +11,8 @@ rm -rf "$out" && mkdir -p "$out" && out=$(cd "$out" && pwd)
 
 app="$out/M-Flasher +.app"
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
-cp "$bin" "$app/Contents/MacOS/M-Flasher"
-chmod 755 "$app/Contents/MacOS/M-Flasher"
+cp "$bin" "$app/Contents/MacOS/M-Flasher-Plus"
+chmod 755 "$app/Contents/MacOS/M-Flasher-Plus"
 cp "$here/../LICENSE" "$app/Contents/Resources/"
 
 # the icon, from the 1024-pixel PNG
@@ -31,9 +31,9 @@ cat > "$app/Contents/Info.plist" <<EOF
 <plist version="1.0">
 <dict>
   <key>CFBundleIdentifier</key><string>io.github.wellingtonsaam.m-flasher-plus</string>
-  <key>CFBundleName</key><string>M-Flasher +</string>
-  <key>CFBundleDisplayName</key><string>M-Flasher +</string>
-  <key>CFBundleExecutable</key><string>M-Flasher</string>
+  <key>CFBundleName</key><string>M-Flasher-Plus</string>
+  <key>CFBundleDisplayName</key><string>M-Flasher-Plus</string>
+  <key>CFBundleExecutable</key><string>M-Flasher-Plus</string>
   <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
@@ -61,7 +61,7 @@ if [ -n "$DMGBUILD" ]; then
 else
   "$out/venv/bin/pip" install -q --require-hashes -r "$here/requirements-dmg.txt"
 fi
-dmg="$out/M-Flasher-plus-$version-macos.dmg"
+dmg="$out/M-Flasher-Plus-$version-macos.dmg"
 "$out/venv/bin/python" - "$app" "$dmg" "$here/dmg/background.png" <<'EOF'
 import sys
 import dmgbuild

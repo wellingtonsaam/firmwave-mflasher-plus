@@ -4,18 +4,18 @@
 // executable.
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
-    println!("cargo:rerun-if-changed=windows/m-flasher.ico");
+    println!("cargo:rerun-if-changed=windows/m-flasher-plus.ico");
     if std::env::var("CARGO_CFG_TARGET_OS").as_deref() != Ok("windows") {
         return;
     }
     let manifest = || {
         use embed_manifest::manifest::{DpiAwareness, ExecutionLevel};
-        embed_manifest::new_manifest("M-Flasher")
+        embed_manifest::new_manifest("M-Flasher +")
             .requested_execution_level(ExecutionLevel::AsInvoker)
             .dpi_awareness(DpiAwareness::PerMonitorV2)
     };
     let mut res = winresource::WindowsResource::new();
-    res.set_icon("windows/m-flasher.ico")
+    res.set_icon("windows/m-flasher-plus.ico")
         .set_manifest(&manifest().to_string())
         .set("FileDescription", "M-Flasher +")
         .set("ProductName", "M-Flasher +")
@@ -23,8 +23,8 @@ fn main() {
         // nearly empty version resource as suspicious
         .set("CompanyName", "Wellington Saam")
         .set("LegalCopyright", "Copyright (c) 2026 Wellington Saam; based on M-Flasher, (c) 2026 Julius Vitkauskas. MIT License")
-        .set("OriginalFilename", "M-Flasher.exe")
-        .set("InternalName", "m-flasher")
+        .set("OriginalFilename", "M-Flasher-Plus.exe")
+        .set("InternalName", "m-flasher-plus")
         .set("Comments", "https://github.com/wellingtonsaam/m-flasher-plus");
     if let Err(e) = res.compile() {
         // the release builds (MSVC) need both; a cross-build without a resource
