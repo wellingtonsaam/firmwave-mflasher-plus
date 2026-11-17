@@ -72,12 +72,11 @@ contents:
 # The program keeps the name it has in its documentation, /usr/bin/m-flasher,
 # and the udev rule its path: the original package and this one cannot both be
 # installed, so the package manager is told, rather than letting one quietly
-# write over the other's files.
+# write over the other's files. Not `provides`: with `replaces` (rpm's
+# Obsoletes) it would have the package obsolete a name it also provides.
 conflicts:
   - m-flasher
 replaces:
-  - m-flasher
-provides:
   - m-flasher
 
 scripts:
@@ -128,4 +127,4 @@ overrides:
 
 rpm:
   group: Applications/System
-  summary: Firmware backup and flasher for M-VAVE FM-1 and SMK-37 synthesizers (M-Flasher Plus)
+  summary: Firmware backup and flasher for M-VAVE FM-1 and SMK-37

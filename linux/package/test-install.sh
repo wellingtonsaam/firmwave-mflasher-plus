@@ -44,7 +44,10 @@ done
 # packaging tool can see them in the executable and nothing fails until it is
 # run. Every one is listed here with what carries it, and all that are missing
 # are reported together, with the command that installs them, rather than one
-# at a time.
+# at a time. A missing dependency fails; a missing recommended package is said
+# and allowed, because an image built to be small (openSUSE's, Fedora's)
+# leaves weak dependencies out, and which of them a system needs depends on
+# its desktop anyway.
 #
 #   library | Debian/Ubuntu package | rpm capability | kind
 libs="\
@@ -63,6 +66,7 @@ libXrandr.so.2|libxrandr2|libXrandr.so.2()(64bit)|recommended"
 cache=$(ldconfig -p)
 missing_report=
 missing_pkgs=
+short=
 while IFS='|' read -r lib deb rpmcap kind; do
     [ -n "$lib" ] || continue
     case $cache in *"$lib"*) continue ;; esac
@@ -70,6 +74,7 @@ while IFS='|' read -r lib deb rpmcap kind; do
     missing_report="$missing_report  $lib  ($kind, in $want)
 "
     missing_pkgs="$missing_pkgs '$want'"
+    [ "$kind" = dependency ] && short=yes
 done <<LIBS
 $libs
 LIBS
@@ -81,6 +86,6 @@ if [ -n "$missing_pkgs" ]; then
         dnf)    printf 'install them with:\n  sudo dnf install%s\n' "$missing_pkgs" >&2 ;;
         zypper) printf 'install them with:\n  sudo zypper install%s\n' "$missing_pkgs" >&2 ;;
     esac
-    exit 1
+    [ -n "$short" ] && exit 1
 fi
 echo "OK: $(. /etc/os-release; echo "$PRETTY_NAME")"
