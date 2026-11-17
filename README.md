@@ -16,11 +16,16 @@ a **built-in firmware library** and a safer way to install. It talks to the
 chip's built-in USB download mode, so it also works when the firmware on the
 unit is broken.
 
-M-Flasher + is [M-Flasher](https://github.com/jvitkauskas/m-flasher) by Julius
-Vitkauskas, extended by [Wellington Saam](https://github.com/wellingtonsaam).
+M-Flasher + is maintained by [Wellington Saam](https://github.com/wellingtonsaam).
+It is based on [M-Flasher](https://github.com/jvitkauskas/m-flasher) by Julius
+Vitkauskas, who does not maintain or support this version: please send
+questions and bug reports about M-Flasher + to [this repository's
+issues](../../issues), not to M-Flasher's.
 
-> Unofficial: not affiliated with M-VAVE or JieLi. It saves a backup before it
-> writes anything and checks every write, but use it at your own risk.
+> Unofficial: not affiliated with M-VAVE or JieLi, and not supported by
+> M-Flasher's author: M-Flasher + is supported by Wellington Saam, in [this
+> repository's issues](../../issues). It saves a backup before it writes
+> anything and checks every write, but use it at your own risk.
 
 ## Try it in your browser
 
@@ -168,7 +173,7 @@ it.
 
 ## More
 
-- [Using M-Flasher](docs/usage.md): each system, download mode, the actions,
+- [Using M-Flasher +](docs/usage.md): each system, download mode, the actions,
   the firmware library, the command line
 - [Safety](docs/safety.md): what is checked before and after every write,
   REQ-BOOT-01
@@ -194,7 +199,7 @@ MIT ([LICENSE](LICENSE)).
   Android app.
 - [m-bootloader](https://github.com/jvitkauskas/m-bootloader) (MIT): the
   bootloader and the flash loader.
-- Firmware list: [The Firmware Hub](https://thefirmwarehub.com) (CC BY 4.0);
+- Firmware list: [The Firmware Hub](https://thefirmwarehub.com) (CC BY 4.0, used unchanged);
   each firmware belongs to its author, under its own license.
 - Bundled files and their licenses: [data/NOTICE.md](data/NOTICE.md) and
   [assets/README.md](assets/README.md). The protocol follows

@@ -1,8 +1,8 @@
 [package]
 name = "mflr_android"
-version = "0.1.0"
+version = "1.0.2"
 edition = "2024"
-description = "Android spike: M-Flasher's core over the USB file descriptor Android hands the app"
+description = "Android spike: M-Flasher +'s core over the USB file descriptor Android hands the app"
 license = "MIT"
 
 [lib]

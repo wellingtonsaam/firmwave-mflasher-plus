@@ -1,11 +1,16 @@
 [package]
-name = "m-flasher"
-version = "1.0.1"
+name = "m-flasher-plus"
+version = "1.0.2"
 edition = "2024"
 description = "Back up, restore and install firmware/bootloaders on the M-VAVE FM-1 and SMK-37 through the chip's USB download mode"
 license = "MIT"
-authors = ["Julius Vitkauskas", "Wellington Saam"]
+authors = ["Wellington Saam", "Julius Vitkauskas"]
 build = "build.rs"
+
+# the command is m-flasher-plus, so that it is never mistaken for M-Flasher +'s
+[[bin]]
+name = "m-flasher-plus"
+path = "src/main.rs"
 
 [dependencies]
 rfd = "0.17"

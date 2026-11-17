@@ -237,7 +237,7 @@ pub struct Controller {
     shared: Arc<Mutex<Shared>>,
     unit: Arc<Mutex<Option<Unit>>>,
     plan: Arc<Mutex<Option<Plan>>>,
-    /// The unit M-Flasher had no rights to open (the system's dialog for
+    /// The unit M-Flasher + had no rights to open (the system's dialog for
     /// administrator rights cancelled, Linux's udev rule missing), or on
     /// Windows could not open at all: not tried, nor asked about, again every
     /// scan, only once it is reconnected.
@@ -377,15 +377,15 @@ impl Controller {
     }
 
     pub fn log(&self, text: String) {
-        let dir = self.with(|s| {
+        self.with(|s| {
             s.log.push(format!("[{}] {text}", now()));
             let n = s.log.len();
             if n > 200 {
                 s.log.drain(..n - 200);
             }
-            s.backup_dir.clone()
         });
-        log_to_file(&dir, &text);
+        static LOG: std::sync::OnceLock<PathBuf> = std::sync::OnceLock::new();
+        log_to_file(LOG.get_or_init(crate::cli::default_log_path), &text);
     }
 
     /// Run f in a thread unless something is running; errors become alerts.
@@ -588,7 +588,7 @@ impl Controller {
             Mode::Bootloader => "m-bootloader was installed",
             _ => "The firmware was installed",
         };
-        say(AlertKind::Done, format!("{what} and verified ({total} sectors), and the FM-1 restarted. M-Flasher couldn't \
+        say(AlertKind::Done, format!("{what} and verified ({total} sectors), and the FM-1 restarted. M-Flasher + couldn't \
             confirm it's running: the FM-1 didn't show up on USB within 60 seconds. Look at the FM-1 display: if the new \
             firmware shows up, it's ready. If not, switch the FM-1 off and on."));
     }
@@ -933,7 +933,7 @@ impl Controller {
                     "No file dialog: it goes through the XDG desktop portal, which is not \
                      installed here. Add xdg-desktop-portal and the backend for your desktop \
                      (xdg-desktop-portal-gtk, -kde or -gnome). The command line takes the file \
-                     without one: see `m-flasher --help`."
+                     without one: see `m-flasher-plus --help`."
                         .into(),
                 );
             }
@@ -1360,7 +1360,7 @@ impl Controller {
         }
     }
 
-    /// macOS: M-Flasher's folders left to root by a run with sudo (the library's favorites and packages
+    /// macOS: M-Flasher +'s folders left to root by a run with sudo (the library's favorites and packages
     /// can't be written then) are given back through the helper, which runs once the unit is reached.
     #[cfg(target_os = "macos")]
     fn give_back_folders(&self) {
@@ -1369,9 +1369,9 @@ impl Controller {
             return;
         }
         match crate::scsi::macos::give_back(&dirs) {
-            Ok(n) => self.log(format!("Gave back to you {n} files of M-Flasher's folders (an M-Flasher run with sudo \
+            Ok(n) => self.log(format!("Gave back to you {n} files of M-Flasher +'s folders (an M-Flasher + run with sudo \
                                        had left them to the administrator)")),
-            Err(e) => self.log(format!("M-Flasher's folders are partly the administrator's (a run with sudo): {e}")),
+            Err(e) => self.log(format!("M-Flasher +'s folders are partly the administrator's (a run with sudo): {e}")),
         }
     }
 
@@ -1588,37 +1588,37 @@ pub(crate) fn how_to(rescue: &str, firmware: &str, model: &str, running: Option<
         // the unit by its model, not by the name its firmware gives the MIDI port ("Caravel"): that is metadata
         Some(n) => format!("The {} did not switch automatically to Download Mode. Switch it manually following these steps:",
                            unit_name(model, n)),
-        None => format!("M-Flasher can't see your M-Vave {u} running. Check it is connected and switched on, or switch it \
+        None => format!("M-Flasher + can't see your M-Vave {u} running. Check it is connected and switched on, or switch it \
                          manually following these steps:"),
     };
     let keys = match rescue {
-        "yes" => format!("1 · Switch it off.\n2 · Hold {rec} and switch {u} on.\n3 · When M-Flasher finds your {u}, release the \
+        "yes" => format!("1 · Switch it off.\n2 · Hold {rec} and switch {u} on.\n3 · When M-Flasher + finds your {u}, release the \
                           {rec} button.{}",
                          if oct { format!("\nOr, if your {u} is running, hold OCT- and OCT+ buttons together for 5 seconds.") } else { String::new() }),
         _ if oct => format!("If your {u} is running, hold OCT- and OCT+ buttons together for 5 seconds."),
-        "no" => format!("It has M-VAVE's original bootloader: its buttons can't do it, only the message from M-Flasher. Switch \
+        "no" => format!("It has M-VAVE's original bootloader: its buttons can't do it, only the message from M-Flasher +. Switch \
                          it on, connect it with a data cable (some cables only charge) and press {} again.",
                         if install { "INSTALL" } else { "CHECK FM1 STATUS" }),
         _ => format!("· With m-bootloader: hold {rec} while switching {u} on.\n\
                       · With Felucca, SLOOP or Snoop37 running: hold OCT- and OCT+ buttons together for 5 seconds.\n\
-                      · With M-VAVE's own firmware: switch it on, connect it and press {} again: M-Flasher switches it.",
+                      · With M-VAVE's own firmware: switch it on, connect it and press {} again: M-Flasher + switches it.",
                      if install { "INSTALL" } else { "CHECK FM1 STATUS" }),
     };
-    format!("{why}\n{keys}\nM-Flasher needs Download Mode to check your {u} properly.")
+    format!("{why}\n{keys}\nM-Flasher + needs Download Mode to check your {u} properly.")
 }
 
-/// The operation log kept on disk too, next to the backups' folder
-/// (Documents/M-Flasher/m-flasher.log): the window shows only its last lines,
-/// and they go with it. Past 1 MiB the file starts again, the last one kept as
-/// m-flasher.log.1.
-pub(crate) fn log_to_file(backup_dir: &Path, text: &str) {
+/// The operation log kept on disk too, in M-Flasher +'s own folder (see
+/// `default_log_path`): the window shows only its last lines. Past 1 MiB the
+/// file starts again, the last one kept as m-flasher-plus.log.1.
+pub(crate) fn log_to_file(path: &Path, text: &str) {
     use std::io::Write;
-    let path = backup_dir.parent().unwrap_or(backup_dir).join("m-flasher.log");
-    if std::fs::metadata(&path).is_ok_and(|m| m.len() > 1 << 20) {
-        let _ = std::fs::rename(&path, path.with_extension("log.1"));
+    if std::fs::metadata(path).is_ok_and(|m| m.len() > 1 << 20) {
+        let _ = std::fs::rename(path, path.with_extension("log.1"));
     }
-    let _ = std::fs::create_dir_all(path.parent().unwrap_or(backup_dir));
-    if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(&path) {
+    if let Some(dir) = path.parent() {
+        let _ = std::fs::create_dir_all(dir);
+    }
+    if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(path) {
         let _ = writeln!(f, "{} {text}", chrono::Local::now().format("%Y-%m-%d %H:%M:%S"));
     }
 }

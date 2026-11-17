@@ -1,4 +1,4 @@
-package io.github.wellingtonsaam.mflasherlib;
+package io.github.wellingtonsaam.mflasherplus;
 
 import android.content.Context;
 import android.view.Gravity;

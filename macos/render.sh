@@ -2,7 +2,7 @@
 # Renders the macOS artwork with the app's fonts (../assets), with headless
 # Chromium: dmg/background.svg to the DMG's 1x and 2x backgrounds, icon.svg to
 # the 1024-pixel icon.png the app's icons are made from (macOS, the window,
-# windows/m-flasher.ico, linux/m-flasher.png).
+# windows/m-flasher-plus.ico, linux/m-flasher-plus.png).
 #   CHROME=/path/to/chrome-headless-shell macos/render.sh
 set -e
 cd "$(dirname "$0")"
@@ -32,7 +32,7 @@ from PIL import Image
 src = Image.open('icon.png').convert('RGBA')
 src.resize((256, 256), Image.LANCZOS).save('../assets/icon-256.png', optimize=True)
 full = src.crop((100, 100, 924, 924))
-full.resize((256, 256), Image.LANCZOS).save('../linux/m-flasher.png', optimize=True)
-full.save('../windows/m-flasher.ico', sizes=[(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)])
+full.resize((256, 256), Image.LANCZOS).save('../linux/m-flasher-plus.png', optimize=True)
+full.save('../windows/m-flasher-plus.ico', sizes=[(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)])
 PY
-ls -l dmg/background.png dmg/background@2x.png icon.png ../assets/icon-256.png ../linux/m-flasher.png ../windows/m-flasher.ico
+ls -l dmg/background.png dmg/background@2x.png icon.png ../assets/icon-256.png ../linux/m-flasher-plus.png ../windows/m-flasher-plus.ico

@@ -1,4 +1,4 @@
-# M-Flasher Library — PRD
+# M-Flasher + Library — PRD
 
 **Status:** Draft
 **Versão:** 1.0
@@ -10,7 +10,7 @@
 
 ## 1. Resumo Executivo
 
-Estamos construindo o **M-Flasher Library**, um fork do M-Flasher para **desktop (macOS, Windows, Linux) e Android**. Ele junta, num só app, a biblioteca de firmwares do **The Firmware Hub** guardada localmente e o mecanismo de gravação seguro do M-Flasher, que usa o modo download da ROM do AC791N. O público são donos de M-VAVE FM-1 (e Fame MiniFM) que querem trocar de firmware com frequência sem arriscar a unidade.
+Estamos construindo o **M-Flasher + Library**, um fork do M-Flasher para **desktop (macOS, Windows, Linux) e Android**. Ele junta, num só app, a biblioteca de firmwares do **The Firmware Hub** guardada localmente e o mecanismo de gravação seguro do M-Flasher, que usa o modo download da ROM do AC791N. O público são donos de M-VAVE FM-1 (e Fame MiniFM) que querem trocar de firmware com frequência sem arriscar a unidade.
 
 O app detecta o chip de flash da unidade, identifica firmware ou bootloader corrompidos, restaura o firmware original da M-VAVE (015/016, a partir dos pacotes oficiais do usuário), instala firmwares da biblioteca compatíveis com o chip e garante que a unidade tenha o **m-bootloader**. Com o m-bootloader, um firmware que falha deixa de ser um brick e passa a ser uma reinstalação pelas teclas. O resultado esperado é **nenhuma unidade irrecuperável** causada por uma instalação feita pelo app.
 
@@ -177,7 +177,7 @@ Quero uma biblioteca local com os firmwares do hub,
 Para escolher e instalar mesmo offline.
 
 Critérios de Aceite:
-- [ ] Lê https://thefirmwarehub.com/catalog.json no máximo 1 vez por dia, com User-Agent próprio (ex.: "M-Flasher-Library/<versão> (+<url do repo>)").
+- [ ] Lê https://thefirmwarehub.com/catalog.json no máximo 1 vez por dia, com User-Agent próprio (ex.: "m-flasher-plus/<versão> (+<url do repo>)").
 - [ ] Baixa cada .fwsc da release do autor no GitHub (campos repo, tag, release e o padrão assetPkg), nunca de thefirmwarehub.com/fw/.
 - [ ] Só guarda o pacote se o SHA-256 bater com o do catálogo; caso contrário, descarta e registra o erro.
 - [ ] Downloads sob demanda (ao escolher o firmware) ou em lote, se o usuário pedir "baixar tudo"; o lote respeita o limite da API do GitHub.
@@ -279,7 +279,7 @@ Critérios de Aceite:
 ## 9. Considerações Técnicas
 
 - **Arquitetura:**
-  - Separar do M-Flasher um crate `mflasher-core` (`formats`, `boards`, `ops`, `jl`, `sectormap`). Ele já é independente de transporte pelos traits `Scsi` e `Flash`.
+  - Separar do M-Flasher um crate `mflasher-plus-core` (`formats`, `boards`, `ops`, `jl`, `sectormap`). Ele já é independente de transporte pelos traits `Scsi` e `Flash`.
   - Novo módulo `library`: catálogo (cache + ETag), resolução do asset de release no GitHub (`repo` + `tag` + regex `assetPkg`), download, SHA-256 e índice local.
   - Novo módulo `diagnose`: encapsula `Analysis`, `flash_text`, `app_files_status` e `BootKind` e produz as ações sugeridas.
   - Novo módulo `wizard`: monta a sequência de planos (bootloader → firmware) e aplica o REQ-BOOT-01.
@@ -319,7 +319,7 @@ Critérios de Aceite:
 ## 12. Dependências & Premissas
 
 ### Dependências
-- A extração do `mflasher-core` (Fase 1) vem antes do Android (Fase 3).
+- A extração do `mflasher-plus-core` (Fase 1) vem antes do Android (Fase 3).
 - O spike Android (Fase 0) decide se a Fase 3 continua como planejada.
 - O filtro por chip depende de confirmar a semântica do campo `chip` (Q1, Q2).
 
@@ -335,7 +335,7 @@ Critérios de Aceite:
 | Fase | Entregável | Estimativa |
 |---|---|---|
 | 0. Spike Android | App mínimo lê a flash e salva o backup via OTG (núcleo Rust + fd) | 1–2 dias |
-| 1. Núcleo | `mflasher-core` extraído; testes upstream passando com `fm1-016.fwsc` | 2–3 dias |
+| 1. Núcleo | `mflasher-plus-core` extraído; testes upstream passando com `fm1-016.fwsc` | 2–3 dias |
 | 2. Desktop | Diagnóstico, importação dos originais, biblioteca, filtro por chip, assistente com REQ-BOOT-01 | 1–2 semanas |
 | 3. Android | Mesmos fluxos no app Kotlin | 2–3 semanas |
 | 4. QA em unidade real | Matriz: chip antigo/novo × bootloader original/m-bootloader × 015/016/custom | 1 semana |

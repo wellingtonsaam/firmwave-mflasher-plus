@@ -1599,8 +1599,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "m-flasher"
-version = "1.0.1"
+name = "m-flasher-plus"
+version = "1.0.2"
 dependencies = [
  "chrono",
  "eframe",

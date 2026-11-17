@@ -98,9 +98,8 @@ pub struct App {
     op_open: Option<Mode>,
 }
 
-/// Where donations for code signing go (the About dialog).
-const SPONSORS: &str = "https://github.com/sponsors/jvitkauskas";
-const KO_FI: &str = "https://ko-fi.com/jvitkauskas";
+/// M-Flasher +'s home: source, releases and issues (the About dialog).
+const REPO: &str = "https://github.com/wellingtonsaam/m-flasher-plus";
 
 /// How long the LCD's bottom line flashes after an inactive key is pressed (s).
 const NUDGE: f64 = 1.2;
@@ -109,10 +108,10 @@ impl App {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         let fonts = crate::fonts::Fonts::default();
         fonts.install(&cc.egui_ctx);
-        // MFLASHER_DIALOG=about opens the About dialog at start (for screenshots)
-        let dialog = if std::env::var("MFLASHER_DIALOG").as_deref() == Ok("about") { Dialog::About } else { Dialog::None };
-        // MFLASHER_TAB=library opens the Library tab at start (for screenshots)
-        let tab = if std::env::var("MFLASHER_TAB").as_deref() == Ok("library") { Tab::Library } else { Tab::Device };
+        // MFLASHER_PLUS_DIALOG=about opens the About dialog at start (for screenshots)
+        let dialog = if std::env::var("MFLASHER_PLUS_DIALOG").as_deref() == Ok("about") { Dialog::About } else { Dialog::None };
+        // MFLASHER_PLUS_TAB=library opens the Library tab at start (for screenshots)
+        let tab = if std::env::var("MFLASHER_PLUS_TAB").as_deref() == Ok("library") { Tab::Library } else { Tab::Device };
         let ctl = Controller::new(cc.egui_ctx.clone());
         if tab == Tab::Library {
             ctl.load_library();
@@ -1045,11 +1044,11 @@ impl App {
                       kagaimiq (MIT). Fonts: Saira, Barlow Condensed, Share Tech Mono, IBM Plex Mono, VT323 \
                       (OFL).".into(), DIM),
                     (String::new(), INK),
-                    ("Unofficial: not affiliated with M-VAVE or JieLi.".into(), DIM),
+                    ("Unofficial: not affiliated with M-VAVE or JieLi, nor supported by M-Flasher's author.".into(), DIM),
                     (String::new(), INK),
-                    ("M-Flasher + is free. It isn't signed yet, which is why Windows and macOS ask before it first \
-                      starts; signing costs money every year, and donations would pay for it.".into(), INK),
-                ], vec![("GITHUB SPONSORS", 7), ("KO-FI", 8), ("CLOSE", 0)]),
+                    ("M-Flasher + is free, maintained by Wellington Saam. Questions and bug reports go to its own \
+                      GitHub repository, not to M-Flasher's.".into(), INK),
+                ], vec![("GITHUB", 7), ("CLOSE", 0)]),
                 Dialog::Backups => {
                     let mut b = vec![("Choose one to restore. Its plan opens for review; nothing is written before WRITE.".to_string(), DIM)];
                     b.extend(st.backups.iter().take(3).enumerate()
@@ -1117,9 +1116,9 @@ impl App {
             if resp.clicked() {
                 if st.alert.is_some() {
                     ctl.dismiss();
-                } else if matches!(code, 7 | 8) {
+                } else if *code == 7 {
                     // a link: the dialog stays
-                    ctl.open_link(if *code == 7 { SPONSORS } else { KO_FI });
+                    ctl.open_link(REPO);
                 } else {
                     match code {
                         2 => ctl.confirm(),
@@ -1193,7 +1192,7 @@ fn wrap(text: &str, fits: &dyn Fn(&str) -> bool) -> Vec<String> {
 const ICON: &[u8] = if cfg!(target_os = "macos") {
     include_bytes!("../assets/icon-256.png")
 } else {
-    include_bytes!("../linux/m-flasher.png")
+    include_bytes!("../linux/m-flasher-plus.png")
 };
 
 pub fn run() -> eframe::Result {

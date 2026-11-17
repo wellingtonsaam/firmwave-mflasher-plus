@@ -41,7 +41,7 @@ fn needs_root(e: rusb::Error) -> ScsiError {
 
 #[cfg(target_os = "macos")]
 fn advice() -> String {
-    "run M-Flasher with sudo".into()
+    "run M-Flasher + with sudo".into()
 }
 
 /// Linux with the `usb` feature: the same udev rule as the SCSI path, so the
@@ -115,7 +115,7 @@ impl Device {
         // driver is attached). Root can take the whole device from it.
         if claimed.is_err() && cfg!(target_os = "macos") {
             if !is_root() {
-                return Err(ScsiError::NeedsAdmin("macOS's disk driver holds the unit: run M-Flasher with sudo".into()));
+                return Err(ScsiError::NeedsAdmin("macOS's disk driver holds the unit: run M-Flasher + with sudo".into()));
             }
             handle.detach_kernel_driver(iface).map_err(|e| failed("cannot take the unit from macOS's disk driver", e))?;
             // after a capture macOS takes a moment to offer the interface again
@@ -131,7 +131,7 @@ impl Device {
         claimed.map_err(|e| match e {
             rusb::Error::Access | rusb::Error::Busy => needs_root(e),
             e if cfg!(target_os = "macos") => ScsiError::Failed(format!(
-                "macOS did not let M-Flasher use the unit ({e}). It asks once to allow access to files on \
+                "macOS did not let M-Flasher + use the unit ({e}). It asks once to allow access to files on \
                  a removable volume: if that was refused, allow it in System Settings > Privacy & Security \
                  > Files & Folders. (Over SSH macOS cannot ask.)"
             )),
@@ -149,7 +149,7 @@ impl Device {
         Ok(d)
     }
 
-    /// Reads away what the unit still has to send from before M-Flasher took
+    /// Reads away what the unit still has to send from before M-Flasher + took
     /// it over (the status of the disk driver's last command, say), so that
     /// the first command starts in step. Normally there is nothing, and the
     /// first read just times out.

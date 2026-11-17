@@ -8,7 +8,7 @@ All fonts are under the SIL Open Font License (`OFL-*.txt`).
 | `IBMPlexMono-Regular.ttf` | IBM Plex Mono | the log |
 | `ShareTechMono-Regular.ttf` | Share Tech Mono | labels |
 | `VT323-Regular.ttf` | VT323 | the LCD |
-| `SairaExpanded-BlackItalic-wordmark.ttf` | Saira | the "M-FLASHER" wordmark (`src/wordmark.rs`) and the icon's M |
+| `SairaExpanded-BlackItalic-wordmark.ttf` | Saira | the "M-FLASHER" wordmark (drawn with a "+" after it) (`src/wordmark.rs`) and the icon's M |
 
 The wordmark font is the variable Saira Italic from Google Fonts
 (`ofl/saira/Saira-Italic[wdth,wght].ttf`) as a static Expanded Black instance,
@@ -21,4 +21,4 @@ pyftsubset SairaExpanded-BlackItalic.ttf --text=M-FLASHER --layout-features= --o
 ```
 
 `icon-256.png` is the window's icon on macOS; `../macos/render.sh` makes it,
-`../linux/m-flasher.png` and `../windows/m-flasher.ico` from `../macos/icon.svg`.
+`../linux/m-flasher-plus.png` and `../windows/m-flasher-plus.ico` from `../macos/icon.svg`.

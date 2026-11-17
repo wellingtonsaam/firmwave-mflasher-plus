@@ -21,14 +21,14 @@ description: |-
   the unit is broken. A window and a command line.
 
 contents:
-  - src: target/release/m-flasher
-    dst: /usr/bin/m-flasher
+  - src: target/release/m-flasher-plus
+    dst: /usr/bin/m-flasher-plus
     file_info: { mode: 0755 }
-  - src: linux/70-m-flasher.rules
-    dst: /usr/lib/udev/rules.d/70-m-flasher.rules
+  - src: linux/70-m-flasher-plus.rules
+    dst: /usr/lib/udev/rules.d/70-m-flasher-plus.rules
     file_info: { mode: 0644 }
   - src: linux/package/modules-load.conf
-    dst: /usr/lib/modules-load.d/m-flasher.conf
+    dst: /usr/lib/modules-load.d/m-flasher-plus.conf
     file_info: { mode: 0644 }
   - src: linux/package/io.github.wellingtonsaam.m-flasher-plus.desktop
     dst: /usr/share/applications/io.github.wellingtonsaam.m-flasher-plus.desktop
@@ -36,7 +36,7 @@ contents:
   - src: target/package-files/io.github.wellingtonsaam.m-flasher-plus.metainfo.xml
     dst: /usr/share/metainfo/io.github.wellingtonsaam.m-flasher-plus.metainfo.xml
     file_info: { mode: 0644 }
-  - src: linux/m-flasher.png
+  - src: linux/m-flasher-plus.png
     dst: /usr/share/icons/hicolor/256x256/apps/io.github.wellingtonsaam.m-flasher-plus.png
     file_info: { mode: 0644 }
   # (documentation is marked as such in the rpm; nFPM leaves files of that
@@ -50,12 +50,12 @@ contents:
     type: doc
     packager: rpm
     file_info: { mode: 0644 }
-  - src: target/package-files/m-flasher.1.gz
-    dst: /usr/share/man/man1/m-flasher.1.gz
+  - src: target/package-files/m-flasher-plus.1.gz
+    dst: /usr/share/man/man1/m-flasher-plus.1.gz
     packager: deb
     file_info: { mode: 0644 }
-  - src: target/package-files/m-flasher.1.gz
-    dst: /usr/share/man/man1/m-flasher.1.gz
+  - src: target/package-files/m-flasher-plus.1.gz
+    dst: /usr/share/man/man1/m-flasher-plus.1.gz
     type: doc
     packager: rpm
     file_info: { mode: 0644 }
@@ -69,15 +69,10 @@ contents:
     packager: rpm
     file_info: { mode: 0644 }
 
-# The program keeps the name it has in its documentation, /usr/bin/m-flasher,
-# and the udev rule its path: the original package and this one cannot both be
-# installed, so the package manager is told, rather than letting one quietly
-# write over the other's files. Not `provides`: with `replaces` (rpm's
-# Obsoletes) it would have the package obsolete a name it also provides.
-conflicts:
-  - m-flasher
-replaces:
-  - m-flasher
+# Every file has a name of its own (/usr/bin/m-flasher-plus, its udev rule,
+# its man page), so that this package and M-Flasher's install side by side
+# without conflicting: neither `conflicts` nor `replaces` (rpm's Obsoletes),
+# which would mark M-Flasher as superseded by M-Flasher +.
 
 scripts:
   postinstall: linux/package/postinstall.sh

@@ -1,4 +1,4 @@
-package io.github.wellingtonsaam.mflasherlib;
+package io.github.wellingtonsaam.mflasherplus;
 
 import android.app.AlertDialog;
 import android.content.Context;
@@ -174,7 +174,7 @@ final class LibraryView extends LinearLayout {
                 }
                 Log.i(TAG, "Library: " + items.size() + " firmwares · " + n);
                 note.setText("GET downloads for later · INSTALL switches the FM-1 to download mode first.\n" + n
-                        + "\nFirmware list: The Firmware Hub · thefirmwarehub.com (CC BY 4.0)");
+                        + "\nFirmware list: The Firmware Hub · thefirmwarehub.com (CC BY 4.0, unchanged)");
                 render();
             });
         }, "mflr-library").start();

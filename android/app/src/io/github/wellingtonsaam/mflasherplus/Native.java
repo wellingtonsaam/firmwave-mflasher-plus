@@ -1,6 +1,6 @@
-package io.github.wellingtonsaam.mflasherlib;
+package io.github.wellingtonsaam.mflasherplus;
 
-/** The Rust core (android/rust): M-Flasher's own modules over the usbfs file descriptor. */
+/** The Rust core (android/rust): M-Flasher +'s own modules over the usbfs file descriptor. */
 public final class Native {
     static {
         System.loadLibrary("mflr_android");
@@ -9,7 +9,7 @@ public final class Native {
     private Native() {}
 
     /**
-     * Starts M-Flasher's loader, reads the whole flash (checked by the chip's CRC32) and saves a
+     * Starts the flash loader, reads the whole flash (checked by the chip's CRC32) and saves a
      * backup in dir. Read only. Returns diagnose's lines and BACKUP|path, or "ERROR\n...". Blocks: call
      * off the UI thread.
      */
