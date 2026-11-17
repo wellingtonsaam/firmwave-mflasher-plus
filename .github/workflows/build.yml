@@ -192,7 +192,7 @@ jobs:
         run: |
           v=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
           macos/package.sh m-flasher "$v" dist
-          mv dist/M-Flasher-$v-macos.dmg M-Flasher-macos.dmg
+          mv dist/M-Flasher-plus-$v-macos.dmg M-Flasher-macos.dmg
       - uses: actions/upload-artifact@v7
         with:
           name: M-Flasher-macos
