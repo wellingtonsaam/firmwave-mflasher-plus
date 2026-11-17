@@ -200,7 +200,7 @@ public class MainActivity extends Activity {
         } else {
             registerReceiver(receiver, f);
         }
-        say("M-Flasher + on " + Build.MODEL + ", Android " + Build.VERSION.RELEASE);
+        say("M-Flasher + " + appVersion() + " on " + Build.MODEL + ", Android " + Build.VERSION.RELEASE);
         showWaiting();
         library.load();
         readUnit(false);
@@ -689,16 +689,19 @@ public class MainActivity extends Activity {
         return id;
     }
 
+    /** This build's version ("1.0.1"), named in the log and in About. */
+    private String appVersion() {
+        try {
+            return getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
     /** About: what this app is, and whose work it builds on. */
     private void about() {
-        String version;
-        try {
-            version = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
-        } catch (Exception e) {
-            version = "";
-        }
         Ui.dialog(this)
-                .setTitle("M-Flasher + " + version)
+                .setTitle("M-Flasher + " + appVersion())
                 .setMessage("Back up, restore and install the firmware of an M-VAVE FM-1 from this phone, through the "
                         + "chip's USB download mode.\n\n"
                         + "M-Flasher + by Wellington Saam. Based on M-Flasher by Julius Vitkauskas (MIT).")
@@ -718,14 +721,14 @@ public class MainActivity extends Activity {
     }
 
     /**
-     * The log kept on the phone too (Android/data/…/files/m-flasher.log, next to the backups): the screen shows only
-     * its last lines. Past 1 MiB the file starts again, the last one kept as m-flasher.log.1.
+     * The log kept on the phone too (Android/data/…/files/m-flasher-plus.log, in the app's own folder): the screen shows only
+     * its last lines. Past 1 MiB the file starts again, the last one kept as m-flasher-plus.log.1.
      */
     private void logToFile(String line) {
         File dir = getExternalFilesDir(null);
         if (dir == null) return;
-        File f = new File(dir, "m-flasher.log");
-        if (f.length() > (1 << 20)) f.renameTo(new File(dir, "m-flasher.log.1"));
+        File f = new File(dir, "m-flasher-plus.log");
+        if (f.length() > (1 << 20)) f.renameTo(new File(dir, "m-flasher-plus.log.1"));
         String when = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.ROOT).format(new java.util.Date());
         try (java.io.FileWriter w = new java.io.FileWriter(f, true)) {
             w.write(when + " " + line + "\n");

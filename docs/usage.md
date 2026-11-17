@@ -158,6 +158,11 @@ instead, or install the firmware and then put back the stock bootloader.
 Backups go to `Documents/M-Flasher/backups` in your home folder; the
 **Backups** link at the top of the window opens it.
 
+The log of what the app did goes to `Documents/M-Flasher Plus/m-flasher-plus.log`
+(on Android, `m-flasher-plus.log` in the app's folder): attach it to an
+[issue](https://github.com/wellingtonsaam/m-flasher-plus/issues) about
+M-Flasher +.
+
 ## The firmware library
 
 The LIBRARY tab lists the community firmwares of

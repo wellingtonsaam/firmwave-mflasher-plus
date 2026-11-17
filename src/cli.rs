@@ -16,7 +16,7 @@ use crate::jl::Connection;
 use crate::ops::{Error, Plan, Session, board_from_key};
 use crate::scsi::{Device, ScsiError, find_devices};
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 const USAGE: &str = "usage: m-flasher [find | download-mode | restart | info | backup [DIR] | restore BACKUP.bin [--keep-bootloader] |
                  firmware PACKAGE.fwsc |
@@ -63,6 +63,15 @@ pub fn default_backup_dir() -> PathBuf {
     let home = sudo_user_home().unwrap_or(home);
     let docs = home.join("Documents");
     (if docs.is_dir() { docs } else { home }).join("M-Flasher").join("backups")
+}
+
+/// The operation log: in a folder of M-Flasher +'s own (Documents/M-Flasher Plus/m-flasher-plus.log), not
+/// M-Flasher's, so that a log from one app never ends up in a report about the other.
+pub fn default_log_path() -> PathBuf {
+    let backups = default_backup_dir();
+    // Documents/M-Flasher/backups -> Documents (or the home folder without one)
+    let base = backups.parent().and_then(Path::parent).map(Path::to_path_buf).unwrap_or(backups);
+    base.join("M-Flasher Plus").join("m-flasher-plus.log")
 }
 
 /// The home folder of the user who ran sudo, when running as root under it.
@@ -319,7 +328,7 @@ fn main(args: Vec<String>) -> Result<(), Error> {
             "--stock-bootloader" => install_opts.stock_bootloader = true,
             "--restart" => then_restart = true,
             "--version" => {
-                println!("{}", env!("CARGO_PKG_VERSION"));
+                println!("M-Flasher + {}", env!("CARGO_PKG_VERSION"));
                 return Ok(());
             }
             "-h" | "--help" => {

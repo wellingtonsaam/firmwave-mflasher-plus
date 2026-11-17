@@ -16,8 +16,10 @@ Vitkauskas, who does not maintain or support this version: please send
 questions and bug reports about M-Flasher + to [this repository's
 issues](../../issues), not to M-Flasher's.
 
-> Unofficial: not affiliated with M-VAVE or JieLi. It saves a backup before it
-> writes anything and checks every write, but use it at your own risk.
+> Unofficial: not affiliated with M-VAVE or JieLi, and not supported by
+> M-Flasher's author: M-Flasher + is supported by Wellington Saam, in [this
+> repository's issues](../../issues). It saves a backup before it writes
+> anything and checks every write, but use it at your own risk.
 
 ## Try it in your browser
 

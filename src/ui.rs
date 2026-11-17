@@ -1044,7 +1044,7 @@ impl App {
                       kagaimiq (MIT). Fonts: Saira, Barlow Condensed, Share Tech Mono, IBM Plex Mono, VT323 \
                       (OFL).".into(), DIM),
                     (String::new(), INK),
-                    ("Unofficial: not affiliated with M-VAVE or JieLi.".into(), DIM),
+                    ("Unofficial: not affiliated with M-VAVE or JieLi, nor supported by M-Flasher's author.".into(), DIM),
                     (String::new(), INK),
                     ("M-Flasher + is free, maintained by Wellington Saam. Questions and bug reports go to its own \
                       GitHub repository, not to M-Flasher's.".into(), INK),

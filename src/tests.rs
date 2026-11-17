@@ -1774,18 +1774,28 @@ mod library_folder {
     }
 }
 
-/// The operation log on disk: every line, with its date, next to the backups.
+/// The operation log on disk: every line, with its date, in M-Flasher +'s own folder.
 mod log_file {
     use crate::controller::log_to_file;
 
     #[test]
-    fn lines_go_to_m_flasher_log_next_to_the_backups() {
+    fn the_log_has_a_folder_of_its_own() {
+        let log = crate::cli::default_log_path();
+        assert_eq!(log.file_name().unwrap(), "m-flasher-plus.log");
+        let dir = log.parent().unwrap();
+        assert_eq!(dir.file_name().unwrap(), "M-Flasher Plus");
+        assert!(!log.components().any(|c| c.as_os_str() == "M-Flasher"), "not in M-Flasher's folder: {}", log.display());
+        assert_eq!(dir.parent(), crate::cli::default_backup_dir().parent().unwrap().parent());
+    }
+
+    #[test]
+    fn lines_go_to_the_log_file() {
         let root = std::env::temp_dir().join(format!("mflr-log-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&root);
-        let backups = root.join("M-Flasher").join("backups");
-        log_to_file(&backups, "Restarting the unit: it leaves download mode and starts what was written");
-        log_to_file(&backups, "Running: the Caravel is on USB MIDI");
-        let text = std::fs::read_to_string(root.join("M-Flasher").join("m-flasher.log")).unwrap();
+        let path = root.join("M-Flasher Plus").join("m-flasher-plus.log");
+        log_to_file(&path, "Restarting the unit: it leaves download mode and starts what was written");
+        log_to_file(&path, "Running: the Caravel is on USB MIDI");
+        let text = std::fs::read_to_string(&path).unwrap();
         let lines: Vec<&str> = text.lines().collect();
         assert_eq!(lines.len(), 2);
         assert!(lines[0].ends_with(" Restarting the unit: it leaves download mode and starts what was written"));
