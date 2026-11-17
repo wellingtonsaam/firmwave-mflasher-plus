@@ -130,7 +130,7 @@ pub struct Http(ureq::Agent);
 
 impl Http {
     pub fn new() -> Http {
-        let ua = format!("m-flasher-library/{} (+https://github.com/jvitkauskas/m-flasher fork)", env!("CARGO_PKG_VERSION"));
+        let ua = format!("m-flasher-plus/{} (+https://github.com/wellingtonsaam/m-flasher-plus)", env!("CARGO_PKG_VERSION"));
         Http(ureq::AgentBuilder::new().user_agent(&ua).timeout(std::time::Duration::from_secs(60)).build())
     }
 }

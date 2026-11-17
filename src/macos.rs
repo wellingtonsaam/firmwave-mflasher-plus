@@ -338,8 +338,8 @@ pub fn give_back(dirs: &[std::path::PathBuf]) -> Result<usize, ScsiError> {
     Ok(u32::from_le_bytes(n.get(..4).and_then(|b| b.try_into().ok()).unwrap_or([0; 4])) as usize)
 }
 
-/// GIVE_BACK, as root: "uid\tgid" then the folders, a line each. Only folders named M-Flasher (or in
-/// one) inside that user's home are touched, and only what is root's there; links are not followed.
+/// GIVE_BACK, as root: "uid\tgid" then the folders, a line each. Only folders named M-Flasher or M-Flasher
+/// Plus (or in one) inside that user's home are touched, and only what is root's there; links are not followed.
 fn give_back_as_root(r: &[u8]) -> Result<Vec<u8>, ScsiError> {
     let bad = || ScsiError::Failed("bad request".into());
     let text = String::from_utf8_lossy(r);
@@ -357,7 +357,7 @@ fn give_back_as_root(r: &[u8]) -> Result<Vec<u8>, ScsiError> {
     let mut n = 0u32;
     for dir in lines.map(std::path::PathBuf::from) {
         let inside = dir.is_absolute() && dir.starts_with(&home)
-            && dir.components().any(|c| c.as_os_str() == "M-Flasher")
+            && dir.components().any(|c| c.as_os_str() == "M-Flasher" || c.as_os_str() == "M-Flasher Plus")
             && !dir.components().any(|c| c.as_os_str() == "..");
         if !inside {
             continue;

@@ -377,15 +377,14 @@ impl Controller {
     }
 
     pub fn log(&self, text: String) {
-        let dir = self.with(|s| {
+        self.with(|s| {
             s.log.push(format!("[{}] {text}", now()));
             let n = s.log.len();
             if n > 200 {
                 s.log.drain(..n - 200);
             }
-            s.backup_dir.clone()
         });
-        log_to_file(&dir, &text);
+        log_to_file(&crate::cli::own_dir(), &text);
     }
 
     /// Run f in a thread unless something is running; errors become alerts.
@@ -1364,7 +1363,7 @@ impl Controller {
     /// can't be written then) are given back through the helper, which runs once the unit is reached.
     #[cfg(target_os = "macos")]
     fn give_back_folders(&self) {
-        let dirs = vec![crate::library::default_dir(), self.shared.lock().unwrap().backup_dir.clone()];
+        let dirs = vec![crate::library::default_dir(), self.shared.lock().unwrap().backup_dir.clone(), crate::cli::own_dir()];
         if !crate::scsi::macos::left_to_root(&dirs) {
             return;
         }
@@ -1607,17 +1606,17 @@ pub(crate) fn how_to(rescue: &str, firmware: &str, model: &str, running: Option<
     format!("{why}\n{keys}\nM-Flasher needs Download Mode to check your {u} properly.")
 }
 
-/// The operation log kept on disk too, next to the backups' folder
-/// (Documents/M-Flasher/m-flasher.log): the window shows only its last lines,
-/// and they go with it. Past 1 MiB the file starts again, the last one kept as
-/// m-flasher.log.1.
-pub(crate) fn log_to_file(backup_dir: &Path, text: &str) {
+/// The operation log kept on disk too, in M-Flasher +'s own folder
+/// (Documents/M-Flasher Plus/m-flasher-plus.log), not M-Flasher's: the window
+/// shows only its last lines, and they go with it. Past 1 MiB the file starts
+/// again, the last one kept as m-flasher-plus.log.1.
+pub(crate) fn log_to_file(dir: &Path, text: &str) {
     use std::io::Write;
-    let path = backup_dir.parent().unwrap_or(backup_dir).join("m-flasher.log");
+    let path = dir.join("m-flasher-plus.log");
     if std::fs::metadata(&path).is_ok_and(|m| m.len() > 1 << 20) {
         let _ = std::fs::rename(&path, path.with_extension("log.1"));
     }
-    let _ = std::fs::create_dir_all(path.parent().unwrap_or(backup_dir));
+    let _ = std::fs::create_dir_all(dir);
     if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(&path) {
         let _ = writeln!(f, "{} {text}", chrono::Local::now().format("%Y-%m-%d %H:%M:%S"));
     }

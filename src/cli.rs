@@ -57,12 +57,24 @@ the ROM takes USB down, so the jump can't be confirmed; that isn't an error.
 This runs arbitrary code on the chip. Use it only with programs you trust.";
 
 pub fn default_backup_dir() -> PathBuf {
+    documents_dir().join("M-Flasher").join("backups")
+}
+
+/// M-Flasher +'s own folder (Documents/M-Flasher Plus), apart from M-Flasher's:
+/// its log goes there, so that a log of one app doesn't end up in a report
+/// about the other.
+pub fn own_dir() -> PathBuf {
+    documents_dir().join("M-Flasher Plus")
+}
+
+/// The user's Documents folder, else their home; under sudo the user's own.
+fn documents_dir() -> PathBuf {
     let home = std::env::var_os("USERPROFILE").or_else(|| std::env::var_os("HOME")).map(PathBuf::from).unwrap_or_default();
-    // under sudo the backups still go to the user's own Documents
+    // under sudo the files still go to the user's own Documents
     #[cfg(unix)]
     let home = sudo_user_home().unwrap_or(home);
     let docs = home.join("Documents");
-    (if docs.is_dir() { docs } else { home }).join("M-Flasher").join("backups")
+    if docs.is_dir() { docs } else { home }
 }
 
 /// The home folder of the user who ran sudo, when running as root under it.
@@ -319,7 +331,7 @@ fn main(args: Vec<String>) -> Result<(), Error> {
             "--stock-bootloader" => install_opts.stock_bootloader = true,
             "--restart" => then_restart = true,
             "--version" => {
-                println!("{}", env!("CARGO_PKG_VERSION"));
+                println!("M-Flasher + {}", env!("CARGO_PKG_VERSION"));
                 return Ok(());
             }
             "-h" | "--help" => {
