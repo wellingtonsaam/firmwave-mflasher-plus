@@ -1,0 +1,594 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Interactive prototype of M-Flasher +, the free firmware utility for the M-VAVE FM-1. A simulated FM-1: nothing is connected or written.">
+<meta property="og:image" content="https://m-flasher-plus-prototype.vercel.app/cover-mac.png">
+<script>window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };</script>
+<script defer src="/_vercel/insights/script.js"></script>
+<title>M-Flasher + Prototype</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+/* Layout: a prototype bar on top, the app window (Mac) or phone (Android) in the middle, a "try this" checklist beside it. One dark look, like the app itself. */
+:root {
+  color-scheme: dark;
+  --bg: #1b1715; --win: #28221f; --panel: #221d1a; --panel2: #2e2724; --line: #3c3433; --line2: #4e4448;
+  --ink: #e9e4dc; --dim: #8d837b; --lav: #b6a2e6; --mint: #7be8bb;
+  --key: #23706f; --keyline: #2f8888; --keyink: #d6efe8; --key2: #1f3c3a;
+  --lcd: #b9cf6b; --lcdink: #1d2611; --warn: #e8b04a; --bad: #ef7a66;
+  --boot: #9b3f55; --fw: #5fcfb4; --preset: #d6b98c; --pair: #c4687c; --mac: #8a8580; --empty: #35302d;
+  --display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --mono: "Share Tech Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--mono); font-size: 13px; line-height: 1.45; margin: 0;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 20px 40px; }
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--mint); outline-offset: 2px; }
+.wrap { max-width: 1280px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+
+/* prototype bar */
+.proto { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; justify-content: space-between; }
+.proto h1 { font-family: var(--display); font-weight: 700; font-size: 28px; margin: 0; color: var(--mint); letter-spacing: .5px; }
+.proto h1 span { color: var(--dim); font-weight: 500; font-size: 18px; margin-left: 8px; letter-spacing: .3px; }
+.ctrls { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; }
+.seg { display: inline-flex; border: 1px solid var(--line2); border-radius: 4px; overflow: hidden; }
+.seg button { background: transparent; border: 0; padding: 6px 10px; color: var(--dim); font-size: 12px; letter-spacing: .4px; }
+.seg button[aria-pressed="true"] { background: var(--key2); color: var(--keyink); }
+.lbl { font-size: 11px; letter-spacing: 1.6px; text-transform: uppercase; color: var(--dim); }
+.ghost { background: transparent; border: 1px solid var(--line2); border-radius: 4px; padding: 6px 10px; font-size: 12px; color: var(--dim); }
+
+.stage { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 20px; align-items: start; }
+@media (max-width: 980px) { .stage { grid-template-columns: minmax(0, 1fr); } }
+
+/* the app window */
+.app { background: var(--win); border: 1px solid var(--line2); border-radius: 10px; overflow: hidden; box-shadow: 0 24px 60px rgba(0,0,0,.45); min-width: 0; position: relative; }
+.titlebar { height: 30px; display: flex; align-items: center; gap: 7px; padding: 0 12px; background: var(--panel); border-bottom: 1px solid var(--line); }
+.titlebar i { width: 11px; height: 11px; border-radius: 50%; background: var(--line2); display: block; }
+.titlebar b { font-weight: 400; color: var(--dim); font-size: 12px; margin-left: 10px; }
+.head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 24px; padding: 16px 20px 12px; border-bottom: 1px solid var(--line); }
+.brand { font-family: var(--display); font-style: italic; font-weight: 700; font-size: 34px; color: var(--mint); line-height: 1; letter-spacing: .5px; }
+.brand + small { color: var(--dim); font-size: 10px; letter-spacing: 1.4px; line-height: 1.5; text-transform: uppercase; }
+.tabs { display: flex; gap: 4px; margin-left: auto; flex-wrap: wrap; }
+.tabs button { background: none; border: 0; border-bottom: 2px solid transparent; padding: 6px 8px; color: var(--dim); font-size: 11px; letter-spacing: 1.6px; }
+.tabs button[aria-selected="true"] { color: var(--mint); border-bottom-color: var(--mint); }
+.ver { color: var(--ink); font-size: 11px; letter-spacing: 1px; }
+
+.body { padding: 18px 20px 22px; }
+.cols { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 22px; }
+.col { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.sec { font-size: 10px; letter-spacing: 1.8px; color: var(--lav); text-transform: uppercase; display: flex; align-items: center; gap: 10px; }
+.sec::after { content: ""; flex: 1; height: 1px; background: var(--line2); }
+.sec em { font-style: normal; color: var(--warn); letter-spacing: 1px; }
+
+/* LCD */
+.lcdbox { background: #141110; border-radius: 6px; padding: 10px; }
+.lcd { background: var(--lcd); color: var(--lcdink); border-radius: 3px; padding: 10px 12px; font-size: 13px; line-height: 1.55; letter-spacing: .6px; text-transform: uppercase; min-height: 108px; }
+.lcd .big { font-size: 18px; }
+.lcd .rule { border-top: 2px solid var(--lcdink); margin: 4px 0; }
+.lcd .bar { height: 10px; border: 2px solid var(--lcdink); margin-top: 4px; position: relative; }
+.lcd .bar span { position: absolute; inset: 0 auto 0 0; background: var(--lcdink); }
+
+/* keys */
+.key { width: 100%; display: flex; align-items: center; gap: 10px; text-align: left; background: var(--key); border: 1px solid var(--keyline); color: var(--keyink);
+  border-radius: 3px; padding: 9px 12px; font-family: var(--display); font-weight: 600; font-size: 15px; letter-spacing: .8px; text-transform: uppercase; }
+.key svg { width: 16px; height: 16px; flex: none; }
+.key .dot { margin-left: auto; width: 6px; height: 6px; border-radius: 50%; background: var(--keyink); opacity: .7; }
+.key.sel { background: var(--key2); border-color: var(--mint); box-shadow: inset 3px 0 0 var(--mint); }
+.key:disabled { background: var(--panel2); border-color: var(--line); color: var(--dim); cursor: default; }
+.key.small { width: auto; padding: 6px 12px; font-size: 13px; }
+.key.quiet { background: transparent; border-color: var(--line2); color: var(--ink); }
+.key.dark { background: #171312; border-color: var(--line2); color: var(--ink); }
+.note { font-size: 11.5px; color: var(--dim); }
+.warnline { color: var(--warn); font-size: 11.5px; display: flex; gap: 8px; }
+.warnline::before { content: "!"; font-weight: 700; }
+
+/* rows */
+.rows { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 6px 12px; font-size: 12px; }
+.rows dt { color: var(--dim); font-size: 10px; letter-spacing: 1.6px; text-transform: uppercase; padding-top: 2px; }
+.rows dd { margin: 0; overflow-wrap: anywhere; }
+.rows .new { color: var(--warn); }
+.rows .name { color: var(--mint); }
+
+/* flash map */
+.map { display: grid; grid-template-columns: 22px repeat(16, minmax(0, 1fr)); gap: 3px; font-size: 9px; color: var(--dim); }
+.map span { text-align: center; }
+.map .c { aspect-ratio: 1; border-radius: 1px; background: var(--empty); transition: background .25s, outline-color .25s; outline: 1px solid transparent; }
+.c.boot { background: var(--boot); } .c.fw { background: var(--fw); } .c.preset { background: var(--preset); } .c.pair { background: var(--pair); } .c.mac { background: var(--mac); }
+.c.plan { outline-color: var(--ink); } .c.hot { background: var(--ink) !important; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 10px; letter-spacing: 1px; color: var(--dim); text-transform: uppercase; }
+.legend i { display: inline-block; width: 10px; height: 10px; margin-right: 6px; vertical-align: -1px; }
+
+/* safety check */
+.checks { display: flex; flex-direction: column; gap: 8px; }
+.chk { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 8px; font-size: 11.5px; }
+.chk b { font-weight: 400; color: var(--lav); font-size: 10px; letter-spacing: 1.4px; text-transform: uppercase; display: block; }
+.chk .ok { color: var(--mint); } .chk .att { color: var(--warn); }
+
+/* library */
+.libtools { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; }
+.search { flex: 1 1 220px; min-width: 0; background: #171312; border: 1px solid var(--line2); color: var(--ink); border-radius: 3px; padding: 7px 10px; font: inherit; }
+.tick { display: inline-flex; gap: 6px; align-items: center; font-size: 11.5px; color: var(--ink); }
+.tick input { accent-color: var(--mint); }
+.count { margin-left: auto; color: var(--dim); font-size: 11px; }
+.hidden-note { color: var(--warn); font-size: 10.5px; letter-spacing: 1.2px; text-transform: uppercase; text-align: right; }
+.list { display: flex; flex-direction: column; gap: 6px; }
+.fw { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 4px 10px; align-items: center; background: var(--panel); border: 1px solid var(--line); border-radius: 3px; padding: 8px 10px; }
+.fw .star { background: none; border: 0; color: var(--dim); font-size: 15px; padding: 0; line-height: 1; }
+.fw .star[aria-pressed="true"] { color: var(--warn); }
+.fw h4 { margin: 0; font-weight: 400; font-size: 13px; text-transform: uppercase; letter-spacing: .4px; }
+.fw h4 small { color: var(--dim); font-size: 11px; margin-left: 4px; text-transform: none; }
+.fw p { margin: 0; color: var(--dim); font-size: 11px; }
+.fw p .ok { color: var(--mint); } .fw p .old { color: var(--warn); }
+.fw .acts { display: flex; gap: 6px; align-items: center; }
+.fw .acts .key { width: auto; padding: 5px 12px; font-size: 13px; }
+.fw .prog { width: 86px; height: 6px; background: var(--empty); border-radius: 3px; overflow: hidden; }
+.fw .prog span { display: block; height: 100%; background: var(--mint); width: 0; transition: width .9s linear; }
+
+/* backups / about */
+.bk { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 3px; background: var(--panel); }
+.bk code { font-family: var(--mono); color: var(--ink); overflow-wrap: anywhere; }
+.bk p { margin: 0; color: var(--dim); font-size: 11px; grid-column: 1 / -1; }
+.bk p b { font-weight: 400; color: var(--mint); }
+.empty { color: var(--dim); border: 1px dashed var(--line2); border-radius: 3px; padding: 18px; text-align: center; }
+.about { max-width: 62ch; display: flex; flex-direction: column; gap: 10px; font-size: 12.5px; }
+.about h3 { font-family: var(--display); font-weight: 700; font-size: 22px; margin: 0; color: var(--mint); }
+.about a { color: var(--lav); }
+
+/* notice + dialog */
+.notice { border: 1px solid var(--line2); border-radius: 3px; padding: 10px 12px; background: var(--panel2); font-size: 12px; display: flex; gap: 12px; align-items: flex-start; }
+.notice.bad { border-color: var(--bad); color: var(--bad); }
+.notice.good { border-color: var(--keyline); }
+.notice > div { flex: 1; min-width: 0; }
+.scrim { position: absolute; inset: 0; background: rgba(15,12,11,.72); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 5; }
+.dlg { width: min(640px, 100%); background: var(--panel2); border: 1px solid var(--line2); border-radius: 4px; padding: 20px 22px; box-shadow: 0 20px 50px rgba(0,0,0,.5); display: flex; flex-direction: column; gap: 12px; max-height: 100%; overflow: auto; }
+.dlg h3 { margin: 0; font-weight: 400; font-size: 13px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--lav); text-wrap: balance; }
+.dlg.bad h3, .dlg.bad p { color: var(--bad); }
+.dlg p { margin: 0; font-size: 12px; }
+.dlg .lcdline { background: var(--lcd); color: var(--lcdink); padding: 6px 10px; border-radius: 2px; text-transform: uppercase; font-size: 12px; letter-spacing: .6px; }
+.dlg .btns { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; margin-top: 4px; }
+.steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.steps div { border: 1px solid var(--line2); border-radius: 3px; padding: 8px 10px; font-size: 11px; color: var(--dim); }
+.steps b { display: block; font-family: var(--display); font-weight: 700; font-size: 16px; color: var(--ink); }
+.steps small { color: var(--mint); letter-spacing: 1.4px; font-size: 9.5px; }
+
+/* side checklist */
+.tour { background: var(--win); border: 1px solid var(--line); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.tour h2 { margin: 0; font-family: var(--display); font-weight: 700; font-size: 20px; letter-spacing: .4px; }
+.tour ol { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; counter-reset: t; }
+.tour li { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 8px; font-size: 12px; counter-increment: t; color: var(--ink); }
+.tour li::before { content: counter(t); width: 20px; height: 20px; border-radius: 50%; border: 1px solid var(--line2); color: var(--dim); display: grid; place-items: center; font-size: 11px; }
+.tour li.done::before { content: "✓"; background: var(--key); border-color: var(--keyline); color: var(--keyink); }
+.tour li.done { color: var(--dim); }
+.tour li small { display: block; grid-column: 2; color: var(--dim); font-size: 11px; }
+.fine { color: var(--dim); font-size: 11px; border-top: 1px solid var(--line); padding-top: 10px; }
+.fine a { color: var(--lav); }
+
+/* Android: the same core in a phone */
+.app.phone { width: 390px; max-width: 100%; height: 820px; max-height: calc(100vh - 140px); min-height: 560px; margin: 0 auto; border-radius: 44px; border: 10px solid #0f0d0c;
+  outline: 1px solid var(--line2); display: flex; flex-direction: column; }
+.statusbar, .homebar { display: none; }
+.app.phone .statusbar { display: flex; flex: none; align-items: center; justify-content: space-between; height: 34px; padding: 6px 26px 0; font-size: 12px; color: var(--ink); position: relative; }
+.app.phone .statusbar::after { content: ""; position: absolute; left: 50%; top: 9px; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; background: #0f0d0c; }
+.app.phone .statusbar span:last-child { letter-spacing: 1px; color: var(--dim); }
+.app.phone .head { flex: none; }
+.app.phone .body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+.app.phone .homebar { display: block; flex: none; height: 22px; position: relative; }
+.app.phone .homebar::after { content: ""; position: absolute; left: 50%; top: 8px; width: 120px; height: 4px; margin-left: -60px; border-radius: 2px; background: var(--dim); }
+.app.phone .scrim { border-radius: 34px; }
+.app.phone .titlebar { display: none; }
+.app.phone .head { padding: 14px 14px 8px; gap: 6px 10px; }
+.app.phone .brand { font-size: 22px; }
+.app.phone .brand + small, .app.phone .ver { display: none; }
+.app.phone .tabs { margin-left: 0; width: 100%; justify-content: space-between; }
+.app.phone .body { padding: 14px; }
+.app.phone .cols { grid-template-columns: minmax(0, 1fr); }
+.app.phone .mapwrap { display: none; }
+.app.phone .rows { grid-template-columns: 96px minmax(0, 1fr); }
+.app.phone .steps { grid-template-columns: minmax(0, 1fr); }
+.app.phone .scrim { padding: 12px; }
+@media (max-width: 760px) { .cols { grid-template-columns: minmax(0, 1fr); } .tabs { margin-left: 0; } .steps { grid-template-columns: minmax(0, 1fr); } .rows { grid-template-columns: 96px minmax(0, 1fr); } }
+/* cover: the release page's picture of each app */
+.playbadge { display: none; }
+body.cover .proto, body.cover .tour { display: none; }
+body.cover .stage { grid-template-columns: minmax(0, 1fr); }
+body.cover { padding-block: 24px; }
+body.cover .app { height: calc(100vh - 48px); }
+body.cover .app::after { content: ""; position: absolute; inset: auto 0 0 0; height: 150px; background: linear-gradient(transparent, var(--win) 75%); z-index: 5; pointer-events: none; }
+body.cover .playbadge { display: inline-flex; align-items: center; gap: 10px; position: absolute; right: 20px; bottom: 20px; z-index: 6;
+  background: var(--key); border: 1px solid var(--keyline); color: var(--keyink); border-radius: 999px; padding: 10px 18px 10px 14px;
+  font-family: var(--display); font-weight: 700; font-size: 18px; letter-spacing: .8px; text-transform: uppercase; box-shadow: 0 10px 30px rgba(0,0,0,.5); }
+body.cover .playbadge i { width: 0; height: 0; border-style: solid; border-width: 7px 0 7px 11px; border-color: transparent transparent transparent var(--keyink); }
+body.cover .app.phone { max-height: none; }
+body.cover .app.phone .playbadge { right: 50%; transform: translateX(50%); bottom: 34px; white-space: nowrap; font-size: 16px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="proto">
+    <h1>M-FLASHER + <span>interactive prototype</span></h1>
+    <div class="ctrls">
+      <span class="lbl" id="unitLbl">FM-1 on the table</span>
+      <div class="seg" role="group" aria-labelledby="unitLbl" id="unitSeg">
+        <button id="u-stock" data-unit="stock" aria-pressed="true">Stock bootloader</button>
+        <button id="u-mboot" data-unit="mboot" aria-pressed="false">m-bootloader</button>
+        <button id="u-new" data-unit="new" aria-pressed="false">Newer chip (2026)</button>
+      </div>
+      <div class="seg" role="group" aria-label="App" id="viewSeg">
+        <button id="v-mac" data-view="mac" aria-pressed="true">Mac app</button>
+        <button id="v-android" data-view="android" aria-pressed="false">Android app</button>
+      </div>
+      <button class="ghost" id="reset">Start over</button>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="app" id="app">
+      <div class="titlebar"><i></i><i></i><i></i><b>M-Flasher +</b></div>
+      <div class="statusbar" aria-hidden="true"><span>9:41</span><span>USB ▪ 87%</span></div>
+      <div class="head">
+        <div class="brand">M-FLASHER +</div>
+        <small>USB firmware utility<br>for the FM-1 and SMK-37</small>
+        <nav class="tabs" role="tablist">
+          <button role="tab" id="t-device" data-tab="device" aria-selected="true">DEVICE</button>
+          <button role="tab" id="t-library" data-tab="library" aria-selected="false">LIBRARY</button>
+          <button role="tab" id="t-backups" data-tab="backups" aria-selected="false">BACKUPS</button>
+          <button role="tab" id="t-about" data-tab="about" aria-selected="false">ABOUT</button>
+        </nav>
+        <span class="ver">v1.0.0</span>
+      </div>
+      <div class="body" id="view"></div>
+      <div id="modal"></div>
+      <div class="homebar" aria-hidden="true"></div>
+      <div class="playbadge" aria-hidden="true"><i></i>Try the prototype</div>
+    </div>
+
+    <aside class="tour" aria-label="Try the features">
+      <h2>Try it</h2>
+      <ol id="tour">
+        <li id="g-check">Check the FM-1<small>DEVICE › CHECK FM1 STATUS. It switches the unit to download mode and reads it.</small></li>
+        <li id="g-get">Get a firmware<small>LIBRARY › GET. Downloaded from the author's release and checked by SHA-256.</small></li>
+        <li id="g-two">Install it on the stock bootloader<small>m-bootloader goes first, in two reviewed steps.</small></li>
+        <li id="g-name">See its real name<small>zp12 shows up as "zp12 2.5 · Felucca", on DEVICE INFO, on the FM-1 and in BACKUPS.</small></li>
+        <li id="g-chip">Try a newer FM-1<small>Pick "Newer chip (2026)" and check it. In LIBRARY, turn off "This unit only" and INSTALL Hortator.</small></li>
+        <li id="g-android">Open the Android app<small>Same core, same tabs, over a USB OTG cable.</small></li>
+      </ol>
+      <p class="fine">Prototype: the FM-1 is simulated. Nothing is connected, downloaded or written. The real app: <a href="https://github.com/wellingtonsaam/m-flasher-plus/releases/latest" target="_blank" rel="noopener">github.com/wellingtonsaam/m-flasher-plus</a>. Based on <a href="https://github.com/jvitkauskas/m-flasher" target="_blank" rel="noopener">M-Flasher</a> by Julius Vitkauskas. Firmware list: The Firmware Hub (CC BY 4.0).</p>
+    </aside>
+  </div>
+</div>
+
+<script>
+const ICON = {
+  chip: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="4" y="4" width="8" height="8"/><path d="M6 1v3M10 1v3M6 12v3M10 12v3M1 6h3M1 10h3M12 6h3M12 10h3"/></svg>',
+  boot: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="8" cy="8" r="5.5"/><circle cx="8" cy="8" r="2"/></svg>',
+  down: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M8 2v8M4.5 6.5 8 10l3.5-3.5M2.5 13.5h11"/></svg>',
+  up: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M8 11V3M4.5 6.5 8 3l3.5 3.5M2.5 13.5h11"/></svg>',
+  fw: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 8h3l1.5-4 3 8L11 8h3"/></svg>'
+};
+
+// The hub's list (a sample of it). oldChip = marked for the older flash chip only. calls = the name its own code reports.
+const LIB = [
+  { id: "mvave", name: "M-VAVE FM-1 (official)", ver: "015", author: "M-VAVE", lic: "Apache-2.0", kind: "Stock", calls: "FM-1 015" },
+  { id: "felucca", name: "Felucca", ver: "1.8.2", author: "hugelton", lic: "GPL-3.0", kind: "Groove", calls: "Felucca 1.8.2" },
+  { id: "zp12", name: "zp12", ver: "2.5", author: "zvenson", lic: "GPL-3.0", kind: "Drums", calls: "Felucca 1.8.2", fork: true },
+  { id: "hortator", name: "Hortator", ver: "1.0.1", author: "deadactive", lic: "GPL-3.0", kind: "Drums", calls: "Hortator 1.0.1", oldChip: true },
+  { id: "etch", name: "Etch", ver: "1.08", author: "Joppe Sikken", lic: "GPL-3.0", kind: "Synth", calls: "Etch 1.08" },
+  { id: "amb1", name: "AMB-1", ver: "1.3.2", author: "Charles Vestal", lic: "MPL-2.0", kind: "Synth", calls: "AMB-1 1.3.2" },
+  { id: "polly", name: "Polly", ver: "0.6.4", author: "Charles Vestal", lic: "GPL-3.0", kind: "Groove", calls: "Polly 0.6.4", beta: true },
+  { id: "tribe", name: "Tribe", ver: "0.3-beta", author: "mpiel", lic: "GPL-3.0", kind: "Groove", calls: "Tribe 0.3", beta: true, oldChip: true }
+];
+const UNITS = {
+  stock: { boot: "stock", chip: "Puya P25Q80H · 0x856014", newChip: false },
+  mboot: { boot: "m-bootloader 2.4", chip: "Puya P25Q80H · 0x856014", newChip: false },
+  new:   { boot: "stock", chip: "UCUN UC25HQ80 · 0xB36014", newChip: true }
+};
+const FW_SECTORS = { mvave: 120, felucca: 142, zp12: 138, hortator: 126, etch: 131, amb1: 118, polly: 104, tribe: 96 };
+
+let S;
+function fresh(unit) {
+  const u = UNITS[unit];
+  return { unit, view: S ? S.view : "mac", tab: "device", checked: false, boot: u.boot, chip: u.chip, newChip: u.newChip,
+    firmware: { label: "FM-1 015 (stock)", calls: "FM-1 015", named: null }, op: null, saved: new Set(["mvave"]),
+    fav: new Set(["mvave", "zp12"]), q: "", onlyUnit: true, betas: true, getting: {}, backups: [], notice: null,
+    lcd: ["FM-1", "USB MIDI · RUNNING", "", "CHECK FM1 STATUS TO START"], busy: false, writtenTo: null };
+}
+const done = new Set();
+function tick(id) { done.add(id); document.getElementById(id).classList.add("done"); }
+
+const $ = (s) => document.querySelector(s);
+const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const stamp = () => { const d = new Date(); const p = (n) => String(n).padStart(2, "0"); return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`; };
+const shownFw = () => S.firmware.named ? `${S.firmware.named} · ${S.firmware.calls.split(" ")[0]}` : S.firmware.label;
+
+// ---------- rendering ----------
+function render() {
+  document.querySelectorAll(".tabs button").forEach((b) => b.setAttribute("aria-selected", b.dataset.tab === S.tab));
+  const v = $("#view");
+  v.innerHTML = S.tab === "device" ? deviceView() : S.tab === "library" ? libraryView() : S.tab === "backups" ? backupsView() : aboutView();
+  bindView();
+}
+
+function lcdHtml() {
+  const l = S.lcd;
+  const bar = S.progress != null ? `<div class="bar"><span style="width:${S.progress}%"></span></div>` : "";
+  return `<div class="lcdbox"><div class="lcd" aria-live="polite"><div class="big">${esc(l[0])}</div><div>${esc(l[1])}</div><div>${esc(l[2])}</div>${bar}<div class="rule"></div><div>${esc(l[3])}</div></div></div>`;
+}
+
+function mapHtml() {
+  let h = "<span></span>";
+  for (let c = 0; c < 16; c++) h += `<span>${c.toString(16).toUpperCase()}</span>`;
+  for (let r = 0; r < 16; r++) {
+    h += `<span>${r.toString(16).toUpperCase()}0</span>`;
+    for (let c = 0; c < 16; c++) {
+      const i = r * 16 + c;
+      let cls = i < 4 ? "boot" : i < 4 + (S.fwSectors || 120) ? "fw" : i >= 0xB0 && i < 0xE0 ? "preset" : i === 0xE9 ? "pair" : i === 0xFF ? "mac" : "";
+      if (S.plan && S.plan.has(i)) cls += " plan";
+      h += `<div class="c ${cls}" data-i="${i}"></div>`;
+    }
+  }
+  return h;
+}
+
+function deviceView() {
+  const stock = S.boot === "stock";
+  const info = S.checked ? `
+    <div class="sec">Device info</div>
+    <dl class="rows">
+      <dt>Model</dt><dd>FM-1</dd>
+      <dt>Firmware</dt><dd class="${S.firmware.named ? "name" : ""}">${esc(shownFw())}</dd>
+      <dt>Bootloader</dt><dd>${stock ? "M-VAVE stock" : "m-bootloader 2.4"}</dd>
+      <dt>Flash chip</dt><dd class="${S.newChip ? "new" : ""}">${esc(S.chip)} ${S.newChip ? "(new)" : "(older)"}</dd>
+    </dl>
+    <div class="sec">Operations</div>
+    <button class="key" id="op-backup">${ICON.down} Backup full flash <span class="dot"></span></button>
+    <button class="key" id="op-restore">${ICON.up} Restore full flash <span class="dot"></span></button>
+    <button class="key" id="op-flash">${ICON.fw} Flash firmware <span class="dot"></span></button>` : `<p class="note">Nothing else shows until the FM-1 is checked.</p>`;
+  const notice = S.notice ? `<div class="notice ${S.notice.kind || ""}"><div>${S.notice.html}</div><button class="key small quiet" id="n-ok">OK</button></div>` : "";
+  return `<div class="cols">
+    <div class="col">
+      <div class="sec">Connected device</div>
+      ${lcdHtml()}
+      ${notice}
+      <button class="key ${S.checked ? "sel" : ""}" id="check" ${S.busy ? "disabled" : ""}>${ICON.chip} Check FM1 status <span class="dot"></span></button>
+      ${S.checked ? (stock
+        ? `<button class="key" id="mboot">${ICON.boot} Install m-bootloader 2.4 <span class="dot"></span></button><div class="warnline">No way back: with the stock bootloader, a firmware that does not start needs a USB_KEY dongle.</div>`
+        : `<button class="key" disabled>${ICON.boot} m-bootloader 2.4 installed ✓</button>`) : ""}
+      ${info}
+    </div>
+    <div class="col">
+      <div class="mapwrap col">
+        <div class="sec">Flash map · 1 MiB = 256 × 4 KiB</div>
+        <div class="map" id="map">${mapHtml()}</div>
+        <div class="legend"><span><i style="background:var(--boot)"></i>Boot 00–03</span><span><i style="background:var(--fw)"></i>Firmware</span><span><i style="background:var(--preset)"></i>Presets</span><span><i style="background:var(--pair)"></i>Pairings E9</span><span><i style="background:var(--mac)"></i>MAC FF</span></div>
+      </div>
+      ${S.checked ? `<div class="sec">Safety check <em>${needs()} need attention</em></div>
+      <div class="checks">
+        ${chk(!stock, "Recovery", stock ? "Stock bootloader: no buttons reach download mode if a firmware fails." : "m-bootloader · REC: download mode · PLAY: recovery menu")}
+        ${chk(S.backups.length > 0, "Backup", S.backups.length ? `Saved this session: ${esc(S.backups[0].file)}` : "None this session yet. Every write saves one first anyway.")}
+        ${chk(true, "Firmware", `${esc(shownFw())} · checks OK`)}
+        ${chk(!S.newChip, "Chip", S.newChip ? "Newer UCUN chip: firmwares marked for the older chip are refused." : "Puya P25Q80H · every library firmware fits")}
+      </div>` : ""}
+    </div>
+  </div>`;
+}
+const chk = (ok, t, d) => `<div class="chk"><span class="${ok ? "ok" : "att"}">${ok ? "✓" : "!"}</span><div><b>${t}</b>${d}</div></div>`;
+const needs = () => [S.boot === "stock", S.backups.length === 0, S.newChip].filter(Boolean).length;
+
+function libraryView() {
+  const q = S.q.trim().toLowerCase();
+  let items = LIB.filter((f) => !q || `${f.name} ${f.author} ${f.kind}`.toLowerCase().includes(q));
+  if (!S.betas) items = items.filter((f) => !f.beta);
+  const hidden = S.onlyUnit && S.checked && S.newChip ? items.filter((f) => f.oldChip).length : 0;
+  if (hidden) items = items.filter((f) => !f.oldChip);
+  items.sort((a, b) => (S.fav.has(b.id) - S.fav.has(a.id)));
+  const rows = items.map((f) => {
+    const g = S.getting[f.id];
+    const saved = S.saved.has(f.id);
+    const act = g != null ? `<div class="prog" aria-label="Downloading"><span id="pg-${f.id}"></span></div>`
+      : saved ? `<button class="key" data-install="${f.id}">Install</button>` : `<button class="key dark" data-get="${f.id}">Get</button>`;
+    return `<div class="fw">
+      <button class="star" data-fav="${f.id}" aria-pressed="${S.fav.has(f.id)}" aria-label="Favorite ${esc(f.name)}">★</button>
+      <div><h4>${esc(f.name)}<small>${esc(f.ver)}</small></h4>
+        <p>${esc(f.author)} · ${f.lic} · ${f.kind.toUpperCase()}${f.beta ? " · BETA" : ""}${f.oldChip ? ' · <span class="old">OLDER CHIP ONLY</span>' : ""}${saved ? ' · <span class="ok">SAVED · SHA-256 OK</span>' : ""}</p></div>
+      <div class="acts">${act}</div></div>`;
+  }).join("");
+  return `<div class="col">
+    <div class="sec">Firmware library</div>
+    <div class="libtools">
+      <input class="search" id="q" type="search" placeholder="Search name, author, kind" value="${esc(S.q)}" aria-label="Search the library">
+      <label class="tick"><input type="checkbox" id="only" ${S.onlyUnit ? "checked" : ""}> This unit only</label>
+      <label class="tick"><input type="checkbox" id="betas" ${S.betas ? "checked" : ""}> Betas</label>
+      <span class="count">${items.length} of 213</span>
+    </div>
+    ${hidden ? `<div class="hidden-note">${hidden} more hidden by this unit only</div>` : ""}
+    <div class="list">${rows || '<div class="empty">No firmware matches.</div>'}</div>
+    <p class="note">GET downloads a firmware from its author's GitHub release and checks its SHA-256. Once saved, it installs offline. INSTALL plans it and opens its review: nothing is written before WRITE. List: The Firmware Hub (CC BY 4.0), read at most once a day.</p>
+  </div>`;
+}
+
+function backupsView() {
+  const list = S.backups.length ? S.backups.map((b) => `<div class="bk"><code>${esc(b.file)}</code><button class="key small quiet" data-restore="${esc(b.file)}">Restore</button>
+    <p>${b.named ? `Firmware name: <b>${esc(b.named)}</b> · ` : ""}1 MiB · checked · ${esc(b.when)}</p></div>`).join("")
+    : '<div class="empty">No backups yet. Every write saves one first; BACKUP FULL FLASH saves one now.</div>';
+  return `<div class="col"><div class="sec">Backups · M-Flasher/backups</div>${list}
+    <p class="note">Backups are named by the firmware M-Flasher + installed, not by what its code calls itself.</p></div>`;
+}
+
+function aboutView() {
+  return `<div class="about">
+    <h3>M-Flasher + 1.0.0</h3>
+    <p>Back up, restore and flash the M-VAVE FM-1, with a firmware library built in. Free and open source, for macOS and Android.</p>
+    <p>Based on <a href="https://github.com/jvitkauskas/m-flasher" target="_blank" rel="noopener">M-Flasher</a> by Julius Vitkauskas (MIT). Bootloader and flash loader: m-bootloader (MIT). Firmware list: The Firmware Hub (CC BY 4.0); each firmware belongs to its author.</p>
+    <p>Unofficial: not affiliated with M-VAVE or JieLi. Every write is backed up first and verified, but use it at your own risk.</p>
+  </div>`;
+}
+
+// ---------- dialogs ----------
+function dialog(html, cls = "") { $("#modal").innerHTML = `<div class="scrim"><div class="dlg ${cls}" role="dialog" aria-modal="true">${html}</div></div>`; const b = $("#modal .btns .key:last-child"); if (b) b.focus(); }
+function closeDialog() { $("#modal").innerHTML = ""; }
+
+function startInstall(id) {
+  const f = LIB.find((x) => x.id === id);
+  if (!S.checked) { S.tab = "device"; S.notice = { html: "Check the FM-1 first: CHECK FM1 STATUS switches it to download mode and reads it." }; render(); return; }
+  if (S.newChip && f.oldChip) {
+    tick("g-chip");
+    dialog(`<h3>Warning: new UCUN UC25HQ80 chip</h3><p>Refused: ${esc(f.name)} is marked for the FM-1's older flash chip (0x856014) only; this FM-1 has the newer one. Nothing was written.</p><div class="btns"><button class="key small" id="d-ok">OK</button></div>`, "bad");
+    $("#d-ok").onclick = closeDialog; return;
+  }
+  if (S.boot === "stock") {
+    const tag = `${f.name.toLowerCase()}-${f.ver}`;
+    dialog(`<h3>Stock bootloader detected: replace it with m-bootloader (2 steps)</h3>
+      <p>This FM-1 has M-VAVE's stock bootloader. If the new firmware does not start, only a hardware accessory gets the FM-1 into download mode. The recommendation is to replace the stock bootloader with m-bootloader.</p>
+      <div class="steps"><div><small>STEP 1</small><b>m-bootloader 2.4</b>The boot area only, 0x00000–0x03FFF: 4 sectors, backed up and verified.</div>
+      <div><small>STEP 2</small><b>${esc(tag)}</b>Its review opens next. Nothing is written without your OK.</div>
+      <div><small>FROM THEN ON</small><b>A way back</b>Hold REC: download mode. Hold PLAY: recovery menu.</div></div>
+      <p>Each step is reviewed, backed up first and verified, as any write.</p>
+      <div class="btns"><button class="key small dark" id="d-cancel">Cancel</button><button class="key small dark" id="d-skip">Skip m-bootloader</button><button class="key small" id="d-boot">Install m-bootloader 2.4</button></div>`);
+    $("#d-cancel").onclick = closeDialog;
+    $("#d-skip").onclick = () => { closeDialog(); S.skipped = true; review(f); };
+    $("#d-boot").onclick = () => { closeDialog(); S.after = f; S.twoStep = true; writeBoot(); };
+    return;
+  }
+  review(f);
+}
+
+function review(f) {
+  const n = FW_SECTORS[f.id];
+  const tag = `${f.name.toUpperCase()}-${f.ver}`;
+  S.tab = "device"; S.fwSectors = n; S.plan = new Set(Array.from({ length: n }, (_, i) => i + 4)); render();
+  dialog(`<h3>Install ${esc(f.name)} ${esc(f.ver)}?</h3>
+    <div class="lcdline">Install ${esc(tag)} · ${n} flash memory sectors</div>
+    <p>Planned: sectors 04–${(n + 3).toString(16).toUpperCase()} (firmware only). Presets, pairings and the MAC address stay. A full backup is saved before the first write, and every sector is verified.</p>
+    ${S.skipped && S.boot === "stock" ? '<p style="color:var(--warn)">m-bootloader skipped: if this firmware does not start, the FM-1 needs a USB_KEY dongle.</p>' : ""}
+    <div class="btns"><button class="key small dark" id="d-cancel">Cancel</button><button class="key small" id="d-write">Write</button></div>`);
+  $("#d-cancel").onclick = () => { S.plan = null; closeDialog(); render(); };
+  $("#d-write").onclick = () => { closeDialog(); writeFw(f); };
+}
+
+function backupNow(reason) {
+  const name = S.firmware.named ? S.firmware.named.replace(/\s+/g, "-").toLowerCase() : S.firmware.calls.split(" ")[0].toLowerCase();
+  const file = `fm1-${name}-${stamp()}.bin`;
+  S.backups.unshift({ file, named: S.firmware.named, when: reason });
+  return file;
+}
+
+function animateWrite(cells, label, then) {
+  S.busy = true; S.tab = "device"; S.progress = 0; render();
+  const total = cells.length; let k = 0;
+  const timer = setInterval(() => {
+    k = Math.min(total, k + Math.max(1, Math.round(total / 24)));
+    S.progress = Math.round((k / total) * 100);
+    S.lcd = ["WRITING", `${k} / ${total} · ${S.progress} %`, "BACKUP SAVED FIRST", "DO NOT UNPLUG"];
+    const lcd = $(".lcd"); if (lcd) lcd.outerHTML = lcdHtml().replace(/^<div class="lcdbox">|<\/div>$/g, "");
+    cells.slice(0, k).forEach((i) => { const c = document.querySelector(`.c[data-i="${i}"]`); if (c) c.classList.add("hot"); });
+    if (k >= total) {
+      clearInterval(timer);
+      setTimeout(() => { document.querySelectorAll(".c.hot").forEach((c) => c.classList.remove("hot")); S.progress = null; S.busy = false; then(); }, 350);
+    }
+  }, 90);
+}
+
+function writeBoot() {
+  backupNow("before m-bootloader");
+  animateWrite([0, 1, 2, 3], "m-bootloader", () => {
+    S.boot = "m-bootloader 2.4";
+    const f = S.after; S.after = null;
+    S.lcd = ["FM-1", "DOWNLOAD MODE", "M-BOOTLOADER 2.4", f ? "STEP 2: REVIEW THE FIRMWARE" : "CHOOSE A FIRMWARE · INSTALL PLANS IT"];
+    render();
+    if (!f) { dialog(`<h3>m-bootloader 2.4 installed</h3><p>Written and verified. From now on, REC or PLAY always rescues this FM-1.</p><div class="btns"><button class="key small" id="d-ok">OK</button></div>`); $("#d-ok").onclick = closeDialog; return; }
+    dialog(`<h3>m-bootloader 2.4 installed</h3><p>Step 1 of 2 written and verified. From now on, REC or PLAY always rescues this FM-1. Next: the firmware's review.</p><div class="btns"><button class="key small" id="d-next">Review the firmware</button></div>`);
+    $("#d-next").onclick = () => { closeDialog(); review(f); };
+  });
+}
+
+function writeFw(f) {
+  backupNow(`before ${f.name} ${f.ver}`);
+  const cells = [...S.plan]; S.plan = null;
+  animateWrite(cells, f.name, () => {
+    S.firmware = { label: `${f.name} ${f.ver}`, calls: f.calls, named: `${f.name} ${f.ver}` };
+    if (S.twoStep) tick("g-two");
+    S.twoStep = false; S.skipped = undefined;
+    S.lcd = ["RESTARTING FM-1", "LEAVING DOWNLOAD MODE", "", "WAITING ON USB MIDI"]; render();
+    setTimeout(() => {
+      S.lcd = ["M-FLASHER", "CONNECTED · FM-1", `${f.name} ${f.ver}`.toUpperCase(), "READY"];
+      const tag = `${f.name}-${f.ver}`.toUpperCase();
+      render();
+      const fork = f.fork ? `<p>Its own code calls itself "${esc(f.calls)}". M-Flasher + remembers what it installed, so DEVICE INFO, the FM-1's display and your backups say <span style="color:var(--mint)">${esc(f.name)} ${esc(f.ver)}</span>.</p>` : "";
+      dialog(`<h3>${esc(tag)} running</h3><p>Written, verified and restarted: the FM-1 answered on USB MIDI.</p>${fork}<div class="btns"><button class="key small" id="d-ok">OK</button></div>`);
+      $("#d-ok").onclick = () => { closeDialog(); if (f.fork) tick("g-name"); };
+    }, 1200);
+  });
+}
+
+// ---------- events ----------
+function bindView() {
+  const on = (id, fn) => { const el = document.getElementById(id); if (el) el.onclick = fn; };
+  on("check", () => {
+    S.busy = true; S.lcd = ["FM-1", "MIDI: DOWNLOAD MODE MESSAGE", "", "SWITCHING…"]; render();
+    setTimeout(() => {
+      S.busy = false; S.checked = true; tick("g-check");
+      S.lcd = ["FM-1", "USB CONNECTED · DOWNLOAD MODE", "FLASH 1 MIB", S.boot === "stock" ? "INSTALL M-BOOTLOADER FIRST" : "CHOOSE A FIRMWARE · INSTALL PLANS IT"];
+      S.notice = S.newChip ? { kind: "", html: "This FM-1 has the newer UCUN UC25HQ80 flash chip. Firmwares marked for the older chip are hidden in LIBRARY and refused here." } : null;
+      render();
+    }, 900);
+  });
+  on("n-ok", () => { S.notice = null; render(); });
+  on("mboot", () => {
+    dialog(`<h3>Install m-bootloader 2.4?</h3><div class="lcdline">Install m-bootloader 2.4 · 4 flash memory sectors</div><p>The boot area only, 0x00000–0x03FFF. A full backup is saved first. Then REC or PLAY always rescues this FM-1.</p><div class="btns"><button class="key small dark" id="d-cancel">Cancel</button><button class="key small" id="d-write">Write</button></div>`);
+    $("#d-cancel").onclick = closeDialog;
+    $("#d-write").onclick = () => { closeDialog(); S.after = null; writeBoot(); };
+  });
+  on("op-backup", () => { const file = backupNow("full flash, by hand"); S.notice = { kind: "good", html: `Backup saved and checked: <span style="color:var(--mint)">${esc(file)}</span>` }; render(); });
+  on("op-restore", () => { S.tab = "backups"; render(); });
+  on("op-flash", () => { S.tab = "library"; render(); });
+  const q = document.getElementById("q");
+  if (q) q.oninput = (e) => { S.q = e.target.value; const pos = e.target.selectionStart; render(); const nq = document.getElementById("q"); nq.focus(); nq.setSelectionRange(pos, pos); };
+  const only = document.getElementById("only"); if (only) only.onchange = (e) => { S.onlyUnit = e.target.checked; render(); };
+  const betas = document.getElementById("betas"); if (betas) betas.onchange = (e) => { S.betas = e.target.checked; render(); };
+  document.querySelectorAll("[data-fav]").forEach((b) => b.onclick = () => { const id = b.dataset.fav; S.fav.has(id) ? S.fav.delete(id) : S.fav.add(id); render(); });
+  document.querySelectorAll("[data-get]").forEach((b) => b.onclick = () => {
+    const id = b.dataset.get; S.getting[id] = 0; render();
+    requestAnimationFrame(() => { const p = document.getElementById(`pg-${id}`); if (p) p.style.width = "100%"; });
+    setTimeout(() => { delete S.getting[id]; S.saved.add(id); tick("g-get"); render(); }, 1000);
+  });
+  document.querySelectorAll("[data-install]").forEach((b) => b.onclick = () => startInstall(b.dataset.install));
+  document.querySelectorAll("[data-restore]").forEach((b) => b.onclick = () => {
+    dialog(`<h3>Restore this backup?</h3><div class="lcdline">Restore ${esc(b.dataset.restore)}</div><p>In the real app this writes the whole 1 MiB back, after saving a backup of what is there now. The prototype stops here.</p><div class="btns"><button class="key small" id="d-ok">OK</button></div>`);
+    $("#d-ok").onclick = closeDialog;
+  });
+}
+
+document.querySelectorAll(".tabs button").forEach((b) => b.onclick = () => { S.tab = b.dataset.tab; render(); });
+document.querySelectorAll("#unitSeg button").forEach((b) => b.onclick = () => {
+  document.querySelectorAll("#unitSeg button").forEach((x) => x.setAttribute("aria-pressed", x === b));
+  closeDialog(); S = fresh(b.dataset.unit); render();
+});
+document.querySelectorAll("#viewSeg button").forEach((b) => b.onclick = () => {
+  document.querySelectorAll("#viewSeg button").forEach((x) => x.setAttribute("aria-pressed", x === b));
+  S.view = b.dataset.view; $("#app").classList.toggle("phone", S.view === "android");
+  $(".titlebar b").textContent = S.view === "android" ? "M-Flasher + · Android" : "M-Flasher +";
+  if (S.view === "android") tick("g-android");
+});
+$("#reset").onclick = () => { closeDialog(); const u = document.querySelector("#unitSeg [aria-pressed='true']").dataset.unit; S = fresh(u); render(); };
+
+// #android or #mac opens that app; ?cover renders the release page's picture of it
+const params = new URLSearchParams(location.search);
+const want = (location.hash.slice(1) || params.get("app") || "").toLowerCase();
+S = fresh("stock");
+if (want === "android") document.getElementById("v-android").click();
+if (params.has("cover")) {
+  document.body.classList.add("cover");
+  S.checked = true;
+  S.lcd = ["FM-1", "USB CONNECTED · DOWNLOAD MODE", "FLASH 1 MIB", "INSTALL M-BOOTLOADER FIRST"];
+}
+render();
+</script>
+</body>
+</html>
