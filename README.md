@@ -16,6 +16,15 @@ Vitkauskas, extended by [Wellington Saam](https://github.com/wellingtonsaam).
 > Unofficial: not affiliated with M-VAVE or JieLi. It saves a backup before it
 > writes anything and checks every write, but use it at your own risk.
 
+## Try it in your browser
+
+Click a screen to open the interactive prototype of that app, with a simulated
+FM-1. Nothing is connected or written.
+
+<a href="https://m-flasher-plus-prototype.vercel.app/#mac"><img src="docs/prototype/cover-mac.png" alt="M-Flasher + for Mac: open the interactive prototype" height="360"></a>&nbsp;&nbsp;<a href="https://m-flasher-plus-prototype.vercel.app/#android"><img src="docs/prototype/cover-android.png" alt="M-Flasher + for Android: open the interactive prototype" height="360"></a>
+
+The prototype's source is [docs/prototype/index.html](docs/prototype/index.html).
+
 ## Why M-Flasher +
 
 M-Flasher is ingenious and reliable: it reaches the chip's download mode, reads
