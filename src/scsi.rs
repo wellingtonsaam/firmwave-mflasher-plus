@@ -113,7 +113,8 @@ mod imp {
             match OpenOptions::new().read(true).write(true).open(path) {
                 Ok(file) => Ok(Device { file }),
                 Err(e) if e.kind() == std::io::ErrorKind::PermissionDenied => Err(ScsiError::NeedsAdmin(format!(
-                    "no permission to open {path}: install the udev rule and reconnect the unit (see README.txt), or run as root"
+                    "no permission to open {path}: {}",
+                    super::permission_advice()
                 ))),
                 Err(e) => Err(ScsiError::Failed(format!("cannot open {path}: {e}"))),
             }
@@ -537,6 +538,50 @@ mod imp {
 }
 
 pub use imp::{Device, find_devices};
+
+/// Linux: what to do when the unit is there but opening it is refused.
+///
+/// The packages install a udev rule that grants access through `uaccess`,
+/// which only logind turns into an ACL, and only for the session at the
+/// computer, from the moment the unit is plugged in. So a rule that is in
+/// place still leaves out a session over SSH, one switched away from, and a
+/// unit connected before the rule was loaded. Telling someone who installed
+/// the package to "install the udev rule" sends them after what they already
+/// have: the advice follows what is actually missing.
+#[cfg(target_os = "linux")]
+pub fn permission_advice() -> String {
+    use std::path::Path;
+    permission_advice_in(
+        &[
+            Path::new("/etc/udev/rules.d"),
+            Path::new("/usr/lib/udev/rules.d"),
+            Path::new("/lib/udev/rules.d"),
+        ],
+        &[Path::new("/run/systemd/seats"), Path::new("/run/elogind/seats")],
+    )
+}
+
+/// `permission_advice` over the directories to look in, so that it can be tested.
+#[cfg(target_os = "linux")]
+pub(crate) fn permission_advice_in(rule_dirs: &[&std::path::Path], seats: &[&std::path::Path]) -> String {
+    const RULE: &str = "70-m-flasher.rules";
+    if !rule_dirs.iter().any(|dir| dir.join(RULE).exists()) {
+        return "install the udev rule and reconnect the unit (see README.txt), or run as root".into();
+    }
+    // logind is what turns the rule's uaccess tag into an ACL; where there is
+    // none, the rule leaves the unit to the plugdev group instead
+    if !seats.iter().any(|dir| dir.exists()) {
+        return "the udev rule is installed, but neither systemd-logind nor elogind is running to \
+                apply it: join the plugdev group, which the rule falls back to \
+                (`sudo usermod -aG plugdev \"$USER\"`), log in again and reconnect the unit, or \
+                run as root"
+            .into();
+    }
+    "the udev rule is installed, but it gives the unit to the session at the computer, from the \
+     moment the unit is plugged in: reconnect it. A session over SSH, or one switched away from, \
+     does not get it: use the screen at the computer, or run as root"
+        .into()
+}
 
 /// What to do when `needs_sg_driver`, for the window and the command line.
 pub const SG_DRIVER: &str = "a unit is in download mode, but Linux's SCSI generic driver, which M-Flasher reaches it \

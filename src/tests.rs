@@ -1481,6 +1481,56 @@ fn asks_for_the_sg_driver_only_when_a_unit_needs_it() {
 }
 
 #[test]
+#[cfg(target_os = "linux")]
+fn permission_advice_follows_what_is_missing() {
+    use crate::scsi::permission_advice_in;
+    let root = std::env::temp_dir().join(format!("mflasher-perm-{}", std::process::id()));
+    let (rules, seats) = (root.join("udev"), root.join("seats"));
+    let (rule_dirs, seat_dirs) = ([rules.as_path()], [seats.as_path()]);
+    std::fs::create_dir_all(&rules).unwrap();
+
+    let advice = permission_advice_in(&rule_dirs, &seat_dirs);
+    assert!(advice.starts_with("install the udev rule"), "no rule anywhere: {advice}");
+
+    std::fs::write(rules.join("70-m-flasher.rules"), "").unwrap();
+    let advice = permission_advice_in(&rule_dirs, &seat_dirs);
+    assert!(advice.contains("plugdev"), "rule installed, no logind: {advice}");
+
+    std::fs::create_dir(&seats).unwrap();
+    let advice = permission_advice_in(&rule_dirs, &seat_dirs);
+    assert!(advice.contains("reconnect it"), "rule installed and logind running: {advice}");
+    assert!(!advice.contains("install the udev rule"), "does not send them after what they have");
+
+    std::fs::remove_dir_all(&root).unwrap();
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn the_file_dialog_is_called_missing_only_when_it_is() {
+    use crate::controller::no_file_dialog_in;
+    let root = std::env::temp_dir().join(format!("mflasher-portal-{}", std::process::id()));
+    let share = root.join("share");
+    let dirs = [share.as_path()];
+    let (services, portals) = (share.join("dbus-1/services"), share.join("xdg-desktop-portal/portals"));
+    std::fs::create_dir_all(&services).unwrap();
+    std::fs::create_dir_all(&portals).unwrap();
+
+    assert!(no_file_dialog_in(&dirs), "nothing installed");
+
+    std::fs::write(services.join("org.freedesktop.portal.Desktop.service"), "").unwrap();
+    assert!(no_file_dialog_in(&dirs), "the portal, but no backend to answer it");
+
+    // a backend that does not do file choosing is still no file dialog
+    std::fs::write(portals.join("gnome-keyring.portal"), "[portal]\nInterfaces=org.freedesktop.impl.portal.Secret\n").unwrap();
+    assert!(no_file_dialog_in(&dirs), "a backend for secrets only");
+
+    std::fs::write(portals.join("gtk.portal"), "[portal]\nInterfaces=org.freedesktop.impl.portal.FileChooser\n").unwrap();
+    assert!(!no_file_dialog_in(&dirs), "the portal and a FileChooser backend");
+
+    std::fs::remove_dir_all(&root).unwrap();
+}
+
+#[test]
 fn identifying_the_unit_is_tried_again() {
     let c = Connection::open("/dev/fake", MockRom { fail_inquiries: 2, ..Default::default() }).unwrap();
     let (n, last) = c.retries();

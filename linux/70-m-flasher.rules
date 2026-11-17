@@ -3,7 +3,14 @@
 # without root.
 #   sudo cp 70-m-flasher.rules /etc/udev/rules.d/ && sudo udevadm control --reload
 # then reconnect the unit.
-SUBSYSTEM=="scsi_generic", ATTRS{idVendor}=="4c4a", ATTRS{idProduct}=="8057", TAG+="uaccess"
+#
+# uaccess gives the user of the active local session an ACL on the device, and
+# takes it back when that session ends: the narrowest grant, and the one that
+# applies wherever systemd-logind or elogind runs. Distributions without either
+# (Devuan, antiX, MX without systemd) ignore the tag, so the group and mode are
+# there as well: plugdev is the usual group for devices a user may plug in, and
+# this matches the unit in download mode only -- never a disk.
+SUBSYSTEM=="scsi_generic", ATTRS{idVendor}=="4c4a", ATTRS{idProduct}=="8057", TAG+="uaccess", GROUP="plugdev", MODE="0660"
 # the same for the USB device itself (a build with the `usb` feature talks to
 # it through libusb, as on macOS)
-SUBSYSTEM=="usb", ATTR{idVendor}=="4c4a", ATTR{idProduct}=="8057", TAG+="uaccess"
+SUBSYSTEM=="usb", ATTR{idVendor}=="4c4a", ATTR{idProduct}=="8057", TAG+="uaccess", GROUP="plugdev", MODE="0660"

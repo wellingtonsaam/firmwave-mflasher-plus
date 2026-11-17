@@ -35,8 +35,20 @@ fn failed(what: &str, e: rusb::Error) -> ScsiError {
 fn needs_root(e: rusb::Error) -> ScsiError {
     ScsiError::NeedsAdmin(format!(
         "no permission to take the unit from the system's USB disk driver ({e}): {}",
-        if cfg!(target_os = "macos") { "run M-Flasher with sudo" } else { "install the udev rule and reconnect the unit, or run as root" }
+        advice()
     ))
+}
+
+#[cfg(target_os = "macos")]
+fn advice() -> String {
+    "run M-Flasher with sudo".into()
+}
+
+/// Linux with the `usb` feature: the same udev rule as the SCSI path, so the
+/// same reading of what is missing.
+#[cfg(not(target_os = "macos"))]
+fn advice() -> String {
+    crate::scsi::permission_advice()
 }
 
 fn path_of(d: &rusb::Device<GlobalContext>) -> String {

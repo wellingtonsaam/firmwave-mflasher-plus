@@ -47,6 +47,12 @@ root, the SCSI generic driver, and a launcher in the app menu.
   `sudo dnf install ./m-flasher-….x86_64.rpm`, or `sudo zypper install
   ./m-flasher-….x86_64.rpm` (`.aarch64.rpm` for ARM64)
 
+Install through the package manager, as above, rather than with `sudo dpkg -i`:
+the libraries the window loads when it starts are recommended rather than
+required packages -- which of them a system uses depends on its desktop, so
+none can be required -- and `dpkg` on its own does not bring recommended
+packages in, leaving a program that will not open a window.
+
 Connect the unit after installing (again, if it was connected), and start
 M-Flasher from the app menu, or `m-flasher` in a terminal, as yourself: under
 sudo the window cannot reach the desktop. The packages do not update
@@ -60,6 +66,10 @@ no `/dev/sg*`, and `echo sg | sudo tee /etc/modules-load.d/m-flasher.conf` to
 load it at every start (the packages do this themselves). M-Flasher says so when
 a unit is in download mode without it. `m-flasher.png` is the icon, for a
 launcher of your own.
+
+If the window does not open, `linux/package/test-install.sh` names every
+library that is missing and the command that installs them, for apt, dnf and
+zypper alike.
 
 ## Download mode
 
