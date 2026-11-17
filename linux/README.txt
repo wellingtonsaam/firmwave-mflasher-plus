@@ -7,9 +7,13 @@ Pro / Elite, and install m-bootloader.
 1. Let M-Flasher reach the unit as you: install the udev rule once,
      sudo cp 70-m-flasher.rules /etc/udev/rules.d/
      sudo udevadm control --reload
-   and connect the unit (again, if it was connected). It uses the SCSI
-   generic driver: if there is no /dev/sg*, run "sudo modprobe sg", and
-   to load it at every start,
+   and connect the unit (again, if it was connected). The rule hands the
+   unit to whoever is logged in at the computer; on a system without
+   systemd-logind or elogind it falls back to the plugdev group, so join
+   that and log in again:
+     sudo usermod -aG plugdev "$USER"
+   It uses the SCSI generic driver: if there is no /dev/sg*, run
+   "sudo modprobe sg", and to load it at every start,
      echo sg | sudo tee /etc/modules-load.d/m-flasher.conf
 2. Run ./m-flasher, as you: under sudo the window cannot reach the desktop.
 3. Put the unit in download mode and connect it with a USB data cable:

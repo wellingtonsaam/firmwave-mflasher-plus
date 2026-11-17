@@ -906,6 +906,11 @@ impl Controller {
     }
 
     /// Opens a file dialog in a thread; the choice is planned when it returns.
+    ///
+    /// Linux: the dialog goes through the XDG desktop portal, so it needs
+    /// xdg-desktop-portal and a backend for the desktop installed. Without
+    /// them it returns nothing at all -- the same as a cancelled dialog -- and
+    /// the window would just sit there, so the two are told apart and said.
     pub fn choose_file(&self, kind: FileKind) {
         let c = self.clone();
         // counted with the lock a write is admitted under, until the choice is in
@@ -922,6 +927,16 @@ impl Controller {
                 FileKind::BootFile => d.set_title("Choose a bootloader file").add_filter("Bootloaders", &["boot"]),
             };
             let picked = d.add_filter("All files", &["*"]).pick_file();
+            #[cfg(target_os = "linux")]
+            if picked.is_none() && no_file_dialog() {
+                c.log(
+                    "No file dialog: it goes through the XDG desktop portal, which is not \
+                     installed here. Add xdg-desktop-portal and the backend for your desktop \
+                     (xdg-desktop-portal-gtk, -kde or -gnome). The command line takes the file \
+                     without one: see `m-flasher --help`."
+                        .into(),
+                );
+            }
             if let Some(p) = &picked {
                 c.log(format!("{} chosen", p.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default()));
             }
@@ -1606,4 +1621,35 @@ pub(crate) fn log_to_file(backup_dir: &Path, text: &str) {
     if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(&path) {
         let _ = writeln!(f, "{} {text}", chrono::Local::now().format("%Y-%m-%d %H:%M:%S"));
     }
+}
+
+/// Linux: whether the XDG desktop portal that the file dialog goes through is
+/// missing -- either the portal itself, or any backend answering FileChooser.
+/// Only asked once a dialog has come back empty, to tell "not installed" from
+/// "cancelled": a wrong answer here would greet every cancelled dialog with a
+/// notice, so it errs towards saying nothing. Backups need no dialog and are
+/// unaffected.
+#[cfg(target_os = "linux")]
+fn no_file_dialog() -> bool {
+    let home = std::env::var("HOME").unwrap_or_default();
+    let dirs = ["/usr/share".to_string(), "/usr/local/share".to_string(), format!("{home}/.local/share")];
+    no_file_dialog_in(&dirs.iter().map(std::path::Path::new).collect::<Vec<_>>())
+}
+
+/// `no_file_dialog` over the data directories to look in, so that it can be tested.
+#[cfg(target_os = "linux")]
+pub(crate) fn no_file_dialog_in(share_dirs: &[&std::path::Path]) -> bool {
+    const SERVICE: &str = "dbus-1/services/org.freedesktop.portal.Desktop.service";
+    if !share_dirs.iter().any(|d| d.join(SERVICE).exists()) {
+        return true;
+    }
+    !share_dirs
+        .iter()
+        .filter_map(|d| std::fs::read_dir(d.join("xdg-desktop-portal/portals")).ok())
+        .flatten()
+        .flatten()
+        .any(|e| {
+            e.path().extension().is_some_and(|x| x == "portal")
+                && std::fs::read_to_string(e.path()).unwrap_or_default().contains("FileChooser")
+        })
 }

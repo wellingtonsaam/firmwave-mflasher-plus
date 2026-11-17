@@ -1201,7 +1201,7 @@ pub fn run() -> eframe::Result {
         viewport: egui::ViewportBuilder::default()
             .with_title("M-Flasher +")
             // Linux: matches the installed launcher, for the dock's icon
-            .with_app_id("io.github.jvitkauskas.m-flasher")
+            .with_app_id("io.github.wellingtonsaam.m-flasher-plus")
             .with_inner_size(vec2(1280.0, 853.0))
             .with_min_inner_size(vec2(900.0, 600.0))
             // ours (macos/icon.svg), not egui's: the Dock and taskbars show it

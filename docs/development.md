@@ -89,10 +89,37 @@ GitHub Actions (`.github/workflows/build.yml`) builds and tests the Linux,
 Windows and macOS packages for every push, and publishes them as a release
 for a `v*` tag; the `.deb` and `.rpm` are installed and run in clean
 containers of the distributions they are for (`linux/package/test-install.sh`).
-`linux/package/build.sh` makes them with [nFPM](https://nfpm.goreleaser.com).
-On a Mac, `macos/package.sh` makes the app and the disk image,
+`linux/package/build.sh` makes them with [nFPM](https://nfpm.goreleaser.com). On a Mac, `macos/package.sh` makes the app and the disk image,
 and `macos/render.sh` renders the icons and the disk image's background from
 their SVGs.
+
+### The Linux packages
+
+Building the `.deb` and `.rpm` needs one tool beyond the Rust toolchain:
+[nFPM](https://nfpm.goreleaser.com), a single binary with no dependencies of
+its own. It is not needed to build or run M-Flasher itself, only to package it.
+
+```sh
+# the latest release into ~/.local/bin, no root needed
+ver=$(curl -sS https://api.github.com/repos/goreleaser/nfpm/releases/latest \
+    | grep -oP '"tag_name":\s*"\Kv[0-9.]+')
+curl -sSL "https://github.com/goreleaser/nfpm/releases/download/$ver/nfpm_${ver#v}_Linux_x86_64.tar.gz" \
+    | tar xz -C ~/.local/bin nfpm
+```
+
+Then, from a release build:
+
+```sh
+cargo build --release
+sh linux/package/build.sh 1.0.0 amd64      # target/package/*.deb, *.rpm
+```
+
+`build.sh` takes the version and the architecture (`amd64` or `arm64`), and
+`NFPM=/path/to/nfpm` overrides where it looks for the tool. The packages carry
+the udev rule, the SCSI generic driver's `modules-load.d` file, the launcher
+and its icon, so an installed package needs nothing else set up. To check one
+on a machine or in a container, `linux/package/test-install.sh` installs it and
+names every library that is missing.
 
 ### The Android app
 

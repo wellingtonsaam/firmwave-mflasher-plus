@@ -17,18 +17,18 @@ export SOURCE_DATE_EPOCH="$epoch"
 cat > "$gen/changelog.yml" <<CHANGELOG
 - semver: $version-1
   date: $(date -u -d "@$epoch" +%Y-%m-%dT%H:%M:%SZ)
-  packager: Julius Vitkauskas <zadintuvas@gmail.com>
+  packager: Wellington Saam <wellington.saa@gmail.com>
   deb:
     urgency: medium
     distributions: [unstable]
   changes:
-    - note: "M-Flasher $version, see its release notes:"
-    - note: "https://github.com/jvitkauskas/m-flasher/releases/tag/v$version"
+    - note: "M-Flasher Plus $version, see its release notes:"
+    - note: "https://github.com/wellingtonsaam/m-flasher-plus/releases/tag/v$version"
 CHANGELOG
 gzip -9n -c linux/package/m-flasher.1 > "$gen/m-flasher.1.gz"
 # the metainfo, with this release
 sed "s|</component>|  <releases>\n    <release version=\"$version\" date=\"$(date -u -d "@$epoch" +%F)\"/>\n  </releases>\n</component>|" \
-    linux/package/io.github.jvitkauskas.m-flasher.metainfo.xml > "$gen/io.github.jvitkauskas.m-flasher.metainfo.xml"
+    linux/package/io.github.wellingtonsaam.m-flasher-plus.metainfo.xml > "$gen/io.github.wellingtonsaam.m-flasher-plus.metainfo.xml"
 
 for format in deb rpm; do
     VERSION=$version ARCH=$arch "${NFPM:-nfpm}" package -f linux/package/nfpm.yaml -p "$format" -t "$out/"

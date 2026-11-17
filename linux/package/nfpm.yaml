@@ -1,7 +1,7 @@
 # Linux packages (.deb, .rpm) with nFPM: made by build.sh, which generates
 # the files under target/package-files first. ARCH is amd64 or arm64 (named
 # for the deb and rpm conventions by nFPM).
-name: m-flasher
+name: m-flasher-plus
 version: ${VERSION}
 release: 1
 changelog: target/package-files/changelog.yml
@@ -9,9 +9,9 @@ arch: ${ARCH}
 platform: linux
 section: utils
 priority: optional
-maintainer: Julius Vitkauskas <zadintuvas@gmail.com>
-vendor: Julius Vitkauskas
-homepage: https://github.com/jvitkauskas/m-flasher
+maintainer: Wellington Saam <wellington.saa@gmail.com>
+vendor: Wellington Saam
+homepage: https://github.com/wellingtonsaam/m-flasher-plus
 license: MIT AND OFL-1.1
 description: |-
   Firmware backup and flasher for M-VAVE FM-1 and SMK-37 synthesizers
@@ -30,23 +30,23 @@ contents:
   - src: linux/package/modules-load.conf
     dst: /usr/lib/modules-load.d/m-flasher.conf
     file_info: { mode: 0644 }
-  - src: linux/package/io.github.jvitkauskas.m-flasher.desktop
-    dst: /usr/share/applications/io.github.jvitkauskas.m-flasher.desktop
+  - src: linux/package/io.github.wellingtonsaam.m-flasher-plus.desktop
+    dst: /usr/share/applications/io.github.wellingtonsaam.m-flasher-plus.desktop
     file_info: { mode: 0644 }
-  - src: target/package-files/io.github.jvitkauskas.m-flasher.metainfo.xml
-    dst: /usr/share/metainfo/io.github.jvitkauskas.m-flasher.metainfo.xml
+  - src: target/package-files/io.github.wellingtonsaam.m-flasher-plus.metainfo.xml
+    dst: /usr/share/metainfo/io.github.wellingtonsaam.m-flasher-plus.metainfo.xml
     file_info: { mode: 0644 }
   - src: linux/m-flasher.png
-    dst: /usr/share/icons/hicolor/256x256/apps/io.github.jvitkauskas.m-flasher.png
+    dst: /usr/share/icons/hicolor/256x256/apps/io.github.wellingtonsaam.m-flasher-plus.png
     file_info: { mode: 0644 }
   # (documentation is marked as such in the rpm; nFPM leaves files of that
   # type out of a deb, so the deb lists them plainly)
   - src: README.md
-    dst: /usr/share/doc/m-flasher/README.md
+    dst: /usr/share/doc/m-flasher-plus/README.md
     packager: deb
     file_info: { mode: 0644 }
   - src: README.md
-    dst: /usr/share/doc/m-flasher/README.md
+    dst: /usr/share/doc/m-flasher-plus/README.md
     type: doc
     packager: rpm
     file_info: { mode: 0644 }
@@ -60,14 +60,25 @@ contents:
     packager: rpm
     file_info: { mode: 0644 }
   - src: linux/package/copyright
-    dst: /usr/share/doc/m-flasher/copyright
+    dst: /usr/share/doc/m-flasher-plus/copyright
     packager: deb
     file_info: { mode: 0644 }
   - src: LICENSE
-    dst: /usr/share/licenses/m-flasher/LICENSE
+    dst: /usr/share/licenses/m-flasher-plus/LICENSE
     type: license
     packager: rpm
     file_info: { mode: 0644 }
+
+# The program keeps the name it has in its documentation, /usr/bin/m-flasher,
+# and the udev rule its path: the original package and this one cannot both be
+# installed, so the package manager is told, rather than letting one quietly
+# write over the other's files.
+conflicts:
+  - m-flasher
+replaces:
+  - m-flasher
+provides:
+  - m-flasher
 
 scripts:
   postinstall: linux/package/postinstall.sh
@@ -83,6 +94,9 @@ overrides:
       - libegl1
       - libxkbcommon0
     recommends:
+      # GLX, which glutin falls back to where EGL does not work: a separate
+      # package from libegl1, which does not bring it in
+      - libgl1
       - libwayland-client0
       - libwayland-egl1
       - libxkbcommon-x11-0
@@ -101,6 +115,7 @@ overrides:
       - libEGL.so.1()(64bit)
       - libxkbcommon.so.0()(64bit)
     recommends:
+      - libGL.so.1()(64bit)
       - libwayland-client.so.0()(64bit)
       - libwayland-egl.so.1()(64bit)
       - libxkbcommon-x11.so.0()(64bit)
@@ -113,4 +128,4 @@ overrides:
 
 rpm:
   group: Applications/System
-  summary: Firmware backup and flasher for M-VAVE FM-1 and SMK-37 synthesizers
+  summary: Firmware backup and flasher for M-VAVE FM-1 and SMK-37 synthesizers (M-Flasher Plus)
