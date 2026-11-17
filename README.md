@@ -10,11 +10,15 @@ a **built-in firmware library** and a safer way to install. It talks to the
 chip's built-in USB download mode, so it also works when the firmware on the
 unit is broken.
 
-M-Flasher + is [M-Flasher](https://github.com/jvitkauskas/m-flasher) by Julius
-Vitkauskas, extended by [Wellington Saam](https://github.com/wellingtonsaam).
+M-Flasher + is maintained by [Wellington Saam](https://github.com/wellingtonsaam).
+It is based on [M-Flasher](https://github.com/jvitkauskas/m-flasher) by Julius
+Vitkauskas, who does not maintain or support this version: please send
+questions and bug reports about M-Flasher + to [this repository's
+issues](../../issues), not to M-Flasher's.
 
-> Unofficial: not affiliated with M-VAVE or JieLi. It saves a backup before it
-> writes anything and checks every write, but use it at your own risk.
+> Unofficial: not affiliated with M-VAVE or JieLi, nor supported by M-Flasher's
+> author. It saves a backup before it writes anything and checks every write,
+> but use it at your own risk.
 
 ## Try it in your browser
 

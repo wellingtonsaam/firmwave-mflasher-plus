@@ -17,15 +17,15 @@ fn main() {
     let mut res = winresource::WindowsResource::new();
     res.set_icon("windows/m-flasher.ico")
         .set_manifest(&manifest().to_string())
-        .set("FileDescription", "M-Flasher")
-        .set("ProductName", "M-Flasher")
+        .set("FileDescription", "M-Flasher +")
+        .set("ProductName", "M-Flasher +")
         // who made it and what the file is called: antivirus heuristics score a
         // nearly empty version resource as suspicious
-        .set("CompanyName", "Julius Vitkauskas")
-        .set("LegalCopyright", "Copyright (c) 2026 Julius Vitkauskas, MIT License")
+        .set("CompanyName", "Wellington Saam")
+        .set("LegalCopyright", "Copyright (c) 2026 Wellington Saam; based on M-Flasher, (c) 2026 Julius Vitkauskas. MIT License")
         .set("OriginalFilename", "M-Flasher.exe")
         .set("InternalName", "m-flasher")
-        .set("Comments", "https://github.com/jvitkauskas/m-flasher");
+        .set("Comments", "https://github.com/wellingtonsaam/m-flasher-plus");
     if let Err(e) = res.compile() {
         // the release builds (MSVC) need both; a cross-build without a resource
         // compiler (windres) gets the manifest alone
