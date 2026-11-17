@@ -173,10 +173,11 @@ jobs:
           path: M-Flasher-windows.zip
 
   macos:
-    runs-on: macos-15
+    # Intel: the Apple silicon runners queue for long stretches; lipo still makes one universal binary
+    runs-on: macos-15-intel
     steps:
       - uses: actions/checkout@v7
-      - run: rustup target add x86_64-apple-darwin
+      - run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
       - run: cargo test --release
       - name: Build for Apple silicon and Intel
         run: |
