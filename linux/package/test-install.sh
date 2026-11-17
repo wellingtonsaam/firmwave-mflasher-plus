@@ -33,8 +33,8 @@ case $out in *"not found (required by"*)
     echo "built against a newer system than this package declares: the loader is missing library versions above" >&2
     exit 1 ;;
 esac
+# (not the man page: minimal images such as Fedora's and Ubuntu's leave documentation out)
 for f in /usr/bin/m-flasher-plus /usr/lib/udev/rules.d/70-m-flasher-plus.rules /usr/lib/modules-load.d/m-flasher-plus.conf \
-    /usr/share/man/man1/m-flasher-plus.1.gz \
     /usr/share/applications/io.github.wellingtonsaam.m-flasher-plus.desktop \
     /usr/share/metainfo/io.github.wellingtonsaam.m-flasher-plus.metainfo.xml \
     /usr/share/icons/hicolor/256x256/apps/io.github.wellingtonsaam.m-flasher-plus.png; do
