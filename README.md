@@ -1,5 +1,11 @@
 # M-Flasher +
 
+> **No release to download right now.** Versions 1.0.0 and 1.0.1 were
+> withdrawn: they had bugs, among them a wrong identification of the app when
+> it reads the firmware list. Version 1.0.2, which fixes them, is being
+> prepared and will be published in the [releases](../../releases) soon. If
+> you installed 1.0.0 or 1.0.1, please replace it with 1.0.2 when it is out.
+
 **Free for macOS and Android.** Download it from the
 [releases](../../releases). (Windows and Linux build from the same code, as
 M-Flasher's do, but this version has not been tested on them yet.)
