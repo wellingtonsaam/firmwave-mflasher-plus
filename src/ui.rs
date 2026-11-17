@@ -98,9 +98,8 @@ pub struct App {
     op_open: Option<Mode>,
 }
 
-/// Where donations for code signing go (the About dialog).
-const SPONSORS: &str = "https://github.com/sponsors/jvitkauskas";
-const KO_FI: &str = "https://ko-fi.com/jvitkauskas";
+/// M-Flasher +'s home: source, releases and issues (the About dialog).
+const REPO: &str = "https://github.com/wellingtonsaam/m-flasher-plus";
 
 /// How long the LCD's bottom line flashes after an inactive key is pressed (s).
 const NUDGE: f64 = 1.2;
@@ -1047,9 +1046,9 @@ impl App {
                     (String::new(), INK),
                     ("Unofficial: not affiliated with M-VAVE or JieLi.".into(), DIM),
                     (String::new(), INK),
-                    ("M-Flasher + is free. It isn't signed yet, which is why Windows and macOS ask before it first \
-                      starts; signing costs money every year, and donations would pay for it.".into(), INK),
-                ], vec![("GITHUB SPONSORS", 7), ("KO-FI", 8), ("CLOSE", 0)]),
+                    ("M-Flasher + is free, maintained by Wellington Saam. Questions and bug reports go to its own \
+                      GitHub repository, not to M-Flasher's.".into(), INK),
+                ], vec![("GITHUB", 7), ("CLOSE", 0)]),
                 Dialog::Backups => {
                     let mut b = vec![("Choose one to restore. Its plan opens for review; nothing is written before WRITE.".to_string(), DIM)];
                     b.extend(st.backups.iter().take(3).enumerate()
@@ -1117,9 +1116,9 @@ impl App {
             if resp.clicked() {
                 if st.alert.is_some() {
                     ctl.dismiss();
-                } else if matches!(code, 7 | 8) {
+                } else if *code == 7 {
                     // a link: the dialog stays
-                    ctl.open_link(if *code == 7 { SPONSORS } else { KO_FI });
+                    ctl.open_link(REPO);
                 } else {
                     match code {
                         2 => ctl.confirm(),

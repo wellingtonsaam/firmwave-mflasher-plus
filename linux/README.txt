@@ -27,4 +27,7 @@ restore, firmware, bootloader (./m-flasher --help).
 
 m-flasher.png is the icon, for a launcher of your own.
 
-More: https://github.com/jvitkauskas/m-flasher
+M-Flasher + is maintained by Wellington Saam. Based on M-Flasher by Julius
+Vitkauskas (MIT).
+
+More, and issues: https://github.com/wellingtonsaam/m-flasher-plus
