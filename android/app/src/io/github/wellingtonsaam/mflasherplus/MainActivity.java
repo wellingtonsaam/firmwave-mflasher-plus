@@ -698,7 +698,7 @@ public class MainActivity extends Activity {
         return id;
     }
 
-    /** This build's version ("1.0.2"), named in the log and in About. */
+    /** This build's version ("1.0.3"), named in the log and in About. */
     private String appVersion() {
         try {
             return getPackageManager().getPackageInfo(getPackageName(), 0).versionName;

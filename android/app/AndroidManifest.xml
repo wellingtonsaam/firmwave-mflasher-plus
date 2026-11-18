@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="io.github.wellingtonsaam.mflasherplus"
-    android:versionCode="4"
-    android:versionName="1.0.2">
+    android:versionCode="5"
+    android:versionName="1.0.3">
 
     <uses-feature android:name="android.hardware.usb.host" android:required="true" />
     <!-- INSTALL switches a running FM-1 to download mode over USB MIDI (the soft key) -->
