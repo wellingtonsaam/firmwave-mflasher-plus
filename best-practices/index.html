@@ -1,0 +1,499 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="FM-1 recovery guide: install m-bootloader, keep backups, and find the fix when a write goes wrong.">
+<style>html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}</style>
+<title>FM-1 Best Practices</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500&family=Share+Tech+Mono&display=swap">
+</head>
+<body>
+<style>
+/* Layout: masthead → "Find your fix" console → sticky index + 4 chapters of 21 post cards, styled like the FM-1 post series */
+:root {
+  --bg: #28221f;        /* post background, warm graphite */
+  --panel: #312a26;     /* steps panel */
+  --well: #1d1917;      /* cards and screen bezel */
+  --line: #5a5060;
+  --line-hi: #5d5172;
+  --fg: #e9e4dc;
+  --muted: #8d837b;
+  --signal: #7be8bb;    /* kicker, step numbers */
+  --label: #b6a2e6;     /* subtitles, panel labels */
+  --warn: #ffb35c;
+  --display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --mono: "Share Tech Mono", "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --body: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { scroll-behavior: smooth; scroll-padding-top: calc(env(safe-area-inset-top, 0px) + 72px); }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } * { transition: none !important; animation: none !important; } }
+body {
+  background: var(--bg); color: var(--fg);
+  font-family: var(--body); font-size: 15px; line-height: 1.55;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+a { color: var(--signal); }
+a:focus-visible, button:focus-visible, input:focus-visible, label:focus-within { outline: 2px solid var(--signal); outline-offset: 2px; }
+.wrap { max-width: 1240px; margin: 0 auto; }
+
+/* Masthead */
+.masthead { padding-block: 48px 28px; display: grid; gap: 18px; grid-template-columns: minmax(0, 1fr) auto; align-items: end; border-bottom: 1px solid var(--line); }
+.eyebrow { font-family: var(--display); font-weight: 700; font-size: 18px; letter-spacing: .08em; text-transform: uppercase; color: var(--signal); }
+h1 { font-family: var(--display); font-weight: 700; font-size: clamp(44px, 8vw, 88px); line-height: .95; margin: 6px 0 12px; text-wrap: balance; }
+.lede { font-family: var(--mono); font-size: 18px; color: var(--label); max-width: 60ch; margin: 0; }
+.mast-screen { width: 168px; }
+@media (max-width: 640px) { .masthead { grid-template-columns: minmax(0, 1fr); } .mast-screen { display: none; } }
+
+/* Triage console */
+.triage { margin-block: 28px; background: var(--panel); border: 1px solid var(--line-hi); border-radius: 10px; padding: 22px; display: grid; gap: 16px; }
+.triage h2 { font-family: var(--display); font-size: 32px; margin: 0; line-height: 1; }
+.q { font-family: var(--mono); color: var(--label); font-size: 15px; letter-spacing: .04em; text-transform: uppercase; }
+.choices { display: flex; flex-wrap: wrap; gap: 8px; }
+.choice { font-family: var(--body); font-size: 14px; color: var(--fg); background: var(--well); border: 1px solid var(--line); border-radius: 6px; padding: 9px 14px; cursor: pointer; text-align: left; }
+.choice:hover { border-color: var(--label); }
+.choice[aria-pressed="true"] { border-color: var(--signal); color: var(--signal); background: #1f2b26; }
+.answer { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; border-top: 1px dashed var(--line); padding-top: 16px; }
+.answer .num { font-family: var(--mono); color: var(--muted); }
+.answer strong { font-family: var(--display); font-size: 26px; font-weight: 700; }
+.go { font-family: var(--mono); font-size: 14px; color: #12201a; background: var(--signal); border: 0; border-radius: 6px; padding: 9px 14px; cursor: pointer; text-decoration: none; }
+.also { font-family: var(--mono); font-size: 13px; color: var(--muted); flex-basis: 100%; }
+
+/* Index + content */
+.layout { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 40px; align-items: start; }
+.toc { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 72px); max-height: calc(100vh - 96px); overflow: auto; padding-bottom: 24px; }
+.toc-head { font-family: var(--mono); font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; padding: 18px 6px 8px; }
+.toc details { border-top: 1px solid var(--line); }
+.toc details:last-of-type { border-bottom: 1px solid var(--line); }
+.toc summary { list-style: none; cursor: pointer; display: grid; grid-template-columns: 14px minmax(0, 1fr) auto; gap: 6px; align-items: baseline; padding: 10px 6px; font-family: var(--display); font-weight: 700; font-size: 15px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.toc summary::-webkit-details-marker { display: none; }
+.toc summary::before { content: "+"; font-family: var(--mono); color: var(--line-hi); }
+.toc details[open] summary::before { content: "−"; }
+.toc summary .rg { font-family: var(--mono); font-weight: 400; font-size: 12px; letter-spacing: 0; color: var(--line-hi); }
+.toc summary:hover { color: var(--fg); }
+.toc details.current summary { color: var(--signal); }
+.toc details > div { padding-bottom: 8px; }
+.toc a { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 4px; padding: 4px 6px; border-radius: 4px; color: var(--muted); text-decoration: none; font-size: 13px; line-height: 1.35; }
+.toc a span:last-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.toc a span:first-child { font-family: var(--mono); color: var(--line-hi); }
+.toc a:hover { color: var(--fg); }
+.toc a.active { color: var(--fg); background: var(--panel); }
+.toc a.active span:first-child { color: var(--signal); }
+.toc a.done span:first-child::after { content: " ✓"; color: var(--signal); }
+main { min-width: 0; }
+@media (max-width: 960px) { .layout { grid-template-columns: minmax(0, 1fr); } .toc { display: none; } .toolbar { position: static; } html { scroll-padding-top: calc(env(safe-area-inset-top, 0px) + 12px); } }
+@media (max-width: 560px) {
+  .masthead { padding-block: 28px 20px; }
+  .lede { font-size: 16px; }
+  .triage { padding: 16px; }
+  .triage h2 { font-size: 28px; }
+  .choice { flex: 1 1 100%; }
+  .post { padding: 16px; border-radius: 10px; }
+  .panel { padding: 12px; }
+  .sub { font-size: 15.5px; }
+  .chapter h2 { font-size: 30px; }
+}
+
+.toolbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); padding-block: 12px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; border-bottom: 1px solid var(--line); }
+@media (max-width: 960px) { .toolbar { position: static; } }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.search { flex: 1 1 220px; min-width: 0; font-family: var(--body); font-size: 14px; color: var(--fg); background: var(--well); border: 1px solid var(--line); border-radius: 6px; padding: 9px 12px; }
+.search::placeholder { color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; max-width: 100%; }
+.chip { flex: none; font-family: var(--mono); font-size: 13px; color: var(--muted); background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; cursor: pointer; }
+.chip[aria-pressed="true"] { color: var(--bg); background: var(--label); border-color: var(--label); }
+.count { font-family: var(--mono); font-size: 13px; color: var(--muted); }
+
+.chapter { padding-top: 32px; }
+.chapter > header { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: baseline; margin-bottom: 18px; }
+.chapter h2 { font-family: var(--display); font-weight: 700; font-size: 38px; margin: 0; line-height: 1; }
+.chapter .range { font-family: var(--mono); color: var(--muted); }
+.chapter p.intro { flex-basis: 100%; margin: 0; color: var(--muted); max-width: 70ch; }
+
+/* Post card, mirrors the 4:5 post */
+.post { background: var(--bg); border: 1px solid var(--line); border-radius: 12px; padding: 26px; margin-bottom: 22px; display: grid; gap: 16px; transition: border-color .3s, box-shadow .3s; }
+.post.flash { border-color: var(--signal); box-shadow: 0 0 0 3px #7be8bb33; }
+.post-top { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; align-items: center; padding-bottom: 12px; border-bottom: 2px solid var(--line-hi); }
+.kicker { font-family: var(--display); font-weight: 700; font-size: 17px; letter-spacing: .06em; color: var(--signal); text-transform: uppercase; }
+.pager { font-family: var(--mono); color: var(--muted); display: flex; gap: 10px; align-items: center; }
+.copy { font-family: var(--mono); font-size: 12px; color: var(--muted); background: none; border: 1px solid var(--line); border-radius: 4px; padding: 3px 8px; cursor: pointer; }
+.copy:hover { color: var(--fg); }
+.post h3 { font-family: var(--display); font-weight: 700; font-size: clamp(30px, 4.4vw, 44px); line-height: 1.02; margin: 0; text-wrap: balance; }
+.sub { font-family: var(--mono); color: var(--label); font-size: 17px; margin: 0; max-width: 62ch; }
+.body { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; align-items: start; }
+.body.noscreen { grid-template-columns: minmax(0, 1fr); }
+@media (max-width: 700px) { .body { grid-template-columns: minmax(0, 1fr); } }
+.panel { background: var(--panel); border: 1px solid var(--line-hi); border-radius: 10px; padding: 16px 18px; min-width: 0; }
+.plabel { font-family: var(--mono); font-size: 13px; color: var(--label); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 8px; }
+.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.step { display: grid; grid-template-columns: 26px 1fr; gap: 10px; align-items: start; padding: 6px 6px; border-radius: 6px; cursor: pointer; }
+.step:hover { background: #3a322d; }
+.step input { position: absolute; opacity: 0; pointer-events: none; }
+.step .n { font-family: var(--mono); color: var(--signal); font-size: 15px; width: 24px; height: 24px; border: 1px solid var(--line-hi); border-radius: 50%; display: grid; place-items: center; line-height: 1; }
+.step input:checked + .n { background: var(--signal); color: var(--bg); border-color: var(--signal); }
+.step input:checked ~ .t { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--line-hi); }
+.step .t { font-size: 14.5px; }
+.screen { background: var(--well); border: 1px solid var(--line); border-radius: 10px; padding: 12px; width: 252px; max-width: 100%; }
+.screen canvas { display: block; width: 100%; aspect-ratio: 1; background: #000; border-radius: 2px; image-rendering: pixelated; }
+.screen .plabel { font-size: 12px; }
+.screen .note { font-size: 11px; color: var(--muted); margin-top: 8px; line-height: 1.4; }
+@media (max-width: 700px) { .screen { width: 100%; max-width: 300px; } }
+.cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 560px) { .cards { grid-template-columns: 1fr; } }
+.card { background: var(--well); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; min-width: 0; }
+.card .cl { font-family: var(--mono); font-size: 12px; color: var(--signal); text-transform: uppercase; letter-spacing: .05em; }
+.card:last-child .cl { color: var(--label); }
+.card .ct { font-family: var(--display); font-weight: 700; font-size: 22px; line-height: 1.1; margin: 4px 0; }
+.card .cd { font-family: var(--mono); font-size: 13px; color: var(--muted); }
+.post-foot { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-family: var(--mono); font-size: 13px; color: var(--muted); }
+.post-foot a { color: var(--muted); }
+.post-foot a:hover { color: var(--fg); }
+.empty { padding: 40px 0; color: var(--muted); font-family: var(--mono); }
+.nowbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 8; display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; gap: 8px; align-items: center;
+  background: var(--well); border-top: 1px solid var(--line-hi);
+  padding: 8px max(12px, env(safe-area-inset-right, 0px)) calc(8px + env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px)); }
+.nowbar button { height: 40px; font-family: var(--mono); font-size: 20px; color: var(--fg); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+.nowbar button:disabled { opacity: .35; cursor: default; }
+.nowbar a { min-width: 0; text-decoration: none; display: grid; line-height: 1.25; }
+.nowbar .nk { font-family: var(--mono); font-size: 11px; color: var(--signal); text-transform: uppercase; letter-spacing: .05em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nowbar .nt { font-family: var(--display); font-weight: 700; font-size: 19px; color: var(--fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (min-width: 961px) { .nowbar { display: none; } }
+@media (max-width: 960px) { body.has-now { padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)); } }
+.pagefoot { margin-top: 40px; padding-block: 24px 48px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; display: grid; gap: 6px; }
+</style>
+
+<div class="wrap">
+  <header class="masthead">
+    <div>
+      <div class="eyebrow">M-VAVE FM-1 · recovery guide</div>
+      <h1>FM-1 Best Practices</h1>
+      <p class="lede">Install m-bootloader first, keep backups, and know the way back when a write goes wrong. 21 short guides in 4 chapters.</p>
+    </div>
+    <div class="mast-screen screen" aria-hidden="true"><canvas data-screen="menu" width="480" height="480"></canvas></div>
+  </header>
+
+  <section class="triage" aria-labelledby="triage-h">
+    <h2 id="triage-h">Find your fix</h2>
+    <div>
+      <div class="q" id="q1">1 · Where are you?</div>
+      <div class="choices" id="c1" role="group" aria-labelledby="q1"></div>
+    </div>
+    <div id="step2" hidden>
+      <div class="q" id="q2">2 · What do you see?</div>
+      <div class="choices" id="c2" role="group" aria-labelledby="q2"></div>
+    </div>
+    <div class="answer" id="answer" hidden></div>
+  </section>
+
+  <div class="layout">
+    <nav class="toc" id="toc" aria-label="All guides"></nav>
+    <main>
+      <div class="toolbar">
+        <input class="search" id="search" type="search" placeholder="Search: MIDI MODE, BAD CONFIG, cable…" aria-label="Search the guides">
+        <div class="chips" id="chips" role="group" aria-label="Chapters"></div>
+        <span class="count" id="count"></span>
+      </div>
+      <div id="content"></div>
+      <div class="empty" id="empty" hidden>No guide matches that search. Try a key name (PLAY, REC) or a screen message.</div>
+    </main>
+  </div>
+
+  <nav class="nowbar" id="nowbar" aria-label="Current guide" hidden>
+    <button type="button" id="nowprev" aria-label="Previous guide">‹</button>
+    <a id="nowlink" href="#post-1"><span class="nk" id="nowk"></span><span class="nt" id="nowt"></span></a>
+    <button type="button" id="nownext" aria-label="Next guide">›</button>
+  </nav>
+
+  <footer class="pagefoot">
+    <div>m-bootloader: <a href="https://github.com/jvitkauskas/m-bootloader" target="_blank" rel="noopener">github.com/jvitkauskas/m-bootloader</a></div>
+    <div>FM-1 screens are drawn from the m-bootloader source code. Size and flash values on them are examples.</div>
+  </footer>
+</div>
+
+<script>
+const GLYPHS = {" ":[0,0,0,0,0],"-":[8,8,8,8,8],".":[0,96,96,0,0],"/":[96,16,8,4,3],":":[0,54,54,0,0],"<":[0,8,20,34,65],">":[65,34,20,8,0],"+":[8,8,62,8,8],"?":[2,1,81,9,6],"0":[62,81,73,69,62],"1":[0,66,127,64,0],"2":[66,97,81,73,70],"3":[33,65,69,75,49],"4":[24,20,18,127,16],"5":[39,69,69,69,57],"6":[60,74,73,73,48],"7":[1,113,9,5,3],"8":[54,73,73,73,54],"9":[6,73,73,41,30],"A":[126,9,9,9,126],"B":[127,73,73,73,54],"C":[62,65,65,65,34],"D":[127,65,65,65,62],"E":[127,73,73,73,65],"F":[127,9,9,9,1],"G":[62,65,73,73,122],"H":[127,8,8,8,127],"I":[0,65,127,65,0],"J":[32,64,65,63,1],"K":[127,8,20,34,65],"L":[127,64,64,64,64],"M":[127,2,12,2,127],"N":[127,4,8,16,127],"O":[62,65,65,65,62],"P":[127,9,9,9,6],"Q":[62,65,81,33,94],"R":[127,9,25,41,70],"S":[70,73,73,73,49],"T":[1,1,127,1,1],"U":[63,64,64,64,63],"V":[31,32,64,32,31],"W":[63,64,56,64,63],"X":[99,20,8,20,99],"Y":[3,4,120,4,3],"Z":[97,81,73,69,67]};
+const COLORS = { Y: "#ffe14a", G: "#999999", N: "#45e06a", W: "#ffffff", R: "#ff4b3e" };
+const HEAD = [[0, "Y", "FM-1 M-BOOTLOADER"], [1, "G", "2.4-395E6CC"]];
+const SCREENS = {
+  menu: [...HEAD, [3,"N","APP OK"],[4,"W","983040 B"],[5,"W","UPDATE NONE"],[6,"W","FLASH 5E4016 4096K"],[7,"G","--------------------"],[8,"Y","> BOOT APP"],[9,"W","  DOWNLOAD MODE"],[10,"W","  MIDI MODE"],[14,"G","OCT-/+ MOVE PLAY OK"]],
+  midiAlone: [...HEAD, [3,"N","MIDI MODE"],[4,"R","APP BAD CRC"],[5,"W","CONNECT USB AND"],[6,"W","OPEN AN INSTALLER."],[8,"W","TO OPEN THE MENU:"],[9,"W","OCT- OCT+ PLAY REC"]],
+  midiMenu: [...HEAD, [3,"N","MIDI MODE"],[4,"N","APP OK"],[5,"W","CONNECT USB AND"],[6,"W","OPEN AN INSTALLER."],[8,"W","PLAY: BACK"]],
+  bad: [[0,"Y","FM-1 M-BOOTLOADER"],[1,"G","1.2-22E2559"],[2,"R","BAD CONFIG"],[3,"N","APP OK"],[4,"W","983040 B"],[5,"W","UPDATE NONE"],[6,"W","FLASH 5E4016 4096K"],[7,"G","--------------------"],[8,"Y","> BOOT APP"],[9,"W","  DOWNLOAD MODE"],[14,"G","OCT-/+ MOVE PLAY OK"]],
+  dl: [...HEAD, [3,"N","DOWNLOAD MODE"],[5,"W","CONNECT USB TO PC"],[6,"W","TO WRITE FLASH."],[8,"W","POWER OFF AND ON"],[9,"W","TO EXIT."]]
+};
+
+const CHAPTERS = [
+  { id: "why", kicker: "Why m-bootloader matters", title: "Start with m-bootloader", range: [1, 8], intro: "Prepare a working FM-1 so a bad write never becomes a brick." },
+  { id: "mb", kicker: "Fixes with m-bootloader", title: "Problems and fixes with m-bootloader", range: [9, 13], intro: "With m-bootloader installed, a key at power-on is the way back." },
+  { id: "stock", kicker: "Fixes with the stock bootloader", title: "Problems and fixes with the stock bootloader", range: [14, 19], intro: "No m-bootloader yet. Fix it while the firmware still answers, then install it." },
+  { id: "hw", kicker: "When nothing else works", title: "When nothing works and the FM-1 seems dead", range: [20, 21], intro: "The last resort is hardware, and the lesson after it." }
+];
+
+const POSTS = [
+  { n:1, title:"Install m-bootloader first", sub:"It is insurance against bricks: a way back that does not depend on the firmware.",
+    label:"What it adds at power-on", steps:["Hold REC → download mode, with any firmware or none.","Hold PLAY → recovery menu → MIDI MODE.","Broken firmware? MIDI MODE opens by itself (2.4)."],
+    screen:["menu","FM-1 screen · PLAY at power-on"],
+    cards:[["REC","Download mode","A flasher (M-Flasher, MvaveFM1Unbricker, jl-uboot-tool) reads and writes all of it."],["PLAY","MIDI MODE","Browser installers: firmware authors', M-Flasher +."],["Automatic","Broken firmware","MIDI MODE opens on its own."]] },
+  { n:2, title:"Install it while the FM-1 still works", sub:"Insurance is bought before the accident. Installing needs a working FM-1, or at least download mode.",
+    label:"How", steps:["Use M-Flasher (or a fork) in download mode, or M-UPGRADE with the m-bootloader package.","Stock bootloader found → install m-bootloader 2.4.","Step 1 writes the boot area only: 4 sectors, 16 KiB.","Your firmware stays as it is: only the bootloader changes."],
+    cards:[["Writes","Boot area only","4 sectors, 16 KiB."],["Tools","M-Flasher or M-UPGRADE","M-UPGRADE takes the m-bootloader .fwsc package."],["From then on","A way back","REC or PLAY at power-on."]] },
+  { n:3, title:"The install is the one risky moment", sub:"If writing the boot area is cut off, only hardware brings the FM-1 back. Protect those seconds.",
+    label:"Before you click install", steps:["Use a data cable you trust.","Plug straight into the computer: no hub, no dock.","Keep the computer awake and on power.","Do not unplug or switch off the FM-1 until it says done."],
+    cards:[["Cable","Data, not charge-only","A charge-only cable looks like a dead FM-1."],["Port","Direct","No hub, no chain of adapters."],["Wait","Until done","Hands off while it writes."]] },
+  { n:4, title:"Keep a backup of every FM-1", sub:"A backup turns a bad write into a five-minute restore.",
+    label:"Good habits", steps:["Save a backup before every write.","Name it by unit: the black FM-1 is not the white one.","Keep a copy off the computer: cloud or a drive."],
+    cards:[["Before","Every write","Read the whole flash first."],["Name","Per unit","One backup for each FM-1."],["Copy","Off the computer","A dead disk should not take it along."]] },
+  { n:5, title:"Know what your FM-1 has", sub:"Before installing anything, know what you have.",
+    label:"Find out", steps:["Which firmware is running.","Stock bootloader or m-bootloader.","Older or newer chip.","Which way back this FM-1 has today."],
+    cards:[["Download mode","Any flasher","Reads everything, boot area included."],["USB MIDI","A browser page","Reads through the firmware or MIDI MODE."],["Then","Decide","Pick the path for that FM-1."]] },
+  { n:6, title:"Get firmware from its author", sub:"Use the release its author publishes, not a copy passed around.",
+    label:"How", steps:["Download it from the author's repository or installer page.","Catalogs point to the same releases: The Firmware Hub, M-Flasher +.","Read the release notes: what changes, what is kept.","Back up, then write."],
+    cards:[["Source","Author's release","Repository or installer page."],["Read","Release notes","What changes, what is kept."],["Before","A backup","Every time."]] },
+  { n:7, title:"Know your rescue keys", sub:"Which key, when, and what it opens.",
+    label:"At power-on, with m-bootloader", steps:["REC → download mode → a flasher.","PLAY → menu → MIDI MODE → a browser installer.","PLAY → menu → Boot anyway: start the firmware once.","Firmware running: OCT- + OCT+ for 5 s → download mode, only on Felucca, SLOOP and Snoop37."],
+    screen:["menu","FM-1 screen · PLAY at power-on"],
+    cards:[["REC","Download mode","Any firmware, or none."],["PLAY","Recovery menu","MIDI MODE or Boot anyway."],["OCT- + OCT+","3 firmwares only","Felucca, SLOOP, Snoop37. Not a general rule."]] },
+  { n:8, title:"Keep m-bootloader current", sub:"Newer versions rescue more on their own. Install 2.4.",
+    label:"What each version brings", steps:["Before 1.3: can stop at BAD CONFIG with firmware 016.","2.2: MIDI MODE arrives.","2.4: broken firmware opens MIDI MODE by itself."],
+    cards:[["Before 1.3","BAD CONFIG","Update it: see post 11.", 11],["2.2","MIDI MODE","Rescue from the browser."],["2.4","Automatic","M-Flasher, or its .fwsc package in M-UPGRADE."]] },
+  { n:9, title:"Firmware will not start", sub:"With m-bootloader, that is not a brick.",
+    label:"With m-bootloader · do this", steps:["Switch off. Hold PLAY and switch on.","Choose MIDI MODE (2.4 may open it by itself).","Use a browser installer: install firmware or restore a backup.","Or hold REC at power-on and use a flasher."],
+    screen:["midiAlone","FM-1 screen · broken firmware"],
+    cards:[["Browser","PLAY","MIDI MODE and a browser installer."],["Desktop","REC","Download mode and a flasher."],["Result","Back to music","No board, no wires."]] },
+  { n:10, title:"The browser cannot find the FM-1", sub:"The browser only speaks USB MIDI. The FM-1 has to be in a mode that speaks it.",
+    label:"With m-bootloader · do this", steps:["Left in download mode by a flasher? Switch it off and on.","Hold PLAY at power-on and choose MIDI MODE.","Use Chrome or Edge. On iOS, use the MIDI Browser app.","Data cable, plugged in directly."],
+    screen:["midiMenu","FM-1 screen · MIDI MODE"],
+    cards:[["Browser","Chrome or Edge","Web MIDI with SysEx."],["iOS","MIDI Browser","The app that adds Web MIDI."],["Still nothing","MIDI MODE","PLAY at power-on."]] },
+  { n:11, title:"Stuck at BAD CONFIG", sub:"An m-bootloader older than 1.3 meets the settings of firmware 016.",
+    label:"With m-bootloader · do this", steps:["Hold PLAY at power-on.","Choose Boot app (Boot anyway): the firmware starts once.","Install m-bootloader 2.4: M-Flasher, or its .fwsc package in M-UPGRADE."],
+    screen:["bad","FM-1 screen · m-bootloader 1.2"],
+    cards:[["Cause","Old m-bootloader","Before 1.3."],["Way out","Boot app","In the PLAY menu."],["Fix","Update to 2.4","M-Flasher, or its .fwsc package in M-UPGRADE."]] },
+  { n:12, title:"FAILED -5 after “Return to V15”", sub:"Melodee's tool refuses the m-bootloader boot area. The FM-1 is fine.",
+    label:"With m-bootloader · do this", steps:["Hold REC at power-on: download mode.","Restore your backup or a firmware with a flasher."],
+    screen:["dl","FM-1 screen · REC at power-on"],
+    cards:[["Cause","Different boot area","The tool expects the stock one."],["Way out","REC","Download mode, any firmware."],["Fix","Restore","With a flasher."]] },
+  { n:13, title:"Rewrite everything, boot area included", sub:"MIDI MODE can hand the FM-1 over to download mode.",
+    label:"With m-bootloader · do this", steps:["Hold PLAY at power-on and choose MIDI MODE.","From the browser page, ask for download mode.","Use a flasher: read and write the whole flash."],
+    screen:["dl","FM-1 screen · download mode"],
+    cards:[["From","MIDI MODE","Browser."],["To","Download mode","Flasher."],["Reach","All of the flash","Boot area too."]] },
+  { n:14, title:"Stock bootloader, firmware running", sub:"The best moment to fix it: while it still starts.",
+    label:"Stock bootloader · do this", steps:["Plug in USB.","Send the soft key → download mode: M-Flasher, MvaveFM1Unbricker or amidi.","Back up, restore or install firmware.","Then install m-bootloader."],
+    cards:[["Needs","USB MIDI","A firmware that answers."],["Tool","M-Flasher","MvaveFM1Unbricker, amidi."],["Then","m-bootloader","So next time is a key press."]] },
+  { n:15, title:"Only a browser at hand", sub:"A browser page can work through the firmware's own update route.",
+    label:"Stock bootloader · browser", steps:["The firmware must be running, with USB MIDI.","A small helper runs from RAM: nothing stays installed.","Read, back up, restore firmware and settings, install firmware.","For the boot area, use a flasher: a browser cannot reach download mode."],
+    cards:[["Can","Firmware","Back up, restore, install."],["Can","Settings","Back up and restore."],["Cannot","Download mode","Flasher only."]] },
+  { n:16, title:"Official update route", sub:"M-UPGRADE reinstalls the official firmware. It makes no backup.",
+    label:"Stock bootloader · official tools", steps:["The firmware must be running.","Reinstall the official firmware.","Back up first with a flasher: these tools do not."],
+    cards:[["Tool","M-UPGRADE","M-VAVE's official updater."],["Missing","Backup","Make one first."]] },
+  { n:17, title:"Felucca, SLOOP or Snoop37 running", sub:"These three firmwares have their own shortcut. Others do not.",
+    label:"Only these 3 firmwares", steps:["Hold OCT- and OCT+ for 5 s.","The FM-1 enters download mode.","Use M-Flasher, MvaveFM1Unbricker or jl-uboot-tool."],
+    cards:[["Works on","Felucca","SLOOP, Snoop37."],["Not on","Stock, fm1-dock","Not a general rule."],["Then","Download mode","Restore or install."]] },
+  { n:18, title:"Will not start, but WL82 UBOOT shows up", sub:"The chip fell into download mode by itself. Software can still fix it.",
+    label:"Stock bootloader · do this", steps:["A disk named WL82 UBOOT appears (WL80UBOOT1.00 on a Mac).","Restore your backup or install firmware with M-Flasher,","Or MvaveFM1Unbricker (restore, full-restore) or jl-uboot-tool."],
+    cards:[["Sign","A USB disk","WL82 UBOOT."],["Tool","A flasher","Restore or install."],["Then","m-bootloader","Install it right after."]] },
+  { n:19, title:"Before hardware: rule out the cable", sub:"A charge-only cable or a hub can make a working FM-1 look dead.",
+    label:"Check, in order", steps:["Swap to a known data cable.","Plug straight into the computer.","Try another port, then another computer.","Look for WL82 UBOOT or a MIDI port."],
+    cards:[["Cable","Data","Not charge-only."],["Port","Direct","No hub."],["Look for","A sign of life","A disk or a MIDI port."]] },
+  { n:20, title:"Nothing appears? FM-1 Transporter", sub:"No firmware, no bootloader, no download mode. Only hardware still talks to the chip.",
+    label:"Last resort · hardware", steps:["An RP2040 board in USB_KEY mode.","3 wires to the FM-1: D+, D−, GND. No VBUS.","Load its UF2: hold BOOTSEL and plug in.","fm1t.py or its web app (Chrome, Edge): read, dump and write the flash."],
+    cards:[["Seeed XIAO RP2040","D6 · D7","GP0 and GP1."],["Pico, Pico 2","GP0 · GP1","Debug Probe: GP4 · GP6."],["Then","Restore","Your backup, then m-bootloader."]] },
+  { n:21, title:"After the rescue, install m-bootloader", sub:"So the next time is a key press, not a board and three wires.",
+    label:"Close the loop", steps:["Restore your backup, or install a firmware.","Install m-bootloader 2.4: data cable, direct port, hands off.","Save a fresh backup and keep a copy off the computer."],
+    cards:[["REC","Download mode","A flasher."],["PLAY","MIDI MODE","A browser installer."],["Backup","Up to date","For this FM-1."]] }
+];
+
+const TRIAGE = {
+  ok:    { label: "My FM-1 works. I want to be ready", answers: [["Start here", 1, [2, 3, 4]]] },
+  mb:    { label: "It has m-bootloader", answers: [
+            ["The firmware will not start", 9, [12]],
+            ["A browser installer cannot find it", 10, [19]],
+            ["The screen says BAD CONFIG", 11, [8]],
+            ["FAILED -5 after “Return to V15”", 12, []],
+            ["I want to rewrite the whole flash", 13, [4]] ] },
+  stock: { label: "It has the stock bootloader", answers: [
+            ["The firmware runs and answers over USB", 14, [15, 16]],
+            ["I only have a browser", 15, [14]],
+            ["Felucca, SLOOP or Snoop37 is running", 17, [21]],
+            ["It will not start, but a WL82 UBOOT disk appears", 18, [21]],
+            ["Nothing appears on the computer", 19, [20]] ] },
+  unsure:{ label: "I am not sure", answers: [["Find out what it has", 5, [7]]] }
+};
+
+const byN = n => POSTS.find(p => p.n === n);
+const chapterOf = n => CHAPTERS.find(c => n >= c.range[0] && n <= c.range[1]);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+function drawScreen(canvas, key) {
+  const lines = SCREENS[key]; if (!lines) return;
+  const ctx = canvas.getContext("2d"); const k = canvas.width / 240;
+  ctx.fillStyle = "#000"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+  for (const [row, col, text] of lines) {
+    ctx.fillStyle = COLORS[col];
+    [...text].forEach((ch, ci) => {
+      const g = GLYPHS[ch]; if (!g) return;
+      g.forEach((bits, x) => { for (let y = 0; y < 7; y++) if ((bits >> y) & 1) ctx.fillRect((ci * 12 + x * 2) * k, (row * 16 + 1 + y * 2) * k, 2 * k, 2 * k); });
+    });
+  }
+}
+
+function postHTML(p) {
+  const ch = chapterOf(p.n);
+  const steps = p.steps.map((s, i) => `<li><label class="step"><input type="checkbox" id="s${p.n}-${i}" data-post="${p.n}"><span class="n">${i + 1}</span><span class="t">${esc(s)}</span></label></li>`).join("");
+  const screen = p.screen ? `<figure class="screen" style="margin:0"><div class="plabel">${esc(p.screen[1])}</div><canvas data-screen="${p.screen[0]}" width="480" height="480" role="img" aria-label="${esc(SCREENS[p.screen[0]].map(l => l[2].trim()).join(", "))}"></canvas></figure>` : "";
+  const cards = p.cards.map(c => `<div class="card"><div class="cl">${esc(c[0])}</div><div class="ct">${c[3] ? `<a href="#post-${c[3]}">${esc(c[1])}</a>` : esc(c[1])}</div><div class="cd">${esc(c[2])}</div></div>`).join("");
+  const prev = p.n > 1 ? `<a href="#post-${p.n - 1}">← ${esc(byN(p.n - 1).title)}</a>` : "<span></span>";
+  const next = p.n < 21 ? `<a href="#post-${p.n + 1}">${esc(byN(p.n + 1).title)} →</a>` : "<span></span>";
+  return `<article class="post" id="post-${p.n}" data-n="${p.n}">
+    <div class="post-top"><span class="kicker">${esc(ch.kicker)}</span><span class="pager">${p.n} / 21 <button class="copy" type="button" data-copy="${p.n}">Copy link</button></span></div>
+    <h3>${esc(p.title)}</h3>
+    <p class="sub">${esc(p.sub)}</p>
+    <div class="body${p.screen ? "" : " noscreen"}"><div class="panel"><div class="plabel">${esc(p.label)}</div><ol class="steps">${steps}</ol></div>${screen}</div>
+    <div class="cards">${cards}</div>
+    <div class="post-foot">${prev}${next}</div>
+  </article>`;
+}
+
+function render() {
+  document.getElementById("content").innerHTML = CHAPTERS.map(c => `<section class="chapter" id="ch-${c.id}" data-ch="${c.id}">
+    <header><h2>${esc(c.title)}</h2><span class="range">posts ${c.range[0]}–${c.range[1]}</span><p class="intro">${esc(c.intro)}</p></header>
+    ${POSTS.filter(p => p.n >= c.range[0] && p.n <= c.range[1]).map(postHTML).join("")}
+  </section>`).join("");
+  document.getElementById("toc").innerHTML = `<div class="toc-head">21 guides</div>` + CHAPTERS.map((c, i) => `<details data-ch="${c.id}"${i === 0 ? " open" : ""}><summary><span>${esc(c.kicker)}</span><span class="rg">${c.range[0]}–${c.range[1]}</span></summary><div>` +
+    POSTS.filter(p => p.n >= c.range[0] && p.n <= c.range[1]).map(p => `<a href="#post-${p.n}" data-n="${p.n}" title="${esc(p.title)}"><span>${p.n}</span><span>${esc(p.title)}</span></a>`).join("") + `</div></details>`).join("");
+  document.getElementById("chips").innerHTML = `<button class="chip" type="button" data-ch="all" aria-pressed="true">All</button>` +
+    CHAPTERS.map(c => `<button class="chip" type="button" data-ch="${c.id}" aria-pressed="false">${c.range[0]}–${c.range[1]} ${esc(c.kicker.replace("Fixes with ", "").replace("Why m-bootloader matters", "Prepare").replace("When nothing else works", "Hardware"))}</button>`).join("");
+  document.querySelectorAll("canvas[data-screen]").forEach(c => drawScreen(c, c.dataset.screen));
+}
+
+/* Filters */
+let chFilter = "all";
+function applyFilter() {
+  const q = document.getElementById("search").value.trim().toLowerCase();
+  let shown = 0;
+  document.querySelectorAll(".post").forEach(el => {
+    const p = byN(+el.dataset.n);
+    const hay = [p.title, p.sub, p.label, ...p.steps, ...p.cards.flat()].join(" ").toLowerCase();
+    const ok = (chFilter === "all" || chapterOf(p.n).id === chFilter) && (!q || hay.includes(q));
+    el.hidden = !ok; if (ok) shown++;
+  });
+  document.querySelectorAll(".chapter").forEach(s => s.hidden = !s.querySelector(".post:not([hidden])"));
+  document.getElementById("count").textContent = shown === 21 ? "21 guides" : `${shown} of 21`;
+  document.getElementById("empty").hidden = shown > 0;
+}
+
+function goTo(n) {
+  const el = document.getElementById("post-" + n); if (!el) return;
+  if (el.hidden) { chFilter = "all"; document.getElementById("search").value = ""; syncChips(); applyFilter(); }
+  el.scrollIntoView({ block: "start" });
+  el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash");
+  setTimeout(() => el.classList.remove("flash"), 1800);
+}
+function syncChips() { document.querySelectorAll(".chip").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.ch === chFilter))); }
+
+/* Triage */
+function renderTriage(sel1, sel2) {
+  const c1 = document.getElementById("c1");
+  c1.innerHTML = Object.entries(TRIAGE).map(([k, v]) => `<button class="choice" type="button" data-k="${k}" aria-pressed="${k === sel1}">${esc(v.label)}</button>`).join("");
+  const step2 = document.getElementById("step2"), c2 = document.getElementById("c2"), ans = document.getElementById("answer");
+  const t = TRIAGE[sel1];
+  const single = t && t.answers.length === 1;
+  step2.hidden = !t || single;
+  if (t && !single) c2.innerHTML = t.answers.map((a, i) => `<button class="choice" type="button" data-i="${i}" aria-pressed="${i === sel2}">${esc(a[0])}</button>`).join("");
+  const a = t && (single ? t.answers[0] : t.answers[sel2]);
+  ans.hidden = !a;
+  if (a) {
+    const p = byN(a[1]);
+    ans.innerHTML = `<span class="num">Go to ${p.n} / 21</span><strong>${esc(p.title)}</strong><a class="go" href="#post-${p.n}">Open the guide</a>` +
+      (a[2].length ? `<span class="also">Also read: ${a[2].map(n => `<a href="#post-${n}">${n} · ${esc(byN(n).title)}</a>`).join(" · ")}</span>` : "");
+  }
+  c1.onclick = e => { const b = e.target.closest(".choice"); if (b) renderTriage(b.dataset.k, null); };
+  c2.onclick = e => { const b = e.target.closest(".choice"); if (b) renderTriage(sel1, +b.dataset.i); };
+}
+
+/* Progress marks in the index */
+function markDone(n) {
+  const boxes = document.querySelectorAll(`input[data-post="${n}"]`);
+  const done = boxes.length && [...boxes].every(b => b.checked);
+  const a = document.querySelector(`.toc a[data-n="${n}"]`); if (a) a.classList.toggle("done", !!done);
+}
+
+render();
+renderTriage(null, null);
+applyFilter();
+
+document.getElementById("search").addEventListener("input", applyFilter);
+document.getElementById("chips").addEventListener("click", e => {
+  const b = e.target.closest(".chip"); if (!b) return;
+  chFilter = b.dataset.ch; syncChips(); applyFilter();
+  if (chFilter !== "all") document.getElementById("ch-" + chFilter).scrollIntoView({ block: "start" });
+});
+document.getElementById("content").addEventListener("change", e => { if (e.target.dataset.post) markDone(e.target.dataset.post); });
+document.addEventListener("click", e => {
+  const cp = e.target.closest(".copy");
+  if (cp) {
+    const url = location.href.split("#")[0] + "#post-" + cp.dataset.copy;
+    const ok = () => { cp.textContent = "Copied"; setTimeout(() => cp.textContent = "Copy link", 1500); };
+    if (navigator.clipboard) navigator.clipboard.writeText(url).then(ok, () => { cp.textContent = "#post-" + cp.dataset.copy; });
+    else cp.textContent = "#post-" + cp.dataset.copy;
+    return;
+  }
+  const a = e.target.closest('a[href^="#post-"]');
+  if (a) { e.preventDefault(); const n = +a.getAttribute("href").slice(6); try { history.replaceState(null, "", "#post-" + n); } catch (_) {} goTo(n); }
+});
+
+/* Current-guide bar (phones and tablets) */
+let nowN = 1;
+const visibleNs = () => [...document.querySelectorAll(".post:not([hidden])")].filter(p => !p.closest(".chapter").hidden).map(p => +p.dataset.n);
+function setNow(n) {
+  nowN = n; const p = byN(n);
+  document.getElementById("nowk").textContent = `${n} / 21 · ${chapterOf(n).kicker}`;
+  document.getElementById("nowt").textContent = p.title;
+  document.getElementById("nowlink").setAttribute("href", "#post-" + n);
+  const vs = visibleNs();
+  document.getElementById("nowprev").disabled = !vs.some(v => v < n);
+  document.getElementById("nownext").disabled = !vs.some(v => v > n);
+}
+function syncNowVisibility() {
+  const c = document.getElementById("content").getBoundingClientRect();
+  const show = c.top < window.innerHeight * 0.4 && c.bottom > 0;
+  document.getElementById("nowbar").hidden = !show;
+  document.body.classList.toggle("has-now", show);
+}
+window.addEventListener("scroll", syncNowVisibility, { passive: true });
+document.getElementById("nowprev").addEventListener("click", () => { const v = visibleNs().filter(x => x < nowN).pop(); if (v) goTo(v); });
+document.getElementById("nownext").addEventListener("click", () => { const v = visibleNs().find(x => x > nowN); if (v) goTo(v); });
+document.getElementById("toc").addEventListener("click", e => {
+  const s = e.target.closest("summary"); if (!s) return;
+  const d = s.parentElement; if (d.open) delete d.dataset.pinned; else d.dataset.pinned = "1";
+});
+
+/* Scrollspy */
+const spy = new IntersectionObserver(entries => {
+  entries.forEach(en => {
+    if (!en.isIntersecting) return;
+    const n = +en.target.dataset.n, ch = chapterOf(n).id;
+    document.querySelectorAll(".toc details").forEach(d => { const on = d.dataset.ch === ch; d.classList.toggle("current", on); if (on) d.open = true; else if (!d.dataset.pinned) d.open = false; });
+    document.querySelectorAll(".toc a.active").forEach(a => a.classList.remove("active"));
+    const a = document.querySelector(`.toc a[data-n="${n}"]`);
+    if (a) a.classList.add("active");
+    setNow(n);
+  });
+}, { rootMargin: "-20% 0px -70% 0px" });
+document.querySelectorAll(".post").forEach(p => spy.observe(p));
+
+document.getElementById("search").addEventListener("input", () => setNow(nowN));
+document.getElementById("chips").addEventListener("click", () => setNow(nowN));
+setNow(1); syncNowVisibility();
+
+function fromHash() { const m = /^#post-(\d+)$/.exec(location.hash); if (m) goTo(+m[1]); }
+window.addEventListener("hashchange", fromHash);
+fromHash();
+</script>
+</body>
+</html>
