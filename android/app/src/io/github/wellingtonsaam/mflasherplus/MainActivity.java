@@ -83,6 +83,8 @@ public class MainActivity extends Activity {
     private View warn;
     private OpKey bootBtn;
     private Button formChoose, formPrimary, formOther;
+    /** "OR" between the form's keys: only the firmware form has another source (the library). */
+    private TextView formOr;
     private OpKey[] opKeys;
     /** The last write: its sectors, its backup's path, the sectors it plans; the bundled m-bootloader's version. */
     private int lastSectors, writeTotal, bootSectors;
@@ -102,6 +104,8 @@ public class MainActivity extends Activity {
     private String libraryChoice;
     /** The plan is step 2 of 2: its review opens as soon as it is made. */
     private boolean reviewAfterPlan;
+    /** A backup was chosen: its review opens as soon as it is planned (as on the desktop). */
+    private boolean reviewRestoreAfterPlan;
     private static final int PICK_FILE = 7;
     private TextView[] tabs;
     private volatile boolean running, writing;
@@ -329,6 +333,7 @@ public class MainActivity extends Activity {
             restoreFile = f;
             showTab(0);
             chooseOp(RESTORE_OP);
+            reviewRestoreAfterPlan = true;
             run(PLAN_RESTORE);
         });
         backups.setVisibility(View.GONE);
@@ -394,8 +399,8 @@ public class MainActivity extends Activity {
         info.setOrientation(LinearLayout.VERTICAL);
         checkedPart.addView(info, below(-1, -2, px(12)));
         checkedPart.addView(section("OPERATIONS"), below(-1, px(18), px(12)));
-        OpKey bk = new OpKey(this, "BACKUP FULL FLASH", "ic_backup"), rs = new OpKey(this, "RESTORE FULL FLASH", "ic_restore"),
-                fwk = new OpKey(this, "FLASH FIRMWARE", "ic_firmware");
+        OpKey bk = new OpKey(this, "SAVE BACKUP", "ic_backup"), rs = new OpKey(this, "RESTORE BACKUP", "ic_restore"),
+                fwk = new OpKey(this, "INSTALL FIRMWARE", "ic_firmware");
         bk.setOnClickListener(v -> {
             chooseOp(-1);
             readUnit(true);
@@ -427,9 +432,9 @@ public class MainActivity extends Activity {
         form.addView(row, below(-1, -2, px(8)));
         formPrimary = key("FLASH FIRMWARE", true);
         form.addView(formPrimary, below(-1, px(38), px(8)));
-        TextView or = Ui.mono(this, "OR", DIM, 12);
-        or.setGravity(Gravity.CENTER);
-        form.addView(or, below(-1, -2, px(8)));
+        formOr = Ui.mono(this, "OR", DIM, 12);
+        formOr.setGravity(Gravity.CENTER);
+        form.addView(formOr, below(-1, -2, px(8)));
         formOther = key("INSTALL FROM LIBRARY", true);
         form.addView(formOther, below(-1, px(38), px(8)));
         checkedPart.addView(form, below(-1, -2, px(12)));
@@ -580,8 +585,11 @@ public class MainActivity extends Activity {
         formPrimary.setOnClickListener(v -> {
             if (fw) review(planResult); else reviewRestore(planResult);
         });
-        formOther.setText(fw ? "INSTALL FROM LIBRARY" : "FROM BACKUPS TAB");
-        formOther.setOnClickListener(v -> showTab(fw ? 1 : 2));
+        // restore has one source, CHOOSE BACKUP (as on the desktop): no OR, no second key
+        formOther.setText("INSTALL FROM LIBRARY");
+        formOther.setOnClickListener(v -> showTab(1));
+        formOther.setVisibility(fw ? View.VISIBLE : View.GONE);
+        formOr.setVisibility(fw ? View.VISIBLE : View.GONE);
         updatePrompt();
     }
 
@@ -629,7 +637,7 @@ public class MainActivity extends Activity {
         File dir = new File(getExternalFilesDir(null), "backups");
         File[] all = dir.listFiles((d, n) -> n.endsWith(".bin"));
         if (all == null || all.length == 0) {
-            dialog("No backups yet", "Save one with BACKUP FULL FLASH first.").setPositiveButton("OK", null).show();
+            dialog("No backups yet", "Save one with SAVE BACKUP first.").setPositiveButton("OK", null).show();
             return;
         }
         // newest first by when each was saved (its name holds the firmware too: "fm1-zp12-2.5-20261116-165332.bin")
@@ -645,6 +653,7 @@ public class MainActivity extends Activity {
             restoreFile = all[w];
             planResult = null;
             refreshForm();
+            reviewRestoreAfterPlan = true;
             run(PLAN_RESTORE);
         }).show();
     }
@@ -970,6 +979,10 @@ public class MainActivity extends Activity {
                     if (reviewAfterPlan) {
                         reviewAfterPlan = false;
                         review(r);
+                    }
+                    if (mode == PLAN_RESTORE && reviewRestoreAfterPlan) {
+                        reviewRestoreAfterPlan = false;
+                        reviewRestore(r);
                     }
                 }
                 if (mode == PLAN_BOOT) reviewBoot(r);

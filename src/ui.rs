@@ -69,8 +69,6 @@ enum Dialog {
     Review,
     About,
     Model,
-    /// RESTORE's FROM BACKUPS: the latest backups of this computer.
-    Backups,
 }
 
 pub struct App {
@@ -202,6 +200,13 @@ impl eframe::App for App {
         if dev.is_none() {
             // no unit checked: no operation chosen
             self.op_open = None;
+        }
+        if st.restore_review && !st.busy && st.alert.is_none() && self.dialog == Dialog::None {
+            // a backup chosen in the file dialog: its review opens right away (Figma 8b)
+            self.ctl.clear_restore_review();
+            if st.mode == Mode::Restore && st.phase == Phase::Ready && st.plan.as_ref().is_some_and(|p| p.ready) {
+                self.dialog = Dialog::Review;
+            }
         }
         if st.review_next && !st.busy && st.alert.is_none() && self.dialog == Dialog::None {
             // step 1 of 2 written: the firmware's review, as any write
@@ -390,15 +395,16 @@ impl eframe::App for App {
         // ---- operations: backup saves at once; restore and firmware open their form ----
         p.label(38.0, 612.0, "OPERATIONS", Some(891.0));
         let keys = [
-            (Mode::Backup, "BACKUP", "FULL FLASH", Icon::Backup),
-            (Mode::Restore, "RESTORE", "FULL FLASH", Icon::Restore),
-            (Mode::Firmware, "FLASH", "FIRMWARE", Icon::Chip),
+            // labels as in Figma (W8 · 101:4991)
+            (Mode::Backup, "SAVE", "BACKUP", Icon::Backup),
+            (Mode::Restore, "RESTORE", "BACKUP", Icon::Restore),
+            (Mode::Firmware, "INSTALL", "FIRMWARE", Icon::Chip),
         ];
         let kw = (853.0 - 2.0 * 14.0) / 3.0;
         for (i, (mode, t1, t2, icon)) in keys.iter().enumerate() {
             let x = 38.0 + i as f32 * (kw + 14.0);
             let r = board.r(x, 626.0, kw, 72.0);
-            let (c, h) = clicked(&format!("op{i}"), r); // ids must be unique: two keys say FULL FLASH
+            let (c, h) = clicked(&format!("op{i}"), r); // ids must be unique: two keys say BACKUP
             let on = self.op_open == Some(*mode);
             key(&p, r, on, h && active, !active && !on);
             draw_icon(&p, *icon, x + 22.0, 645.0, 34.0, KEYINK);
@@ -459,10 +465,11 @@ impl eframe::App for App {
                 _ if st.plan.as_ref().is_some_and(|p| p.kind == PlanKind::Write && p.count == 0) => "NOTHING TO WRITE".into(),
                 _ => verb.into(),
             };
-            let pr = board.r(38.0, 790.0, 480.0, 48.0);
+            // restore has one source, CHOOSE BACKUP: its review key takes the whole row
+            let pr = if fw { board.r(38.0, 790.0, 480.0, 48.0) } else { board.r(38.0, 790.0, 853.0, 48.0) };
             let (pc, ph) = clicked("primary", pr);
             key(&p, pr, ready, ph && active && ready, !(active && ready));
-            p.text(278.0, 814.0, Align2::CENTER_CENTER, &label, "cond", 20.0, KEYINK, 1.6);
+            p.text(pr.center().x, 814.0, Align2::CENTER_CENTER, &label, "cond", 20.0, KEYINK, 1.6);
             if pc && active && ready {
                 if fw && st.boot_first.is_some() {
                     self.dialog = Dialog::TwoStep;
@@ -472,17 +479,15 @@ impl eframe::App for App {
             } else if pc && !modal {
                 self.nudged = now;
             }
-            p.text(545.0, 814.0, Align2::CENTER_CENTER, "OR", "tech", 14.0, DIM, 1.6);
-            let sr = board.r(572.0, 790.0, 319.0, 48.0);
-            let (sc, sh) = clicked("othersource", sr);
-            key(&p, sr, false, sh && active, !active);
-            p.text(731.5, 814.0, Align2::CENTER_CENTER, if fw { "INSTALL FROM LIBRARY" } else { "FROM BACKUPS" }, "cond", 20.0, KEYINK, 1.6);
-            if sc && active {
-                if fw {
+            if fw {
+                p.text(545.0, 814.0, Align2::CENTER_CENTER, "OR", "tech", 14.0, DIM, 1.6);
+                let sr = board.r(572.0, 790.0, 319.0, 48.0);
+                let (sc, sh) = clicked("othersource", sr);
+                key(&p, sr, false, sh && active, !active);
+                p.text(731.5, 814.0, Align2::CENTER_CENTER, "INSTALL FROM LIBRARY", "cond", 20.0, KEYINK, 1.6);
+                if sc && active {
                     self.tab = Tab::Library;
                     self.ctl.load_library();
-                } else {
-                    self.dialog = Dialog::Backups;
                 }
             }
             if fw {
@@ -951,15 +956,26 @@ impl App {
         // a firmware's review: titled by what it installs, its plan in flash memory sectors on the LCD
         let fw_name = st.file(FileKind::Firmware).unwrap_or_default().trim_end_matches(".fwsc").to_uppercase();
         let fw_review = st.mode == Mode::Firmware;
-        let review_title = if fw_review { format!("Install {fw_name}?") } else { "REVIEW".into() };
+        let restore_name = st.file(FileKind::Restore).unwrap_or_default();
+        let restore_time = st.backups.iter().find(|b| b.name == restore_name).map(|b| b.time.clone());
+        let review_title = match st.mode {
+            Mode::Firmware => format!("Install {fw_name}?"),
+            Mode::Restore => match &restore_time {
+                Some(t) => format!("Restore the backup of {t}?"),
+                None => format!("Restore {restore_name}?"),
+            },
+            _ => "REVIEW".into(),
+        };
         let review_line = match &st.plan {
             Some(p) if fw_review => format!("INSTALL {fw_name} · {} FLASH MEMORY SECTORS", p.count),
+            Some(p) if st.mode == Mode::Restore => format!("RESTORE {} · {} FLASH MEMORY SECTORS", restore_name.to_uppercase(), p.count),
             _ => line.to_string(),
         };
         // the review's WRITE key says what it installs
         let write_key = match st.mode {
             Mode::Firmware => format!("INSTALL {}", st.file(FileKind::Firmware).unwrap_or_default().trim_end_matches(".fwsc").to_uppercase()),
             Mode::Bootloader => boot_key.clone(),
+            Mode::Restore => "RESTORE BACKUP".into(),
             _ => format!("WRITE {} SECTORS", st.plan.as_ref().map(|p| p.count).unwrap_or(0)),
         };
         // an alert from the controller wins over the user's dialogs
@@ -1049,19 +1065,6 @@ impl App {
                     ("M-Flasher + is free, maintained by Wellington Saam. Questions and bug reports go to its own \
                       GitHub repository, not to M-Flasher's.".into(), INK),
                 ], vec![("GITHUB", 7), ("CLOSE", 0)]),
-                Dialog::Backups => {
-                    let mut b = vec![("Choose one to restore. Its plan opens for review; nothing is written before WRITE.".to_string(), DIM)];
-                    b.extend(st.backups.iter().take(3).enumerate()
-                        .map(|(i, x)| (format!("{} · {} · {} · {}", i + 1, x.time, x.firmware, x.name), INK)));
-                    if st.backups.is_empty() {
-                        b.push(("No backups on this computer yet.".into(), WARN));
-                    }
-                    let mut keys = vec![("CANCEL", 0u8)];
-                    for (i, k) in ["RESTORE BACKUP 1", "RESTORE BACKUP 2", "RESTORE BACKUP 3"].iter().enumerate().take(st.backups.len().min(2)) {
-                        keys.push((*k, 21 + i as u8));
-                    }
-                    ("FROM BACKUPS", b, keys)
-                }
                 Dialog::Model => {
                     let mut b = vec![
                         ("The model could not be identified for certain. Writing the wrong model's firmware or".to_string(), INK),
@@ -1134,11 +1137,6 @@ impl App {
                             }
                         }
                         12 => ctl.cancel_install_wait(),
-                        21..=23 => {
-                            if let Some(x) = st.backups.get((*code - 21) as usize) {
-                                ctl.pick_backup(x.path.clone());
-                            }
-                        }
                         // m-bootloader, then the firmware: reviewed as installing it (opens once planned)
                         11 => {
                             ctl.bootloader_then_firmware();
