@@ -169,7 +169,7 @@ it.
 3. Pick a firmware in the **LIBRARY** tab and press **INSTALL**: M-Flasher +
    switches the FM-1 to download mode, reads it and opens the review. Nothing
    is written until you confirm. To start with a backup, press **CHECK FM1
-   STATUS**, then **BACKUP FULL FLASH**.
+   STATUS**, then **SAVE BACKUP**.
 
 ## More
 

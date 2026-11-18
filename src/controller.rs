@@ -152,7 +152,6 @@ pub struct LibItem {
 
 #[derive(Clone, Debug)]
 pub struct BackupInfo {
-    pub path: PathBuf,
     pub name: String,
     pub time: String,
     pub firmware: String,
@@ -207,6 +206,8 @@ pub struct Shared {
     pub firmware_after: bool,
     /// Step 1 is written: the window opens the firmware's review.
     pub review_next: bool,
+    /// A backup was chosen in the file dialog: its review opens once planned.
+    pub restore_review: bool,
     /// Library INSTALL with no unit in download mode: the firmware (id) to plan once one is.
     pub install_after: Option<String>,
     /// How to put the unit in download mode by hand, shown while INSTALL waits for it.
@@ -299,6 +300,7 @@ impl Shared {
             boot_first: None,
             firmware_after: false,
             review_next: false,
+            restore_review: false,
             install_after: None,
             how_to: None,
             library_review: false,
@@ -857,6 +859,10 @@ impl Controller {
     }
 
     /// The firmware's review was opened after step 1.
+    pub fn clear_restore_review(&self) {
+        self.with(|s| s.restore_review = false);
+    }
+
     pub fn clear_review_next(&self) {
         self.with(|s| s.review_next = false);
     }
@@ -951,7 +957,17 @@ impl Controller {
                 }
                 c.picking.fetch_sub(1, Ordering::SeqCst);
             });
-            if chosen {
+            if chosen && kind == FileKind::Restore {
+                // planned, then reviewed: the review opens as soon as the plan is in
+                if c.unit.lock().map(|u| u.is_some()).unwrap_or(false) {
+                    c.work("planning", |c| {
+                        c.with(|s| if s.phase == Phase::Done { s.phase = Phase::Ready });
+                        c.replan_now();
+                        c.with(|s| s.restore_review = true);
+                        Ok(())
+                    });
+                }
+            } else if chosen {
                 c.replan();
             }
         });
@@ -1203,14 +1219,6 @@ impl Controller {
             c.with(|s| s.library_review = true);
             Ok(())
         }
-    }
-
-    pub fn pick_backup(&self, path: PathBuf) {
-        self.choose(|s| {
-            s.files.insert("restore", path);
-            s.mode = Mode::Restore;
-        });
-        self.replan();
     }
 
     pub fn save_backup(&self) {
@@ -1539,7 +1547,7 @@ fn recent_backups(dir: &Path, n: usize) -> Vec<BackupInfo> {
             (_, f) => f,
         };
         let time: chrono::DateTime<chrono::Local> = t.into();
-        BackupInfo { name: p.file_name().unwrap().to_string_lossy().into_owned(), path: p,
+        BackupInfo { name: p.file_name().unwrap().to_string_lossy().into_owned(),
                      time: time.format("%Y-%m-%d %H:%M").to_string(), firmware }
     }).collect()
 }
