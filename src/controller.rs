@@ -1517,9 +1517,13 @@ fn device_view(u: &Unit) -> DeviceView {
     }
 }
 
-/// Which firmware a unit holds by name: the one installed with that code (installed.json, next to the
-/// backups), else a package saved in the library that would change nothing.
+/// Which firmware a unit holds by name: the name the firmware gives itself (FWNAME= in app.bin), else the one
+/// installed with that code (installed.json, next to the backups), else a package saved in the library that would
+/// change nothing.
 fn firmware_named(u: &Unit, backup_dir: &Path) -> Option<String> {
+    if let Some(n) = u.analysis.fw_name.clone() {
+        return Some(n);                         // first: the name the firmware gives itself (FWNAME= in app.bin)
+    }
     if let Some(n) = crate::library::installed_name(backup_dir, &u.flash) {
         return Some(n);
     }
