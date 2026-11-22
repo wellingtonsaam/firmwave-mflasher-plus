@@ -9,14 +9,19 @@ use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::Arc;
 
-/// Our fonts, by family name; IBM Plex Mono (Latin, Cyrillic) follows each.
-const OURS: [(&str, &[u8]); 4] = [
-    ("cond", include_bytes!("../assets/BarlowCondensed-SemiBold.ttf")),
-    ("tech", include_bytes!("../assets/ShareTechMono-Regular.ttf")),
-    ("plex", include_bytes!("../assets/IBMPlexMono-Regular.ttf")),
-    ("lcd", include_bytes!("../assets/VT323-Regular.ttf")),
+/// Our fonts, by family name (FirmWave's Foundations, Figma 283:9836): Lexend Mega for the wordmark and the
+/// section labels, Public Sans for text and keys, Space Mono for the LCD, data and the log. IBM Plex Mono
+/// (Latin, Cyrillic) follows each, for the letters they lack.
+const OURS: [(&str, &[u8]); 7] = [
+    ("cond", include_bytes!("../assets/PublicSans-Black.ttf")),   // keys, titles (FirmWave/Button)
+    ("tech", include_bytes!("../assets/PublicSans-Bold.ttf")),    // tabs, small labels (FirmWave/Body/Bold)
+    ("plex", include_bytes!("../assets/SpaceMono-Regular.ttf")),  // values, the log (FirmWave/Data/Regular, Log)
+    ("lcd", include_bytes!("../assets/SpaceMono-Bold.ttf")),      // the LCD (FirmWave/LCD)
+    ("logo", include_bytes!("../assets/LexendMega-Black.ttf")),   // the wordmark (FirmWave/Logo)
+    ("label", include_bytes!("../assets/LexendMega-Bold.ttf")),   // section labels, dialog title bands
+    ("body", include_bytes!("../assets/PublicSans-Medium.ttf")),  // running text (FirmWave/Body)
 ];
-const PLEX: &[u8] = OURS[2].1;
+const PLEX: &[u8] = include_bytes!("../assets/IBMPlexMono-Regular.ttf");
 
 fn has(data: &[u8], index: u32, c: char) -> bool {
     FontRef::from_index(data, index).is_ok_and(|f| f.charmap().map(c).is_some())
@@ -66,9 +71,7 @@ impl Fonts {
             let Ok(primary) = FontRef::new(bytes) else { continue };
             // the fallbacks, each moved onto this font's baseline
             let mut fallbacks = vec![];
-            if name != "plex" {
-                fallbacks.push(("plex".to_owned(), PLEX, 0, plex.as_ref().map_or(0.0, |f| baseline_offset(&primary, f))));
-            }
+            fallbacks.push(("plexfb".to_owned(), PLEX, 0, plex.as_ref().map_or(0.0, |f| baseline_offset(&primary, f))));
             for (k, l) in self.loaded.iter().enumerate() {
                 let off = FontRef::from_index(l.data, l.index).map_or(0.0, |f| baseline_offset(&primary, &f));
                 fallbacks.push((format!("system{k}"), l.data, l.index, off));

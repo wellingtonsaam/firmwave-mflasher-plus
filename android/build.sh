@@ -1,7 +1,7 @@
 #!/bin/sh
 # Builds the Android spike APK without Gradle: the Rust core with cargo-ndk
 # (rustup's toolchain in ~/.cargo/bin), then aapt2, javac, d8, zipalign and
-# apksigner from the SDK. Output: android/build/m-flasher-plus.apk
+# apksigner from the SDK. Output: android/build/firmwave.apk
 set -eu
 cd "$(dirname "$0")"
 
@@ -32,12 +32,13 @@ cp "$B/dex/classes.dex" "$B/apk/"
 # RELEASE=1: signed with the release key (its folder: RELEASE_KEY_DIR, by default ~/Documents/M-Flasher +
 # signing; the password read from its file, never on the command line). Otherwise the debug key: a phone
 # with a build of one key refuses a build of the other on top of it.
+# The key keeps its M-Flasher + folder and names: FirmWave keeps the app's ID, so it keeps its key too.
 if [ "${RELEASE:-}" = 1 ]; then
     RK="${RELEASE_KEY_DIR:-$HOME/Documents/M-Flasher + signing}"
     "$BT/apksigner" sign --ks "$RK/m-flasher-plus-release.jks" --ks-key-alias m-flasher-plus \
         --ks-pass "file:$RK/m-flasher-plus-release.password" \
-        --out "$B/m-flasher-plus.apk" "$B/aligned.apk"
-    "$BT/apksigner" verify --print-certs "$B/m-flasher-plus.apk" | grep -m1 "SHA-256"
+        --out "$B/firmwave.apk" "$B/aligned.apk"
+    "$BT/apksigner" verify --print-certs "$B/firmwave.apk" | grep -m1 "SHA-256"
 else
     KS="$HOME/.android/debug.keystore"
     if [ ! -f "$KS" ]; then
@@ -46,6 +47,6 @@ else
             -dname "CN=Android Debug,O=Android,C=US" -keyalg RSA -keysize 2048 -validity 10000 >/dev/null
     fi
     "$BT/apksigner" sign --ks "$KS" --ks-pass pass:android --key-pass pass:android \
-        --out "$B/m-flasher-plus.apk" "$B/aligned.apk"
+        --out "$B/firmwave.apk" "$B/aligned.apk"
 fi
-echo "built $B/m-flasher-plus.apk"
+echo "built $B/firmwave.apk"

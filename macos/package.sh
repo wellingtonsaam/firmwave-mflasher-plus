@@ -1,7 +1,7 @@
 #!/bin/sh
-# Makes "M-Flasher +.app" (ad-hoc signed: no Apple certificate) and the disk image
-# M-Flasher-Plus-VERSION-macos.dmg from an m-flasher-plus binary. macOS only.
-#   macos/package.sh target/release/m-flasher-plus 0.3.0 [OUTDIR]
+# Makes "FirmWave.app" (ad-hoc signed: no Apple certificate) and the disk image
+# FirmWave-VERSION-macos.dmg from an firmwave binary. macOS only.
+#   macos/package.sh target/release/firmwave 0.3.0 [OUTDIR]
 set -e
 bin=$(cd "$(dirname "$1")" && pwd)/$(basename "$1")
 version=$2
@@ -9,10 +9,10 @@ here=$(cd "$(dirname "$0")" && pwd)
 out=${3:-$here/../target/macos}
 rm -rf "$out" && mkdir -p "$out" && out=$(cd "$out" && pwd)
 
-app="$out/M-Flasher +.app"
+app="$out/FirmWave.app"
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
-cp "$bin" "$app/Contents/MacOS/M-Flasher-Plus"
-chmod 755 "$app/Contents/MacOS/M-Flasher-Plus"
+cp "$bin" "$app/Contents/MacOS/FirmWave"
+chmod 755 "$app/Contents/MacOS/FirmWave"
 cp "$here/../LICENSE" "$app/Contents/Resources/"
 
 # the icon, from the 1024-pixel PNG
@@ -30,10 +30,10 @@ cat > "$app/Contents/Info.plist" <<EOF
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  <key>CFBundleIdentifier</key><string>io.github.wellingtonsaam.m-flasher-plus</string>
-  <key>CFBundleName</key><string>M-Flasher-Plus</string>
-  <key>CFBundleDisplayName</key><string>M-Flasher-Plus</string>
-  <key>CFBundleExecutable</key><string>M-Flasher-Plus</string>
+  <key>CFBundleIdentifier</key><string>io.github.wellingtonsaam.firmwave</string>
+  <key>CFBundleName</key><string>FirmWave</string>
+  <key>CFBundleDisplayName</key><string>FirmWave</string>
+  <key>CFBundleExecutable</key><string>FirmWave</string>
   <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
@@ -61,12 +61,12 @@ if [ -n "$DMGBUILD" ]; then
 else
   "$out/venv/bin/pip" install -q --require-hashes -r "$here/requirements-dmg.txt"
 fi
-dmg="$out/M-Flasher-Plus-$version-macos.dmg"
+dmg="$out/FirmWave-$version-macos.dmg"
 "$out/venv/bin/python" - "$app" "$dmg" "$here/dmg/background.png" <<'EOF'
 import sys
 import dmgbuild
 app, dmg, background = sys.argv[1:]
-dmgbuild.build_dmg(dmg, 'M-Flasher +', settings={
+dmgbuild.build_dmg(dmg, 'FirmWave', settings={
     'format': 'UDZO',
     'filesystem': 'HFS+',
     'files': [app],
@@ -75,7 +75,7 @@ dmgbuild.build_dmg(dmg, 'M-Flasher +', settings={
     # background@2x.png next to it makes it sharp on Retina screens
     'background': background,
     # the icons where background.svg leaves room for them
-    'icon_locations': {'M-Flasher +.app': (184, 210), 'Applications': (536, 210)},
+    'icon_locations': {'FirmWave.app': (184, 210), 'Applications': (536, 210)},
     # 720 x 500 of content, plus Finder's title bar
     'window_rect': ((160, 160), (720, 528)),
     'default_view': 'icon-view',

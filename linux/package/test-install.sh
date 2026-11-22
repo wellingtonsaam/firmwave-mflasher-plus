@@ -1,8 +1,8 @@
 #!/bin/sh
 # Installs a package in a clean container of a distribution with its own
-# package manager (so its dependencies resolve), then checks that M-Flasher +
+# package manager (so its dependencies resolve), then checks that FirmWave
 # runs and its files are in place. For CI:
-#   docker run --rm -v "$PWD:/w" -w /w debian:12 linux/package/test-install.sh m-flasher-plus_*.deb
+#   docker run --rm -v "$PWD:/w" -w /w debian:12 linux/package/test-install.sh firmwave_*.deb
 # Run on a machine of your own, it doubles as a check of what the window needs:
 # it names every library that is missing, and the command that installs them.
 set -eu
@@ -27,17 +27,17 @@ fi
 # machine had, not the one the program ended up asking for -- and the loader
 # then warns about versions that are not there on every start. That is for the
 # build to fix, not for whoever installs the package to discover.
-out=$(m-flasher-plus --help 2>&1) || { printf '%s\n' "$out" >&2; echo "m-flasher-plus --help failed" >&2; exit 1; }
+out=$(firmwave --help 2>&1) || { printf '%s\n' "$out" >&2; echo "firmwave --help failed" >&2; exit 1; }
 printf '%s\n' "$out"
 case $out in *"not found (required by"*)
     echo "built against a newer system than this package declares: the loader is missing library versions above" >&2
     exit 1 ;;
 esac
 # (not the man page: minimal images such as Fedora's and Ubuntu's leave documentation out)
-for f in /usr/bin/m-flasher-plus /usr/lib/udev/rules.d/70-m-flasher-plus.rules /usr/lib/modules-load.d/m-flasher-plus.conf \
-    /usr/share/applications/io.github.wellingtonsaam.m-flasher-plus.desktop \
-    /usr/share/metainfo/io.github.wellingtonsaam.m-flasher-plus.metainfo.xml \
-    /usr/share/icons/hicolor/256x256/apps/io.github.wellingtonsaam.m-flasher-plus.png; do
+for f in /usr/bin/firmwave /usr/lib/udev/rules.d/70-firmwave.rules /usr/lib/modules-load.d/firmwave.conf \
+    /usr/share/applications/io.github.wellingtonsaam.firmwave.desktop \
+    /usr/share/metainfo/io.github.wellingtonsaam.firmwave.metainfo.xml \
+    /usr/share/icons/hicolor/256x256/apps/io.github.wellingtonsaam.firmwave.png; do
     test -f "$f" || { echo "missing: $f" >&2; exit 1; }
 done
 

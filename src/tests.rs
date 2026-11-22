@@ -970,7 +970,7 @@ fn backups_in_the_same_second_keep_both() {
     assert_eq!(std::fs::read(&a).unwrap()[0], 0xFF);
     assert_eq!(std::fs::read(&b).unwrap()[0], 0);
     assert!(a.with_extension("json").exists() && b.with_extension("json").exists());
-    // a name another M-Flasher + took in the meantime is never written over
+    // a name another FirmWave took in the meantime is never written over
     let taken = std::fs::read(&a).unwrap();
     std::fs::remove_file(a.with_extension("json")).unwrap();
     let c = s.save_backup(Some(&dir)).unwrap();
@@ -1495,7 +1495,7 @@ fn permission_advice_follows_what_is_missing() {
     let advice = permission_advice_in(&rule_dirs, &seat_dirs);
     assert!(advice.starts_with("install the udev rule"), "no rule anywhere: {advice}");
 
-    std::fs::write(rules.join("70-m-flasher-plus.rules"), "").unwrap();
+    std::fs::write(rules.join("70-firmwave.rules"), "").unwrap();
     let advice = permission_advice_in(&rule_dirs, &seat_dirs);
     assert!(advice.contains("plugdev"), "rule installed, no logind: {advice}");
 
@@ -1715,7 +1715,7 @@ mod download_mode {
     fn felucca_adds_the_oct_keys() {
         let t = how_to("yes", "Felucca", "FM-1", None, "INSTALL");
         assert!(t.contains("REC") && t.contains("OCT- and OCT+"));
-        assert!(how_to("no", "Felucca", "FM-1", None, "INSTALL").starts_with("M-Flasher + can't see your M-Vave FM-1"));
+        assert!(how_to("no", "Felucca", "FM-1", None, "INSTALL").starts_with("FirmWave can't see your M-Vave FM-1"));
         assert!(how_to("", "", "FM-1", Some("Caravel"), "INSTALL").contains("OCT- and OCT+ buttons together for 5 seconds"));
     }
 
@@ -1730,7 +1730,7 @@ mod download_mode {
     fn unknown_unit_lists_every_way() {
         let t = how_to("", "", "", None, "INSTALL");
         assert!(t.contains("With m-bootloader") && t.contains("OCT-") && t.contains("M-VAVE's own firmware"));
-        assert!(t.ends_with("M-Flasher + needs Download Mode to check your FM-1 properly."));
+        assert!(t.ends_with("FirmWave needs Download Mode to check your FM-1 properly."));
         assert!(how_to("", "", "", None, "CHECK FM1 STATUS").contains("press CHECK FM1 STATUS again"));
         // INSTALL M-BOOTLOADER in one click waits for download mode too: its own key is named
         assert!(how_to("", "", "", None, "INSTALL M-BOOTLOADER").contains("press INSTALL M-BOOTLOADER again"));
@@ -1779,38 +1779,38 @@ mod library_folder {
     }
 }
 
-/// The User-Agent names M-Flasher + alone: never M-Flasher, its author or its repository.
+/// The User-Agent names FirmWave alone: never M-Flasher, its author or its repository.
 #[test]
 fn the_user_agent_is_m_flasher_plus_own() {
     let ua = crate::library::user_agent();
-    assert!(ua.starts_with(&format!("m-flasher-plus/{} ", env!("CARGO_PKG_VERSION"))), "{ua}");
-    assert!(ua.contains("(+https://github.com/wellingtonsaam/m-flasher-plus)"), "{ua}");
+    assert!(ua.starts_with(&format!("firmwave/{} ", env!("CARGO_PKG_VERSION"))), "{ua}");
+    assert!(ua.contains("(+https://github.com/wellingtonsaam/firmwave-mflasher-plus)"), "{ua}");
     for not in ["jvitkauskas", "github.com/jvitkauskas", "m-flasher/", "m-flasher-library", "fork"] {
         assert!(!ua.to_lowercase().contains(not), "{ua} contains {not}");
     }
 }
 
-/// The operation log on disk: every line, with its date, in M-Flasher +'s own folder.
+/// The operation log on disk: every line, with its date, in FirmWave's own folder.
 mod log_file {
     use crate::controller::log_to_file;
 
     #[test]
     fn the_log_has_a_folder_of_its_own() {
         let log = crate::cli::default_log_path();
-        assert_eq!(log.file_name().unwrap(), "m-flasher-plus.log");
+        assert_eq!(log.file_name().unwrap(), "firmwave.log");
         let dir = log.parent().unwrap();
-        assert_eq!(dir.file_name().unwrap(), "M-Flasher Plus");
+        assert_eq!(dir.file_name().unwrap(), "FirmWave");
         assert!(!log.components().any(|c| c.as_os_str() == "M-Flasher"), "not in M-Flasher's folder: {}", log.display());
         assert_eq!(Some(dir), crate::cli::default_backup_dir().parent(), "next to the backups");
     }
 
-    /// The backups kept in M-Flasher's folder before are copied into M-Flasher +'s own, once.
+    /// The backups kept in M-Flasher's folder before are copied into FirmWave's own, once.
     #[test]
     fn old_backups_are_copied_not_moved() {
         use crate::cli::adopt_old_backups;
         let root = std::env::temp_dir().join(format!("mflasher-plus-adopt-backups-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&root);
-        let (old, new) = (root.join("M-Flasher").join("backups"), root.join("M-Flasher Plus").join("backups"));
+        let (old, new) = (root.join("M-Flasher").join("backups"), root.join("FirmWave").join("backups"));
         std::fs::create_dir_all(old.join("installed")).unwrap();
         std::fs::write(old.join("fm1-2026-11-01.bin"), b"flash").unwrap();
         std::fs::write(old.join("installed").join("memo.json"), b"{}").unwrap();
@@ -1829,7 +1829,7 @@ mod log_file {
     fn lines_go_to_the_log_file() {
         let root = std::env::temp_dir().join(format!("mflr-log-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&root);
-        let path = root.join("M-Flasher Plus").join("m-flasher-plus.log");
+        let path = root.join("FirmWave").join("firmwave.log");
         log_to_file(&path, "Restarting the unit: it leaves download mode and starts what was written");
         log_to_file(&path, "Running: the Caravel is on USB MIDI");
         let text = std::fs::read_to_string(&path).unwrap();
@@ -1887,7 +1887,7 @@ mod give_back {
     fn the_path_its_folders_up_to_home_and_with_tree_what_is_inside() {
         let home = std::env::temp_dir().join(format!("mflr-giveback-{}", std::process::id()));
         let _ = fs::remove_dir_all(&home);
-        let app = home.join("Library/Application Support/M-Flasher Plus");
+        let app = home.join("Library/Application Support/FirmWave");
         fs::create_dir_all(app.join("library/packages")).unwrap();
         fs::write(app.join("library/catalog.json"), b"{}").unwrap();
         fs::write(app.join("library/packages/a.fwsc"), b"a").unwrap();
@@ -1897,13 +1897,13 @@ mod give_back {
 
         // one file: it and the folders above it, never home itself
         let one = rel(hand_back(&app.join("library/catalog.json"), false, &home, me.0, me));
-        assert_eq!(one, ["Library", "Library/Application Support", "Library/Application Support/M-Flasher Plus",
-                         "Library/Application Support/M-Flasher Plus/library",
-                         "Library/Application Support/M-Flasher Plus/library/catalog.json"]);
+        assert_eq!(one, ["Library", "Library/Application Support", "Library/Application Support/FirmWave",
+                         "Library/Application Support/FirmWave/library",
+                         "Library/Application Support/FirmWave/library/catalog.json"]);
         // a tree: everything in it, the link itself and not what it points to
         let tree = rel(hand_back(&app, true, &home, me.0, me));
-        assert!(tree.contains(&"Library/Application Support/M-Flasher Plus/library/packages/a.fwsc".to_string()));
-        assert!(tree.contains(&"Library/Application Support/M-Flasher Plus/library/link".to_string()));
+        assert!(tree.contains(&"Library/Application Support/FirmWave/library/packages/a.fwsc".to_string()));
+        assert!(tree.contains(&"Library/Application Support/FirmWave/library/link".to_string()));
         assert!(!tree.iter().any(|p| p.contains("link/")));
         // what someone else owns stays theirs; outside home and home itself, nothing
         assert!(hand_back(&app, true, &home, me.0 + 1, me).is_empty());
@@ -1952,4 +1952,49 @@ fn the_pocket_tutors_flash_names_it() {
     let flash = need!("pocket-tutor-flash.bin");
     let a = Analysis::new(&flash, Some(FM1.flash_id), CHIP_KEY);
     assert!(a.fw_name.as_deref().is_some_and(|n| n.starts_with("FM1 Pocket Tutor ")), "{:?} / {}", a.fw_name, a.firmware_text);
+}
+
+#[test]
+fn the_old_m_flasher_plus_folder_comes_along() {
+    use crate::migrate::adopt_folder;
+    let root = std::env::temp_dir().join(format!("fw-migrate-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&root);
+    let (old, new) = (root.join("M-Flasher Plus"), root.join("FirmWave"));
+    std::fs::create_dir_all(old.join("backups")).unwrap();
+    std::fs::write(old.join("backups/fm1-a.bin"), b"old a").unwrap();
+    std::fs::write(old.join("backups/fm1-a.json"), b"{}").unwrap();
+    std::fs::write(old.join("m-flasher-plus.log"), b"log").unwrap();
+    // a backup FirmWave already has is kept as it is
+    std::fs::create_dir_all(new.join("backups")).unwrap();
+    std::fs::write(new.join("backups/fm1-a.bin"), b"new a").unwrap();
+    assert_eq!(adopt_folder(&new, &old), 0, "nothing is only in iCloud here");
+    assert_eq!(std::fs::read(new.join("backups/fm1-a.bin")).unwrap(), b"new a");
+    assert_eq!(std::fs::read(new.join("backups/fm1-a.json")).unwrap(), b"{}");
+    assert_eq!(std::fs::read(new.join("m-flasher-plus.log")).unwrap(), b"log");
+    // the old folder stays, whole: nothing is ever lost by moving
+    assert_eq!(std::fs::read(old.join("backups/fm1-a.bin")).unwrap(), b"old a");
+    assert!(!std::fs::read_dir(new.join("backups")).unwrap().flatten().any(|e| e.file_name().to_string_lossy().ends_with(".part")));
+    // again, at the next start: nothing changes, nothing is doubled
+    std::fs::write(old.join("backups/fm1-b.bin"), b"old b").unwrap();
+    assert_eq!(adopt_folder(&new, &old), 0);
+    assert_eq!(std::fs::read(new.join("backups/fm1-b.bin")).unwrap(), b"old b");
+    assert_eq!(std::fs::read_dir(new.join("backups")).unwrap().count(), 3);
+    // no old folder: nothing to do, and no new folder is made for it
+    let none = root.join("none");
+    assert_eq!(adopt_folder(&root.join("FirmWave2"), &none), 0);
+    assert!(!root.join("FirmWave2").exists());
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
+fn the_old_environment_variables_still_work() {
+    // names no other test uses, so that tests running at the same time don't see them
+    unsafe {
+        std::env::set_var("MFLASHER_PLUS_FW_TEST_A", "old");
+        std::env::set_var("MFLASHER_PLUS_FW_TEST_B", "old");
+        std::env::set_var("FIRMWAVE_FW_TEST_B", "new");
+    }
+    assert_eq!(crate::migrate::env_str("FW_TEST_A").as_deref(), Some("old"));
+    assert_eq!(crate::migrate::env_str("FW_TEST_B").as_deref(), Some("new"), "the new name wins");
+    assert_eq!(crate::migrate::env_str("FW_TEST_C"), None);
 }

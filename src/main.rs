@@ -1,4 +1,4 @@
-//! M-Flasher +: back up, restore and reinstall the firmware of the M-VAVE FM-1
+//! FirmWave: back up, restore and reinstall the firmware of the M-VAVE FM-1
 //! and SMK-37 Pro / Elite through the chip's USB download mode, and install
 //! m-bootloader. Without arguments: the window; with arguments: the
 //! command line.
@@ -8,9 +8,11 @@
 mod boards;
 mod cli;
 mod cloud;
+mod migrate;
 mod controller;
 mod fonts;
 mod formats;
+mod fw;
 mod jl;
 mod library;
 mod midi;
@@ -47,8 +49,8 @@ fn main() {
         Ok(lock) => lock,
         Err(()) => {
             rfd::MessageDialog::new()
-                .set_title("M-Flasher +")
-                .set_description("M-Flasher + is already open. Use its window: two at once would both reach for the unit.")
+                .set_title("FirmWave")
+                .set_description("FirmWave is already open. Use its window: two at once would both reach for the unit.")
                 .set_level(rfd::MessageLevel::Info)
                 .show();
             return;
@@ -68,10 +70,10 @@ fn main() {
 }
 
 /// The lock one window holds while it is open: Err when another window holds it, Ok(None) when there is
-/// no lock file to take (the window opens anyway). A file every user may open (an M-Flasher + started with
+/// no lock file to take (the window opens anyway). A file every user may open (an FirmWave started with
 /// sudo runs as root); the system unlocks it when the process ends, however it ends.
 fn one_window() -> Result<Option<std::fs::File>, ()> {
-    let path = if cfg!(windows) { std::env::temp_dir() } else { std::path::PathBuf::from("/tmp") }.join("m-flasher-plus.lock");
+    let path = if cfg!(windows) { std::env::temp_dir() } else { std::path::PathBuf::from("/tmp") }.join("firmwave.lock");
     let opened = std::fs::OpenOptions::new().read(true).write(true).create(true).truncate(false).open(&path)
         .or_else(|_| std::fs::File::open(&path));
     let Ok(file) = opened else { return Ok(None) };
@@ -95,10 +97,10 @@ fn window_error(error: &str) {
     use windows_sys::Win32::UI::WindowsAndMessaging::{MB_ICONERROR, MB_OK, MessageBoxW};
     let wide = |s: &str| s.encode_utf16().chain(std::iter::once(0)).collect::<Vec<u16>>();
     let text = format!(
-        "Cannot open the window: {error}\n\nIt is drawn with Direct3D 12, which Windows 10 and 11 provide even without a graphics driver that has it.\n\nThe command line works without it: M-Flasher + --help"
+        "Cannot open the window: {error}\n\nIt is drawn with Direct3D 12, which Windows 10 and 11 provide even without a graphics driver that has it.\n\nThe command line works without it: FirmWave --help"
     );
     // SAFETY: both are valid NUL-terminated strings; no owner window
-    unsafe { MessageBoxW(std::ptr::null_mut(), wide(&text).as_ptr(), wide("M-Flasher +").as_ptr(), MB_ICONERROR | MB_OK) };
+    unsafe { MessageBoxW(std::ptr::null_mut(), wide(&text).as_ptr(), wide("FirmWave").as_ptr(), MB_ICONERROR | MB_OK) };
 }
 
 /// Why the window cannot open on this Linux desktop, if it cannot: checked
@@ -107,12 +109,12 @@ fn window_error(error: &str) {
 fn linux_display_problem() -> Option<String> {
     let set = |v| std::env::var_os(v).is_some_and(|s| !s.is_empty());
     let sudo = if set("SUDO_USER") {
-        " sudo hides the desktop session: install the udev rule and run M-Flasher + without sudo (see README.txt)."
+        " sudo hides the desktop session: install the udev rule and run FirmWave without sudo (see README.txt)."
     } else {
         ""
     };
     if !set("WAYLAND_DISPLAY") && !set("DISPLAY") {
-        return Some(format!("no desktop session (neither WAYLAND_DISPLAY nor DISPLAY is set).{sudo} The command line works without one: m-flasher-plus --help"));
+        return Some(format!("no desktop session (neither WAYLAND_DISPLAY nor DISPLAY is set).{sudo} The command line works without one: firmwave --help"));
     }
     // X11 (no Wayland session): the keyboard library's X11 part, which a
     // Wayland desktop may not have installed

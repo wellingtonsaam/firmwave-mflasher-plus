@@ -16,36 +16,38 @@ const H: f32 = 1024.0;
 const fn hex(c: u32) -> Color32 {
     Color32::from_rgb((c >> 16) as u8, (c >> 8) as u8, c as u8)
 }
-const BG: Color32 = hex(0x28221f);
-const BG2: Color32 = hex(0x221d1a);
-const INK: Color32 = hex(0xe9e4dc);
-const DIM: Color32 = hex(0x8d837b);
-const LAV: Color32 = hex(0xb6a2e6);
-const LAVLINE: Color32 = hex(0x5d5172);
-const MINT: Color32 = hex(0x7be8bb);
-const KEY_TOP: Color32 = hex(0x23706f);
-const KEY_BOT: Color32 = hex(0x174b4d);
-const KEYLINE: Color32 = hex(0x2f8888);
-const KEYINK: Color32 = hex(0xd6efe8);
-const LCD1: Color32 = hex(0xb8cf66);
-const LCD2: Color32 = hex(0xa1b94f);
-const LCDINK: Color32 = hex(0x1d2710);
-const NOW: Color32 = hex(0xff4a2a);
-const WARN: Color32 = hex(0xf2b44c);
-const BAD: Color32 = hex(0xff6a5a);
+// FirmWave · Neo Brutalism, Option A: the Foundations' tokens (Figma 283:9836), `fw::` in the code
+use crate::fw;
+const BG: Color32 = fw::BG_APP;
+const BG2: Color32 = fw::BG_APP;
+const INK: Color32 = fw::INK_PRIMARY;
+const DIM: Color32 = fw::INK_MUTED;
+const LAV: Color32 = fw::INK_PRIMARY;      // section labels: black, Lexend Mega
+const LAVLINE: Color32 = fw::BORDER_EMPTY; // rules
+const MINT: Color32 = fw::INK_OK;          // done, checked, the percentage
+const KEY_TOP: Color32 = fw::SURFACE_CARD;
+const KEY_BOT: Color32 = fw::SURFACE_CARD;
+const KEYLINE: Color32 = fw::BORDER_DEFAULT;
+const KEYINK: Color32 = fw::INK_PRIMARY;
+const LCD1: Color32 = fw::LCD_NORMAL;
+const LCD2: Color32 = fw::LCD_NORMAL;
+const LCDINK: Color32 = fw::INK_PRIMARY;
+const NOW: Color32 = fw::ACCENT_BRAND;
+const WARN: Color32 = fw::ACCENT_BRAND;
+const BAD: Color32 = fw::MAP_BOOT;
 
 fn region_color(r: Region) -> Color32 {
     match r {
-        Region::Boot => hex(0xa2405a),
-        Region::Firmware => hex(0x5ed4bf),
-        Region::Settings => hex(0xdcc395),
-        Region::Pairings => hex(0x6f97cf),
-        Region::Calibration => hex(0xf0e8d2),
-        Region::Presets => hex(0xbd6e2a),
-        Region::Sequences => hex(0x9e85c5),
-        Region::Sounds => hex(0xc6717a),
-        Region::Mac => hex(0x8f8b86),
-        Region::Free => hex(0x3a3532),
+        Region::Boot => fw::MAP_BOOT,
+        Region::Firmware => fw::MAP_FIRMWARE,
+        Region::Settings => fw::MAP_SETTINGS,
+        Region::Pairings => fw::MAP_PAIRINGS,
+        Region::Calibration => fw::CREAM_50,
+        Region::Presets => fw::ORANGE_300,
+        Region::Sequences => fw::LILAC,
+        Region::Sounds => fw::MAP_SOUNDS,
+        Region::Mac => fw::MAP_MAC,
+        Region::Free => fw::MAP_FREE,
     }
 }
 
@@ -96,8 +98,8 @@ pub struct App {
     op_open: Option<Mode>,
 }
 
-/// M-Flasher +'s home: source, releases and issues (the About dialog).
-const REPO: &str = "https://github.com/wellingtonsaam/m-flasher-plus";
+/// FirmWave's home: source, releases and issues (the About dialog).
+const REPO: &str = "https://github.com/wellingtonsaam/firmwave-mflasher-plus";
 
 /// How long the LCD's bottom line flashes after an inactive key is pressed (s).
 const NUDGE: f64 = 1.2;
@@ -106,10 +108,10 @@ impl App {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         let fonts = crate::fonts::Fonts::default();
         fonts.install(&cc.egui_ctx);
-        // MFLASHER_PLUS_DIALOG=about opens the About dialog at start (for screenshots)
-        let dialog = if std::env::var("MFLASHER_PLUS_DIALOG").as_deref() == Ok("about") { Dialog::About } else { Dialog::None };
-        // MFLASHER_PLUS_TAB=library opens the Library tab at start (for screenshots)
-        let tab = if std::env::var("MFLASHER_PLUS_TAB").as_deref() == Ok("library") { Tab::Library } else { Tab::Device };
+        // FIRMWAVE_DIALOG=about opens the About dialog at start (for screenshots)
+        let dialog = if crate::migrate::env_str("DIALOG").as_deref() == Some("about") { Dialog::About } else { Dialog::None };
+        // FIRMWAVE_TAB=library opens the Library tab at start (for screenshots)
+        let tab = if crate::migrate::env_str("TAB").as_deref() == Some("library") { Tab::Library } else { Tab::Device };
         let ctl = Controller::new(cc.egui_ctx.clone());
         if tab == Tab::Library {
             ctl.load_library();
@@ -229,62 +231,64 @@ impl eframe::App for App {
 
         // ---- background ----
         p.rect(screen, BG2);
-        let board_rect = board.r(0.0, 0.0, W, H);
-        p.vgrad(board_rect, hex(0x2d2622), BG2);
-        let mut m = Mesh::with_texture(noise.id());
-        m.add_rect_with_uv(board_rect, Rect::from_min_max(pos2(0.0, 0.0), pos2(W / 160.0, H / 160.0)), Color32::WHITE);
-        painter.add(Shape::mesh(m));
+        let _ = &noise; // the grain belongs to the old dark panel: FirmWave's ground is flat
 
         // ---- masthead ----
         let origin = board.p(40.0, 116.0);
-        // M-Flasher +: the plus after the word, both a little smaller to leave the tabs their room
-        let ww = crate::wordmark::draw(&painter, origin.x, origin.y, 64.0 * s, MINT) / s;
-        let ww = ww + 12.0 + crate::wordmark::plus(&painter, origin.x + (ww + 12.0) * s, origin.y, 64.0 * s, MINT) / s;
-        p.text(38.0 + ww + 24.0, 70.0, Align2::LEFT_CENTER, "USB FIRMWARE UTILITY", "tech", 21.0, LAV, 2.4);
-        p.text(38.0 + ww + 24.0, 96.0, Align2::LEFT_CENTER, "FOR THE FM-1 AND SMK-37", "tech", 14.0, hex(0x8f80b6), 3.0);
-        p.text(1500.0, 80.0, Align2::RIGHT_CENTER, &format!("v{}", env!("CARGO_PKG_VERSION")), "tech", 14.0, LAV, 1.0);
-        let aw = p.text(1420.0, 80.0, Align2::RIGHT_CENTER, "ABOUT", "tech", 17.0, hex(0xa9d8e6), 2.0);
-        p.text(1420.0 - aw - 14.0, 80.0, Align2::RIGHT_CENTER, "|", "tech", 17.0, LAVLINE, 0.0);
-        let bw = p.text(1420.0 - aw - 34.0, 80.0, Align2::RIGHT_CENTER, "BACKUPS", "tech", 17.0, hex(0xa9d8e6), 2.0);
-        if clicked("about", board.r(1420.0 - aw, 68.0, aw, 24.0)).0 && !modal {
-            self.dialog = Dialog::About;
-        }
-        if clicked("backups", board.r(1420.0 - aw - 34.0 - bw, 68.0, bw, 24.0)).0 && !modal {
-            self.ctl.open_backups();
-        }
-        // the tabs, left of BACKUPS
-        let tabs = [(Tab::Device, "DEVICE"), (Tab::Library, "LIBRARY")];
-        let tabs_w: f32 = tabs.iter().map(|(_, n)| p.measure(n, "tech", 17.0, 2.0)).sum::<f32>() + 30.0;
-        let mut tx = 1420.0 - aw - 34.0 - bw - 56.0 - tabs_w;
-        p.text(tx + tabs_w + 22.0, 80.0, Align2::CENTER_CENTER, "|", "tech", 17.0, LAVLINE, 0.0);
-        for (tab, name) in tabs {
-            let on = self.tab == tab;
-            let w = p.text(tx, 80.0, Align2::LEFT_CENTER, name, "tech", 17.0, if on { MINT } else { DIM }, 2.0);
-            if on {
-                p.rect(board.r(tx, 96.0, w, 2.0), MINT);
-            }
-            if clicked(&format!("tab-{name}"), board.r(tx - 6.0, 66.0, w + 12.0, 34.0)).0 && !modal && !on {
-                self.tab = tab;
-                if tab == Tab::Library {
-                    self.ctl.load_library();
+        let _ = origin;
+        // the logo (Figma DS · Logo, 308:12075): "FirmWave" in Lexend Mega Black, letter spacing -20%, then the app
+        // icon: the coral square with a 3 px black outline, a hard shadow and the black wave (DS · Container)
+        let ww = p.text(38.0, 84.0, Align2::LEFT_CENTER, "FirmWave", "logo", 36.0, INK, -7.2);
+        let ix = 38.0 + ww + 13.0;
+        let icon = board.r(ix, 84.0 - 38.0, 76.0, 76.0);
+        p.card(icon, fw::CORAL, 19.0, 6.0);
+        let pts: Vec<Pos2> = (0..=48).map(|k| {
+            let t = k as f32 / 48.0;
+            board.p(ix + 14.0 + t * 48.0, 84.0 - (t * std::f32::consts::TAU * 1.5).sin() * 9.0)
+        }).collect();
+        painter.add(Shape::line(pts, Stroke::new(5.5 * s, fw::INK_PRIMARY)));
+        let ww = ww + 13.0 + 76.0;
+        p.text(38.0 + ww + 24.0, 72.0, Align2::LEFT_CENTER, "USB FIRMWARE UTILITY", "cond", 15.0, INK, 1.8);
+        p.text(38.0 + ww + 24.0, 94.0, Align2::LEFT_CENTER, "FOR MUSIC CREATIVES · FM-1 AND SMK-37", "tech", 12.0, DIM, 1.2);
+        // the header's pills (Figma DS · Tab): DEVICE and LIBRARY are tabs, BACKUPS opens the folder, ABOUT the dialog;
+        // the active tab purple with its hard shadow, the version a yellow tag
+        let vw = p.measure(&format!("v{}", env!("CARGO_PKG_VERSION")), "lcd", 13.0, 0.0) + 18.0;
+        let vr = board.r(1500.0 - vw, 66.0, vw, 28.0);
+        p.card(vr, fw::ACCENT_PRIMARY, 6.0, 0.0);
+        p.text(vr.center().x / s - board.o.x / s, 80.0, Align2::CENTER_CENTER, &format!("v{}", env!("CARGO_PKG_VERSION")), "lcd", 13.0, INK, 0.0);
+        let pills = [(Some(Tab::Device), "DEVICE"), (Some(Tab::Library), "LIBRARY"), (None, "BACKUPS"), (None, "ABOUT")];
+        let pw = |n: &str| p.measure(n, "cond", 14.0, 1.2) + 36.0;
+        let mut tx = 1500.0 - vw - 16.0 - pills.iter().map(|(_, n)| pw(n) + 10.0).sum::<f32>();
+        for (tab, name) in pills {
+            let w = pw(name);
+            let on = tab.is_some_and(|t| self.tab == t);
+            let r = board.r(tx, 62.0, w, 36.0);
+            let (c, h) = clicked(&format!("tab-{name}"), r);
+            // the active tab is cyan, as the DS Tab component's Active state (color/op/save)
+            p.card(r, if on { fw::CYAN } else { fw::SURFACE_CARD }, 18.0, if on || (h && !modal) { 3.0 } else { 0.0 });
+            p.text(tx + w / 2.0, 80.0, Align2::CENTER_CENTER, name, "cond", 14.0, INK, 1.2);
+            if c && !modal {
+                match tab {
+                    Some(t) if !on => {
+                        self.tab = t;
+                        if t == Tab::Library {
+                            self.ctl.load_library();
+                        }
+                    }
+                    Some(_) => {}
+                    None if name == "BACKUPS" => self.ctl.open_backups(),
+                    None => self.dialog = Dialog::About,
                 }
             }
-            tx += w + 30.0;
+            tx += w + 10.0;
         }
         p.hline(36.0, 1500.0, 128.0, LAVLINE);
         p.vline(913.0, 142.0, 988.0, LAVLINE);
 
         // ---- LCD ----
         p.label(38.0, 148.0, "CONNECTED DEVICE", None);
-        let bezel = board.r(38.0, 158.0, 853.0, 212.0);
-        p.rect(bezel, hex(0x141110));
-        p.frame(bezel, hex(0x3a322d), 1.0);
-        let lcd = board.r(62.0, 173.0, 805.0, 182.0);
-        p.vgrad(lcd, LCD1, LCD2);
-        p.frame(lcd, hex(0x77913a), 2.0);
-        for y in (0..182).step_by(4) {
-            p.hline(62.0, 867.0, 173.0 + y as f32, Color32::from_black_alpha(9));
-        }
+        let lcd = board.r(38.0, 166.0, 853.0, 196.0);
+        p.card(lcd, LCD1, 12.0, 6.0);
         lcd_icon(&p, 92.0, 196.0, dev.is_some());
         p.vline(346.0, 185.0, 312.0, LCDINK);
         p.hline(84.0, 845.0, 317.0, LCDINK);
@@ -328,7 +332,7 @@ impl eframe::App for App {
         let (cc, ch) = clicked("check", cr);
         key(&p, cr, dev.is_none() && !checking, ch && active, !active);
         draw_icon(&p, Icon::Chip, 60.0, 399.0, 32.0, KEYINK);
-        p.text(110.0, 415.0, Align2::LEFT_CENTER, if checking { "CHECKING…" } else { "CHECK FM1 STATUS" }, "cond", 24.0, KEYINK, 2.0);
+        p.text(110.0, 415.0, Align2::LEFT_CENTER, if checking { "CHECKING…" } else { "CHECK FM1 STATUS" }, "cond", 19.0, KEYINK, 1.2);
         led(&p, board.p(38.0 + half - 20.0, 400.0), dev.is_none() && !checking);
         if cc && active {
             self.ctl.check();
@@ -347,10 +351,10 @@ impl eframe::App for App {
             // "m-bootloader 2.4-395e6cc": its version
             let v = dev.map(|d| d.bootloader.split_whitespace().nth(1).unwrap_or("").split('-').next().unwrap_or("").to_string())
                 .unwrap_or_default();
-            p.text(bx + 72.0, 404.0, Align2::LEFT_CENTER, &format!("M-BOOTLOADER {v}"), "cond", 21.0, KEYINK, 1.6);
-            p.text(bx + 72.0, 426.0, Align2::LEFT_CENTER, "INSTALLED ✓", "cond", 21.0, KEYINK, 1.6);
+            p.text(bx + 72.0, 404.0, Align2::LEFT_CENTER, &format!("M-BOOTLOADER {v}"), "cond", 16.0, KEYINK, 1.0);
+            p.text(bx + 72.0, 426.0, Align2::LEFT_CENTER, "INSTALLED ✓", "cond", 16.0, KEYINK, 1.0);
         } else {
-            p.text(bx + 72.0, 415.0, Align2::LEFT_CENTER, "INSTALL M-BOOTLOADER", "cond", 24.0, KEYINK, 2.0);
+            p.text(bx + 72.0, 415.0, Align2::LEFT_CENTER, "INSTALL M-BOOTLOADER", "cond", 19.0, KEYINK, 1.2);
         }
         led(&p, board.p(bx + half - 20.0, 400.0), !open && !checking);
         if bc && can_boot && dev.is_some() {
@@ -416,8 +420,8 @@ impl eframe::App for App {
             let on = self.op_open == Some(*mode);
             key(&p, r, on, h && active, !active && !on);
             draw_icon(&p, *icon, x + 22.0, 645.0, 34.0, KEYINK);
-            p.text(x + 70.0, 651.0, Align2::LEFT_CENTER, t1, "cond", 21.0, KEYINK, 1.6);
-            p.text(x + 70.0, 673.0, Align2::LEFT_CENTER, t2, "cond", 21.0, KEYINK, 1.6);
+            p.text(x + 70.0, 651.0, Align2::LEFT_CENTER, t1, "cond", 16.0, KEYINK, 1.0);
+            p.text(x + 70.0, 673.0, Align2::LEFT_CENTER, t2, "cond", 16.0, KEYINK, 1.0);
             led(&p, board.p(x + kw - 18.0, 644.0), on);
             if c && active {
                 self.op_open = Some(*mode);
@@ -443,7 +447,7 @@ impl eframe::App for App {
             let cb = board.r(38.0, 738.0, 170.0, 38.0);
             let (c, h) = clicked("choose", cb);
             key(&p, cb, false, h && active, !active);
-            p.text(123.0, 757.0, Align2::CENTER_CENTER, if fw { "CHOOSE FILE" } else { "CHOOSE BACKUP" }, "cond", 18.0, KEYINK, 1.6);
+            p.text(123.0, 757.0, Align2::CENTER_CENTER, if fw { "CHOOSE FILE" } else { "CHOOSE BACKUP" }, "cond", 15.0, KEYINK, 1.0);
             if c && active {
                 self.ctl.choose_file(if fw { FileKind::Firmware } else { FileKind::Restore });
             }
@@ -477,7 +481,7 @@ impl eframe::App for App {
             let pr = if fw { board.r(38.0, 790.0, 480.0, 48.0) } else { board.r(38.0, 790.0, 853.0, 48.0) };
             let (pc, ph) = clicked("primary", pr);
             key(&p, pr, ready, ph && active && ready, !(active && ready));
-            p.text(pr.center().x, 814.0, Align2::CENTER_CENTER, &label, "cond", 20.0, KEYINK, 1.6);
+            p.text(pr.center().x, 814.0, Align2::CENTER_CENTER, &label, "cond", 16.0, KEYINK, 1.0);
             if pc && active && ready {
                 if fw && st.boot_first.is_some() {
                     self.dialog = Dialog::TwoStep;
@@ -492,7 +496,7 @@ impl eframe::App for App {
                 let sr = board.r(572.0, 790.0, 319.0, 48.0);
                 let (sc, sh) = clicked("othersource", sr);
                 key(&p, sr, false, sh && active, !active);
-                p.text(731.5, 814.0, Align2::CENTER_CENTER, "INSTALL FROM LIBRARY", "cond", 20.0, KEYINK, 1.6);
+                p.text(731.5, 814.0, Align2::CENTER_CENTER, "INSTALL FROM LIBRARY", "cond", 16.0, KEYINK, 1.0);
                 if sc && active {
                     self.tab = Tab::Library;
                     self.ctl.load_library();
@@ -531,21 +535,22 @@ impl eframe::App for App {
             }
         }
         let bar = board.r(50.0, 958.0, 348.0, 20.0);
-        p.frame(bar, hex(0x6c6464), 1.0);
+        p.frame(bar, fw::BORDER_DEFAULT, 2.0);
         p.rect(board.r(52.0, 960.0, 344.0 * st.pct.clamp(0.0, 1.0), 16.0), MINT);
         p.text(458.0, 968.0, Align2::RIGHT_CENTER, &format!("{}%", (st.pct * 100.0) as u32), "tech", 19.0, MINT, 0.0);
 
         // ---- log ----
         p.label(496.0, 884.0, "OPERATION LOG", Some(840.0));
-        p.text(891.0, 884.0, Align2::RIGHT_CENTER, "CLEAR", "tech", 12.0, hex(0xa9d8e6), 1.5);
+        p.text(891.0, 884.0, Align2::RIGHT_CENTER, "CLEAR", "tech", 12.0, DIM, 1.5);
         if clicked("clearlog", board.r(850.0, 874.0, 42.0, 20.0)).0 && !modal {
             self.ctl.clear_log();
         }
-        p.frame(board.r(496.0, 900.0, 395.0, 96.0), hex(0x50465a), 1.0);
+        // FirmWave log (Figma DS · Log): a light card, black text in Space Mono
+        p.card(board.r(496.0, 900.0, 395.0, 96.0), fw::BG_LOG, 8.0, 0.0);
         let clip = painter.with_clip_rect(board.r(506.0, 900.0, 378.0, 96.0));
         let lines: Vec<&String> = st.log.iter().rev().take(4).collect();
         for (i, l) in lines.iter().rev().enumerate() {
-            let col = if l.contains("Refused") || l.contains("error") || l.contains("gone") { WARN } else { hex(0xcfeee2) };
+            let col = if l.contains("Refused") || l.contains("error") || l.contains("gone") { WARN } else { INK };
             p.note("plex", l);
             clip.text(board.p(508.0, 920.0 + i as f32 * 19.0), Align2::LEFT_CENTER, l.as_str(), board.f("plex", 13.0), col);
         }
@@ -1056,21 +1061,20 @@ impl App {
                     ("The unit is not touched. GET downloads it again, with its SHA-256 checked.".into(), DIM),
                 ], vec![("CANCEL", 0), ("DELETE", 9)]),
                 Dialog::About => ("ABOUT", vec![
-                    (format!("M-Flasher + {}: back up, restore and reinstall the firmware of the M-VAVE FM-1 and SMK-37 \
+                    (format!("FirmWave {}: back up, restore and reinstall the firmware of the M-VAVE FM-1 and SMK-37 \
                               Pro / Elite through the chip's USB download mode, and install m-bootloader.",
                              env!("CARGO_PKG_VERSION")), INK),
                     (String::new(), INK),
-                    ("M-Flasher + by Wellington Saam: the firmware library, m-bootloader before a firmware \
+                    ("FirmWave by Wellington Saam: the firmware library, m-bootloader before a firmware \
                       (REQ-BOOT-01), the Device tab's checks and the Android app. Based on M-Flasher by Julius \
                       Vitkauskas (MIT).".into(), INK),
                     (String::new(), INK),
                     ("Bootloader and flash loader: m-bootloader (MIT). Protocol after jl-uboot-tool by \
-                      kagaimiq (MIT). Fonts: Saira, Barlow Condensed, Share Tech Mono, IBM Plex Mono, VT323 \
-                      (OFL).".into(), DIM),
+                      kagaimiq (MIT). Fonts: Lexend Mega, Public Sans, Space Mono and IBM Plex Mono (OFL).".into(), DIM),
                     (String::new(), INK),
                     ("Unofficial: not affiliated with M-VAVE or JieLi, nor supported by M-Flasher's author.".into(), DIM),
                     (String::new(), INK),
-                    ("M-Flasher + is free, maintained by Wellington Saam. Questions and bug reports go to its own \
+                    ("FirmWave is free, maintained by Wellington Saam. Questions and bug reports go to its own \
                       GitHub repository, not to M-Flasher's.".into(), INK),
                 ], vec![("GITHUB", 7), ("CLOSE", 0)]),
                 Dialog::Model => {
@@ -1085,24 +1089,27 @@ impl App {
             }
         };
         let screen = painter.clip_rect();
-        painter.rect_filled(screen, CornerRadius::ZERO, Color32::from_black_alpha(160));
-        // wrapped to the dialog's text width, measured in the font itself
-        let fits = |l: &str| p.measure(l, "tech", 16.5, 0.2) <= 690.0;
+        painter.rect_filled(screen, CornerRadius::ZERO, Color32::from_black_alpha(110));
+        // wrapped to the dialog's text width, measured in the font itself (Figma: Public Sans Medium)
+        let fits = |l: &str| p.measure(l, "body", 17.0, 0.0) <= 690.0;
         let wrapped: Vec<(String, Color32)> = body.into_iter().flat_map(|(t, c)| wrap(&t, &fits).into_iter().map(move |l| (l, c))).collect();
         let review = self.dialog == Dialog::Review && st.alert.is_none();
-        let h = 150.0 + wrapped.len() as f32 * 27.0 + if review { 66.0 } else { 0.0 };
+        let h = 182.0 + wrapped.len() as f32 * 27.0 + if review { 66.0 } else { 0.0 };
         let top = (H - h) / 2.0;
         let d = board.r(388.0, top, 760.0, h);
-        p.vgrad(d, hex(0x302925), hex(0x241f1c));
-        p.frame(d, hex(0x6d5f85), 1.0);
-        // the title (Figma: Header, Share Tech Mono 18, upper case): lavender, mint when done, red when refused
-        let title_color = match &st.alert {
-            Some((AlertKind::Done, _)) => MINT,
-            Some(_) => BAD,
-            None => LAV,
+        // FirmWave dialog (Figma 208:3349): a white card, 3 px black outline, hard shadow
+        p.card(d, fw::SURFACE_CARD, 14.0, 8.0);
+        // the title band (Figma: Faixa do título): cyan, green when done, orange when refused; black text
+        let band_color = match &st.alert {
+            Some((AlertKind::Done, _)) => fw::STATUS_OK,
+            Some(_) => fw::STATUS_WARN,
+            None => fw::CYAN,
         };
-        p.text(420.0, top + 32.0, Align2::LEFT_CENTER, &title.to_uppercase(), "tech", 24.0, title_color, 0.0);
-        let mut y = top + 64.0;
+        let band = board.r(420.0, top + 30.0, 696.0, 40.0);
+        p.p.rect_filled(band, CornerRadius::same((8.0 * board.s) as u8), band_color);
+        p.p.rect_stroke(band, CornerRadius::same((8.0 * board.s) as u8), Stroke::new(2.0 * board.s, fw::BORDER_DEFAULT), StrokeKind::Inside);
+        p.text(436.0, top + 50.0, Align2::LEFT_CENTER, &title.to_uppercase(), "label", 15.0, INK, 1.2);
+        let mut y = top + 86.0;
         if review {
             let lcd = board.r(420.0, y, 696.0, 52.0);
             p.vgrad(lcd, LCD1, LCD2);
@@ -1110,13 +1117,14 @@ impl App {
             y += 66.0;
         }
         for (l, c) in &wrapped {
-            p.text(420.0, y + 12.0, Align2::LEFT_CENTER, l, "tech", 16.5, *c, 0.2);
+            p.text(420.0, y + 12.0, Align2::LEFT_CENTER, l, "body", 17.0, *c, 0.0);
             y += 27.0;
         }
         let mut x = 1116.0;
         for (label, code) in keys.iter().rev() {
             // the key we recommend: lit
-            let primary = matches!(code, 2 | 5 | 11);
+            // (and CLOSE where it is the only way on: About, a finished or refused operation)
+            let primary = matches!(code, 2 | 5 | 11) || (*code == 0 && (self.dialog == Dialog::About || st.alert.is_some()));
             let t = if *code == 2 { write_key.clone() } else { label.to_string() };
             let w = (p.measure(&t, "cond", 22.0, 1.6) + 48.0).max(if primary { 254.0 } else { 150.0 });
             x -= w;
@@ -1198,15 +1206,15 @@ fn wrap(text: &str, fits: &dyn Fn(&str) -> bool) -> Vec<String> {
 const ICON: &[u8] = if cfg!(target_os = "macos") {
     include_bytes!("../assets/icon-256.png")
 } else {
-    include_bytes!("../linux/m-flasher-plus.png")
+    include_bytes!("../linux/firmwave.png")
 };
 
 pub fn run() -> eframe::Result {
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_title("M-Flasher +")
+            .with_title("FirmWave")
             // Linux: matches the installed launcher, for the dock's icon
-            .with_app_id("io.github.wellingtonsaam.m-flasher-plus")
+            .with_app_id("io.github.wellingtonsaam.firmwave")
             .with_inner_size(vec2(1280.0, 853.0))
             .with_min_inner_size(vec2(900.0, 600.0))
             // ours (macos/icon.svg), not egui's: the Dock and taskbars show it
@@ -1215,7 +1223,7 @@ pub fn run() -> eframe::Result {
         wgpu_options: wgpu_options(),
         ..Default::default()
     };
-    eframe::run_native("M-Flasher +", options, Box::new(|cc| Ok(Box::new(App::new(cc)))))
+    eframe::run_native("FirmWave", options, Box::new(|cc| Ok(Box::new(App::new(cc)))))
 }
 
 /// Windows: Direct3D 12 (the only backend built in); on a laptop with two
@@ -1268,6 +1276,16 @@ impl Painter<'_> {
     }
     fn rect(&self, r: Rect, fill: Color32) {
         self.p.rect_filled(r, CornerRadius::ZERO, fill);
+    }
+    /// FirmWave's card: a fill, a 3 px black outline, rounded corners and a hard black shadow (blur 0)
+    fn card(&self, r: Rect, fill: Color32, radius: f32, shadow: f32) {
+        let s = self.b.s;
+        let cr = CornerRadius::same((radius * s).round().min(255.0) as u8);
+        if shadow > 0.0 {
+            self.p.rect_filled(r.translate(vec2(shadow * s, shadow * s)), cr, fw::SHADOW_DEFAULT);
+        }
+        self.p.rect_filled(r, cr, fill);
+        self.p.rect_stroke(r, cr, Stroke::new(3.0 * s, fw::BORDER_DEFAULT), StrokeKind::Inside);
     }
     fn frame(&self, r: Rect, color: Color32, width: f32) {
         self.p.rect_stroke(r, CornerRadius::ZERO, Stroke::new(width * self.b.s, color), StrokeKind::Inside);
@@ -1326,7 +1344,7 @@ impl Painter<'_> {
     }
     /// A section label in lavender, optionally with a rule to `rule_to`.
     fn label(&self, x: f32, y: f32, s: &str, rule_to: Option<f32>) {
-        let w = self.text(x, y, Align2::LEFT_CENTER, s, "tech", 16.0, LAV, 2.6);
+        let w = self.text(x, y, Align2::LEFT_CENTER, s, "label", 13.0, LAV, 1.2);
         if let Some(x1) = rule_to {
             self.hline(x + w + 14.0, x1, y, LAVLINE);
         }
@@ -1335,47 +1353,28 @@ impl Painter<'_> {
 
 
 fn key(p: &Painter, r: Rect, on: bool, hover: bool, disabled: bool) {
-    let s = p.b.s;
-    p.rect(Rect::from_min_max(r.left_bottom() - vec2(0.0, 1.0), r.right_bottom() + vec2(0.0, 3.0 * s)), hex(0x0d2a2b));
-    let (mut top, mut bot) = (KEY_TOP, KEY_BOT);
-    if hover {
-        top = top.lerp_to_gamma(Color32::WHITE, 0.08);
-        bot = bot.lerp_to_gamma(Color32::WHITE, 0.08);
-    }
-    if disabled {
-        top = top.lerp_to_gamma(BG, 0.55);
-        bot = bot.lerp_to_gamma(BG, 0.55);
-    }
-    p.vgrad(r, top, bot);
-    if on {
-        p.p.rect_stroke(r.expand(3.0 * s), CornerRadius::same(3), Stroke::new(3.0 * s, MINT.gamma_multiply(0.18)), StrokeKind::Outside);
-        p.p.rect_stroke(r, CornerRadius::same(2), Stroke::new(2.0 * s, hex(0x8ff0c8)), StrokeKind::Inside);
-    } else {
-        p.p.rect_stroke(r, CornerRadius::same(2), Stroke::new(2.0 * s, KEYLINE), StrokeKind::Inside);
-    }
-    p.p.line_segment([r.left_top() + vec2(2.0 * s, 2.0 * s), r.right_top() + vec2(-2.0 * s, 2.0 * s)], Stroke::new(s, Color32::from_white_alpha(30)));
+    // FirmWave Key (Figma DS · Key): white, or yellow when it is the recommended next step; pressed on hover
+    let fill = if disabled { fw::SURFACE_EMPTY } else if on { fw::ACCENT_PRIMARY } else { KEY_TOP };
+    let lift = if hover && !disabled { 3.0 } else { 0.0 };
+    let r = r.translate(vec2(lift, lift) * p.b.s);
+    p.card(r, fill, 12.0, if disabled { 0.0 } else { 5.0 - lift });
 }
 
 fn led(p: &Painter, c: Pos2, on: bool) {
+    // FirmWave LED (Figma DS · LED): green or dark gray, 2 px black ring
     let s = p.b.s;
-    if on {
-        p.p.circle_filled(c, 10.0 * s, hex(0x6fe46f).gamma_multiply(0.18));
-        p.p.circle_filled(c, 6.5 * s, hex(0x2e8e33));
-        p.p.circle_filled(c, 5.0 * s, hex(0x6fe46f));
-        p.p.circle_filled(c - vec2(1.5 * s, 1.5 * s), 2.0 * s, hex(0xe8ffe9));
-    } else {
-        p.p.circle_filled(c, 6.5 * s, hex(0x0b1515));
-        p.p.circle_filled(c, 5.5 * s, hex(0x1e2422));
-    }
+    p.p.circle_filled(c, 7.0 * s, if on { fw::LED_ON } else { fw::LED_OFF });
+    p.p.circle_stroke(c, 7.0 * s, Stroke::new(2.0 * s, fw::BORDER_DEFAULT));
 }
 
 fn checkbox(ui: &egui::Ui, p: &Painter, x: f32, y: f32, text: &str, on: bool, enabled: bool) -> bool {
     let b = p.b;
     let box_r = b.r(x, y - 10.0, 20.0, 20.0);
-    p.frame(box_r, hex(0xcfc7bf), 2.0);
+    p.p.rect_filled(box_r, CornerRadius::same((4.0 * b.s) as u8), if on { fw::STATUS_OK } else { fw::SURFACE_CARD });
+    p.p.rect_stroke(box_r, CornerRadius::same((4.0 * b.s) as u8), Stroke::new(2.0 * b.s, fw::BORDER_DEFAULT), StrokeKind::Inside);
     if on {
         let pts = [b.p(x + 4.0, y), b.p(x + 8.5, y + 5.0), b.p(x + 16.0, y - 6.0)];
-        p.p.line(pts.to_vec(), Stroke::new(3.0 * b.s, MINT));
+        p.p.line(pts.to_vec(), Stroke::new(3.0 * b.s, fw::INK_PRIMARY));
     }
     let w = p.text(x + 34.0, y, Align2::LEFT_CENTER, text, "tech", 16.0, INK, 0.4);
     let resp = ui.interact(b.r(x, y - 12.0, 34.0 + w, 24.0), ui.id().with(text), Sense::click());
@@ -1428,15 +1427,11 @@ fn draw_search(p: &Painter, x: f32, y: f32, color: Color32) {
 }
 
 fn hatch(p: &Painter, r: Rect, strength: f32) {
-    p.rect(r, hex(0x2b2725));
-    let clip = p.p.with_clip_rect(r);
-    let step = 6.0 * p.b.s;
-    let mut x = r.left() - r.height();
-    while x < r.right() {
-        clip.line_segment([pos2(x, r.bottom()), pos2(x + r.height(), r.top())], Stroke::new(2.0 * p.b.s, hex(0x3d3835).gamma_multiply(strength.min(1.0))));
-        x += step;
-    }
-    p.p.rect_stroke(r, CornerRadius::ZERO, Stroke::new(p.b.s, hex(0x4d4643)), StrokeKind::Inside);
+    // an empty or unread sector (Figma DS · Flash Cell · Empty): sand, with its sand border
+    let _ = strength;
+    let cr = CornerRadius::same((4.0 * p.b.s).round() as u8);
+    p.p.rect_filled(r, cr, fw::MAP_EMPTY);
+    p.p.rect_stroke(r, cr, Stroke::new(2.0 * p.b.s, fw::BORDER_EMPTY), StrokeKind::Inside);
 }
 
 fn lock(p: &Painter, r: Rect) {

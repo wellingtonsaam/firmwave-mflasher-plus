@@ -258,7 +258,7 @@ impl<F: Flash> Session<F> {
         self.display = true;
         // the name it was installed by, when known (a fork of Felucca calls itself Felucca)
         let firmware = screen_text(self.named.as_deref().unwrap_or(&self.analysis.firmware_text));
-        self.screen(&[(1, " M-FLASHER +", MINT), (3, " CONNECTED", WHITE), (5, &format!(" {}", screen_text(board.name)), LAV),
+        self.screen(&[(1, " FIRMWAVE", MINT), (3, " CONNECTED", WHITE), (5, &format!(" {}", screen_text(board.name)), LAV),
                       (6, &format!(" {firmware}"), LAV), (12, " READY", MINT)]);
     }
 
@@ -283,7 +283,7 @@ impl<F: Flash> Session<F> {
             None => model.to_string(),
         };
         // two backups in the same second: the second gets -2 (and so on). The
-        // name is taken by creating the file, so that another M-Flasher + saving
+        // name is taken by creating the file, so that another FirmWave saving
         // at the same moment gets the next one, and neither writes over the other's.
         let (path, file) = (1..)
             .map(|i| dir.join(if i == 1 { format!("{stamp}-{model}.bin") } else { format!("{stamp}-{model}-{i}.bin") }))
@@ -301,7 +301,7 @@ impl<F: Flash> Session<F> {
         }
         let sha: String = Sha256::digest(&self.flash).iter().map(|b| format!("{b:02x}")).collect();
         json += &format!("  \"sha256\": \"{sha}\",\n");
-        json += &format!("  \"saved\": \"{stamp}\",\n  \"tool\": \"m-flasher-plus {}\"\n}}\n", env!("CARGO_PKG_VERSION"));
+        json += &format!("  \"saved\": \"{stamp}\",\n  \"tool\": \"firmwave {}\"\n}}\n", env!("CARGO_PKG_VERSION"));
         let json_path = path.with_extension("json");
         let file = create_new(&json_path).map_err(|e| Error::Io(format!("cannot write {}: {e}", json_path.display())))?;
         write_synced(&json_path, file, json.as_bytes())?;

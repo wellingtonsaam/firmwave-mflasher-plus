@@ -1,35 +1,30 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
-  <!-- macOS app icon grid: an 824-point rounded square, centered -->
-  <defs>
-    <linearGradient id="body" x2="0" y2="1">
-      <stop stop-color="#332b27"/>
-      <stop offset="1" stop-color="#1f1a17"/>
-    </linearGradient>
-    <filter id="shadow" x="-10%" y="-10%" width="120%" height="125%">
-      <feDropShadow dx="0" dy="12" stdDeviation="14" flood-color="#000" flood-opacity="0.35"/>
-    </filter>
-  </defs>
-  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#body)" filter="url(#shadow)"/>
-  <rect x="100" y="100" width="824" height="824" rx="185" fill="none" stroke="#7be8bb" stroke-opacity="0.35" stroke-width="6"/>
-  <!-- the wordmark's M (Saira Expanded Black Italic), cut into 6 stripes -->
-  <clipPath id="stripes"><rect x="0" y="256.0" width="1024" height="41.2"/><rect x="0" y="316.6" width="1024" height="41.2"/><rect x="0" y="377.1" width="1024" height="41.2"/><rect x="0" y="437.7" width="1024" height="41.2"/><rect x="0" y="498.3" width="1024" height="41.2"/><rect x="0" y="558.8" width="1024" height="41.2"/></clipPath>
-  <text x="500" y="600" text-anchor="middle" font-family="Saira Wordmark" font-size="500" fill="#7be8bb" clip-path="url(#stripes)">M</text>
-  <g>
-    <rect x="232" y="690" width="58" height="58" rx="8" fill="#a8445f"/>
-    <rect x="302" y="690" width="58" height="58" rx="8" fill="#4fd6c4"/>
-    <rect x="372" y="690" width="58" height="58" rx="8" fill="#4fd6c4"/>
-    <rect x="442" y="690" width="58" height="58" rx="8" fill="#4fd6c4"/>
-    <rect x="512" y="690" width="58" height="58" rx="8" fill="#e2c48f"/>
-    <rect x="582" y="690" width="58" height="58" rx="8" fill="#e2c48f"/>
-    <rect x="652" y="690" width="58" height="58" rx="8" fill="#c8742e"/>
-    <rect x="722" y="690" width="58" height="58" rx="8" fill="#d97a8a"/>
-    <rect x="232" y="760" width="58" height="58" rx="8" fill="#4fd6c4"/>
-    <rect x="302" y="760" width="58" height="58" rx="8" fill="#4fd6c4"/>
-    <rect x="372" y="760" width="58" height="58" rx="8" fill="#4fd6c4"/>
-    <rect x="442" y="760" width="58" height="58" rx="8" fill="#e2c48f"/>
-    <rect x="512" y="760" width="58" height="58" rx="8" fill="#6f8fd6"/>
-    <rect x="582" y="760" width="58" height="58" rx="8" fill="#c8742e"/>
-    <rect x="652" y="760" width="58" height="58" rx="8" fill="#c8742e"/>
-    <rect x="722" y="760" width="58" height="58" rx="8" fill="#8a8a8a"/>
-  </g>
+<!-- FirmWave app icon (Figma: Container, App Icon section, node 308:102285): coral square, 3 px black
+     outline, hard shadow, and the wave between solder pads, with a trace to a third (a wave and a circuit:
+     firmware + wave); the square on the macOS icon grid (824 points, from 100) -->
+<svg x="100" y="100" width="893.494" height="893.494" viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g filter="url(#fw_shadow)">
+<mask id="fw_body_mask" fill="white">
+<path d="M0 41.5C0 18.5802 18.5802 0 41.5 0H124.5C147.42 0 166 18.5802 166 41.5V124.5C166 147.42 147.42 166 124.5 166H41.5C18.5802 166 0 147.42 0 124.5V41.5Z"/>
+</mask>
+<path d="M0 41.5C0 18.5802 18.5802 0 41.5 0H124.5C147.42 0 166 18.5802 166 41.5V124.5C166 147.42 147.42 166 124.5 166H41.5C18.5802 166 0 147.42 0 124.5V41.5Z" fill="#FF6B6B"/>
+<path d="M41.5 0V6.91667H124.5V0V-6.91667H41.5V0ZM166 41.5H159.083V124.5H166H172.917V41.5H166ZM124.5 166V159.083H41.5V166V172.917H124.5V166ZM0 124.5H6.91667V41.5H0H-6.91667V124.5H0ZM41.5 166V159.083C22.4002 159.083 6.91667 143.6 6.91667 124.5H0H-6.91667C-6.91667 151.24 14.7602 172.917 41.5 172.917V166ZM166 124.5H159.083C159.083 143.6 143.6 159.083 124.5 159.083V166V172.917C151.24 172.917 172.917 151.24 172.917 124.5H166ZM124.5 0V6.91667C143.6 6.91667 159.083 22.4002 159.083 41.5H166H172.917C172.917 14.7602 151.24 -6.91667 124.5 -6.91667V0ZM41.5 0V-6.91667C14.7602 -6.91667 -6.91667 14.7602 -6.91667 41.5H0H6.91667C6.91667 22.4002 22.4002 6.91667 41.5 6.91667V0Z" fill="#1A1A1A" mask="url(#fw_body_mask)"/>
+<path d="M51 73.5H35.5M115 73.5H130.5M83 85.5V99.5L99 115.5" stroke-width="6" stroke="black" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="35.5" cy="73.5" r="8" fill="#FF6B6B" stroke-width="5" stroke="black"/>
+<circle cx="130.5" cy="73.5" r="8" fill="#FF6B6B" stroke-width="5" stroke="black"/>
+<circle cx="99" cy="115.5" r="8" fill="#FF6B6B" stroke-width="5" stroke="black"/>
+<path d="M51 73.4998C58.111 56.1667 65.222 56.1667 72.333 73.4998C79.444 90.8328 86.556 90.8328 93.667 73.4998C100.778 56.1667 107.889 56.1667 115 73.4998" stroke-width="10" stroke="black" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+<defs>
+<filter id="fw_shadow" x="0" y="0" width="179.833" height="179.833" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+<feOffset dx="13.8333" dy="13.8333"/>
+<feComposite in2="hardAlpha" operator="out"/>
+<feColorMatrix type="matrix" values="0 0 0 0 0.101961 0 0 0 0 0.101961 0 0 0 0 0.101961 0 0 0 1 0"/>
+<feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow"/>
+<feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow" result="shape"/>
+</filter>
+</defs>
+</svg>
 </svg>

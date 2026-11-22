@@ -2,12 +2,12 @@
 //!
 //! Only root may take the unit from macOS's disk driver, and after that only
 //! root may open it. The window stays a normal app (in the Dock, its files the
-//! user's); when it first opens a unit it starts `M-Flasher + --usb-helper` as
+//! user's); when it first opens a unit it starts `FirmWave --usb-helper` as
 //! root, after the system's password dialog, and passes it each command over
 //! a pipe. The helper is started with AuthorizationExecuteWithPrivileges, as a
 //! child of the app: macOS lets a root process use the unit only when it
-//! descends from a process of the user's (M-Flasher + here, Terminal under sudo),
-//! and then asks the user, once, to let M-Flasher + access the removable volume
+//! descends from a process of the user's (FirmWave here, Terminal under sudo),
+//! and then asks the user, once, to let FirmWave access the removable volume
 //! (the unit). Started any other way (osascript's administrator privileges, a
 //! launchd job, "responsible for itself") it is refused without asking. The
 //! call is deprecated, but nothing newer starts a root process that way.
@@ -23,7 +23,7 @@ use std::os::fd::FromRawFd;
 use std::os::unix::ffi::OsStrExt;
 use std::sync::Mutex;
 
-/// `M-Flasher + --usb-helper`: the root helper.
+/// `FirmWave --usb-helper`: the root helper.
 pub const USB_HELPER: &str = "--usb-helper";
 
 const FIND: u8 = 1;
@@ -54,14 +54,14 @@ static HELPER: Mutex<Option<Helper>> = Mutex::new(None);
 impl Helper {
     /// Starts the helper after the system's password dialog.
     fn start() -> Result<Helper, ScsiError> {
-        let refused = || ScsiError::NeedsAdmin("M-Flasher + needs an administrator's password to reach the unit: reconnect it to be asked again".into());
+        let refused = || ScsiError::NeedsAdmin("FirmWave needs an administrator's password to reach the unit: reconnect it to be asked again".into());
         let exe = std::env::current_exe().map_err(|e| ScsiError::Failed(e.to_string()))?;
         let path = CString::new(exe.as_os_str().as_bytes()).map_err(|e| ScsiError::Failed(e.to_string()))?;
         let arg = CString::new(USB_HELPER).unwrap();
         let argv = [arg.as_ptr(), std::ptr::null()];
-        let prompt = c"M-Flasher + needs administrator rights to reach the unit's USB download mode.";
+        let prompt = c"FirmWave needs administrator rights to reach the unit's USB download mode.";
         // Looked up when needed, not linked: the call is long deprecated, and
-        // were macOS to drop it, a linked M-Flasher + would not start at all,
+        // were macOS to drop it, a linked FirmWave would not start at all,
         // not even for the command line under sudo, which doesn't use it.
         type Execute = unsafe extern "C" fn(*mut c_void, *const c_char, u32, *const *const c_char, *mut *mut libc::FILE) -> i32;
         // SAFETY: dlsym with a valid C string; a null pointer is None, and
@@ -71,7 +71,7 @@ impl Helper {
         };
         let Some(execute) = execute else {
             return Err(ScsiError::NeedsAdmin(
-                "this macOS no longer lets an app ask for administrator rights this way: run M-Flasher + from Terminal \
+                "this macOS no longer lets an app ask for administrator rights this way: run FirmWave from Terminal \
                  with sudo".into()));
         };
         // SAFETY: Security framework calls with initialised items; every
@@ -316,7 +316,7 @@ pub fn usb_helper() -> i32 {
     }
 }
 
-/// Whether any file under these folders is root's: left there by M-Flasher + run with sudo, it can't be
+/// Whether any file under these folders is root's: left there by FirmWave run with sudo, it can't be
 /// written by the window any more (the library's favorites, its packages).
 pub fn left_to_root(dirs: &[std::path::PathBuf]) -> bool {
     use std::os::unix::fs::MetadataExt;
@@ -338,7 +338,7 @@ pub fn give_back(dirs: &[std::path::PathBuf]) -> Result<usize, ScsiError> {
     Ok(u32::from_le_bytes(n.get(..4).and_then(|b| b.try_into().ok()).unwrap_or([0; 4])) as usize)
 }
 
-/// GIVE_BACK, as root: "uid\tgid" then the folders, a line each. Only folders named M-Flasher Plus (or in
+/// GIVE_BACK, as root: "uid\tgid" then the folders, a line each. Only folders named FirmWave or M-Flasher Plus, its old name (or in
 /// one) inside that user's home are touched, and only what is root's there; links are not followed.
 fn give_back_as_root(r: &[u8]) -> Result<Vec<u8>, ScsiError> {
     let bad = || ScsiError::Failed("bad request".into());
@@ -357,7 +357,7 @@ fn give_back_as_root(r: &[u8]) -> Result<Vec<u8>, ScsiError> {
     let mut n = 0u32;
     for dir in lines.map(std::path::PathBuf::from) {
         let inside = dir.is_absolute() && dir.starts_with(&home)
-            && dir.components().any(|c| c.as_os_str() == "M-Flasher Plus")
+            && dir.components().any(|c| c.as_os_str() == "FirmWave" || c.as_os_str() == "M-Flasher Plus")
             && !dir.components().any(|c| c.as_os_str() == "..");
         if !inside {
             continue;

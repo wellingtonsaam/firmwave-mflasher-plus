@@ -1,11 +1,11 @@
 [Desktop Entry]
 Type=Application
-Name=M-Flasher Plus
+Name=FirmWave
 GenericName=Synthesizer Firmware Flasher
 Comment=Back up, restore and reinstall the firmware of an M-VAVE FM-1 or SMK-37
-Exec=m-flasher-plus
-Icon=io.github.wellingtonsaam.m-flasher-plus
+Exec=firmwave
+Icon=io.github.wellingtonsaam.firmwave
 Terminal=false
 Categories=Utility;
 Keywords=M-VAVE;FM-1;SMK-37;firmware;bootloader;backup;flash;
-StartupWMClass=io.github.wellingtonsaam.m-flasher-plus
+StartupWMClass=io.github.wellingtonsaam.firmwave

@@ -1,4 +1,4 @@
-//! Android spike: M-Flasher +'s own modules, unchanged, over the USB device
+//! Android spike: FirmWave's own modules, unchanged, over the USB device
 //! Android hands the app (a usbfs file descriptor), and a JNI bridge for the
 //! Java side.
 //!
@@ -18,6 +18,12 @@ mod jl;
 mod ops;
 #[path = "../../../src/library.rs"]
 mod library;
+// files that are only in iCloud (macOS; never on Android), and FirmWave's old names (library::default_dir)
+#[path = "../../../src/cloud.rs"]
+mod cloud;
+#[path = "../../../src/migrate.rs"]
+#[allow(dead_code)]
+mod migrate;
 // the firmware's sectors, for its fingerprint (library::firmware_sectors)
 #[path = "../../../src/sectormap.rs"]
 #[allow(dead_code)]
