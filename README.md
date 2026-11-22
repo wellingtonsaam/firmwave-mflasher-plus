@@ -99,26 +99,31 @@ that one's name: a firmware made from Felucca shows as *Felucca*, and one made
 from M-VAVE's SDK as *FM-1 901*. So, under **DEVICE INFO › FIRMWARE**,
 M-Flasher + looks for its name in this order:
 
-1. **What it installed.** After every install, M-Flasher + keeps a
+1. **The name the firmware gives itself.** A line `FWNAME=` with its name and
+   version, ended by a NUL, in its `app.bin`: *FM1 Pocket Tutor 0.3*. It comes
+   from the firmware on the FM-1, however it was installed.
+2. **What it installed.** After every install, M-Flasher + keeps a
    fingerprint of the firmware's code (the SHA-256 of its sectors, not of its
    settings, which change as you play) with the name it was chosen by, in
    `installed.json` next to the backups. Read later, the same code shows by
    that name: *zp12 2.5 · Felucca*.
-2. **The library.** Otherwise, a package saved in the **LIBRARY** that is
+3. **The library.** Otherwise, a package saved in the **LIBRARY** that is
    identical to what is on the FM-1.
-3. **What the firmware calls itself**, as before: *SLOOP 2.8.5*, *Felucca*,
+4. **What the firmware's identity says**, as before: *SLOOP 2.8.5*, *Felucca*,
    *FM-1 901*.
 
-The name it was chosen by comes first, and what the firmware calls itself
-after it. The notice at the end of an install says it too: *ZP12-2.5 RUNNING*.
+The name comes first, and the identity after it: *FM1 Pocket Tutor 0.3 · FM-1
+902*. It is also the name in the backup's file name. The notice at the end of
+an install says it too: *ZP12-2.5 RUNNING*.
 
 ## Suggestion for firmware authors: give your firmware its own name
 
 If you make a firmware for the FM-1, here is a small suggestion that would
 help people recognise it by its own name, in M-Flasher + and in other tools:
 
-- a line with your firmware's name and version somewhere in its code, such as
-  `zp12 2.5`, much as SLOOP does with `SLOOP 2.8.5`;
+- a line `FWNAME=` with your firmware's name and version in its code, such as
+  `FWNAME=zp12 2.5` (NUL-ended, 48 characters at most): M-Flasher + shows it
+  as it is ([docs/firmware-names.md](docs/firmware-names.md));
 - your firmware's own name for its USB MIDI port, rather than the name of the
   firmware it started from.
 

@@ -1829,3 +1829,32 @@ fn a_firmware_name_in_a_backup_file_name() {
     assert_eq!(crate::ops::file_part("???"), "");
     assert!(crate::ops::file_part(&"x".repeat(80)).len() <= 40);
 }
+
+#[test]
+fn fw_name_tag() {
+    use crate::boards::fw_name;
+    let t = b"\x00\x01FM-1_902\x00FWNAME=FM1 Pocket Tutor 0.2\x00more";
+    assert_eq!(fw_name(t).as_deref(), Some("FM1 Pocket Tutor 0.2"));
+    assert_eq!(fw_name(b"no tag here"), None);
+    assert_eq!(fw_name(b"FWNAME=\x00"), None);                      // empty
+    assert_eq!(fw_name(b"FWNAME=open ended"), None);                // no NUL
+    assert_eq!(fw_name(b"FWNAME=bad\x01name\x00"), None);           // not printable
+    let long = [b"FWNAME=".as_slice(), &[b'a'; 60], b"\x00"].concat();
+    assert_eq!(fw_name(&long), None);                               // longer than 48
+}
+
+#[test]
+fn a_firmware_that_names_itself_is_shown_by_that_name() {
+    let a = Analysis::new(&image_016(b"FM-1_902\0FWNAME=PT 0.3\0"), Some(FM1.flash_id), CHIP_KEY);
+    assert_eq!(a.fw_name.as_deref(), Some("PT 0.3"));   // (the test image's app.bin holds 32 bytes)
+    assert!(a.firmware_text.starts_with("FM-1 902"), "the identity is still read: {}", a.firmware_text);
+    assert_eq!(Analysis::new(&fm1_016_image(), Some(FM1.flash_id), CHIP_KEY).fw_name, None);
+}
+
+/// A real flash, after the FM1 Pocket Tutor's package was installed (fm1-live --fwsc ... --flash: pocket-tutor-flash.bin).
+#[test]
+fn the_pocket_tutors_flash_names_it() {
+    let flash = need!("pocket-tutor-flash.bin");
+    let a = Analysis::new(&flash, Some(FM1.flash_id), CHIP_KEY);
+    assert!(a.fw_name.as_deref().is_some_and(|n| n.starts_with("FM1 Pocket Tutor ")), "{:?} / {}", a.fw_name, a.firmware_text);
+}
