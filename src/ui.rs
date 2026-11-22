@@ -248,7 +248,7 @@ impl eframe::App for App {
         let ix = 38.0 + ww + 13.0;
         let icon = board.r(ix, 84.0 - 38.0, 76.0, 76.0);
         p.card(icon, fw::CORAL, 19.0, 6.0);
-        wave_circuit(&p, ix, 84.0 - 38.0, 76.0);
+        wave_w(&p, ix, 84.0 - 38.0, 76.0);
         let ww = ww + 13.0 + 76.0;
         p.text(38.0 + ww + 24.0, 72.0, Align2::LEFT_CENTER, "USB FIRMWARE UTILITY", "cond", 15.0, INK, 1.8);
         p.text(38.0 + ww + 24.0, 94.0, Align2::LEFT_CENTER, "FOR MUSIC CREATIVES · FM-1 AND SMK-37", "tech", 12.0, DIM, 1.2);
@@ -1429,25 +1429,20 @@ fn dashed(p: &Painter, r: Rect, color: Color32) {
     p.p.extend(Shape::dashed_line(&pts, Stroke::new(1.5 * s, color), 3.0 * s, 2.5 * s));
 }
 
-/// The app icon's drawing (Figma App Icon 308:102285, "onda com circuito"): the wave between two solder
-/// pads, with a 45° trace from its trough to a third pad; in the icon's own 166-unit square at (x, y)
-fn wave_circuit(p: &Painter, x: f32, y: f32, size: f32) {
+/// The app icon's drawing (Figma App Icon 308:102285): a black wave shaped as a W, the W of FirmWave
+/// (Wellington, 22/11: no solder pads); in the icon's own 166-unit square at (x, y), as macos/icon.svg
+fn wave_w(p: &Painter, x: f32, y: f32, size: f32) {
     let b = p.b;
     let k = size / 166.0;
-    let at = |u: f32, v: f32| b.p(x + u * k, y + v * k);
-    let line = Stroke::new(6.0 * k * b.s, INK);
-    p.p.line_segment([at(51.0, 73.5), at(35.5, 73.5)], line);
-    p.p.line_segment([at(115.0, 73.5), at(130.5, 73.5)], line);
-    p.p.add(Shape::line(vec![at(83.0, 85.5), at(83.0, 99.5), at(99.0, 115.5)], line));
-    let wave: Vec<Pos2> = (0..=64).map(|i| {
-        let u = 51.0 + 64.0 * i as f32 / 64.0;
-        at(u, 73.5 - 17.33 * (std::f32::consts::PI * (u - 51.0) / 21.33).sin())
+    let wave: Vec<Pos2> = (0..=96).map(|i| {
+        let t = i as f32 / 96.0;
+        b.p(x + (35.2 + 95.6 * t) * k, y + (83.0 - 19.3 * (4.0 * std::f32::consts::PI * t).cos()) * k)
     }).collect();
-    p.p.add(Shape::line(wave, Stroke::new(10.0 * k * b.s, INK)));
-    for (u, v) in [(35.5, 73.5), (130.5, 73.5), (99.0, 115.5)] {
-        p.p.circle_filled(at(u, v), 8.0 * k * b.s, fw::CORAL);
-        p.p.circle_stroke(at(u, v), 8.0 * k * b.s, Stroke::new(5.0 * k * b.s, INK));
-    }
+    let w = 12.5 * k * b.s;
+    // round ends: the stroke's caps
+    p.p.circle_filled(wave[0], w / 2.0, INK);
+    p.p.circle_filled(wave[96], w / 2.0, INK);
+    p.p.add(Shape::line(wave, Stroke::new(w, INK)));
 }
 
 fn led(p: &Painter, c: Pos2, on: bool) {

@@ -297,7 +297,7 @@ public class MainActivity extends Activity {
         // App Bar (Figma 15:222): the name, the unit, its LED
         LinearLayout bar = new LinearLayout(this);
         bar.setGravity(Gravity.CENTER_VERTICAL);
-        // App Bar (Figma Option A, Android): the wordmark and its wave (both open About), the unit in a pill
+        // App Bar (Figma Option A, Android): the wordmark and the icon (both open About), the unit in a pill
         bar.setPadding(px(16), px(6), px(12), px(6));
         bar.setBackground(edge(Ui.WHITE, Ui.LINE, false));
         TextView name = text("FirmWave", INK, 19, false);
@@ -307,12 +307,13 @@ public class MainActivity extends Activity {
         name.setOnClickListener(v -> about());
         name.setContentDescription("FirmWave · About");
         bar.addView(name);
+        // the app icon as the logo, beside the wordmark (as on the desktop): the coral square with the W
         android.widget.ImageView about = new android.widget.ImageView(this);
-        about.setImageResource(getResources().getIdentifier("ic_wave", "drawable", getPackageName()));
-        about.setPadding(px(6), px(8), px(6), px(8));
+        about.setImageResource(getResources().getIdentifier("ic_logo", "drawable", getPackageName()));
+        about.setPadding(px(8), px(2), px(2), px(2));
         about.setContentDescription("About FirmWave");
         about.setOnClickListener(v -> about());
-        bar.addView(about, new LinearLayout.LayoutParams(px(40), px(40)));
+        bar.addView(about, new LinearLayout.LayoutParams(px(46), px(42)));
         bar.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1));
         unit = Ui.pill(this, "NO UNIT", Ui.WHITE);
         unit.setSingleLine(true);

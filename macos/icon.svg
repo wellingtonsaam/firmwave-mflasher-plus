@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
 <!-- FirmWave app icon (Figma: Container, App Icon section, node 308:102285): coral square, 3 px black
-     outline, hard shadow, and the wave between solder pads, with a trace to a third (a wave and a circuit:
-     firmware + wave); the square on the macOS icon grid (824 points, from 100) -->
+     outline, hard shadow, and a black wave shaped as a W (Wellington, 22/11: the W of FirmWave, no solder
+     pads); the square on the macOS icon grid (824 points, from 100) -->
 <svg x="100" y="100" width="893.494" height="893.494" viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg">
 <g filter="url(#fw_shadow)">
 <mask id="fw_body_mask" fill="white">
@@ -9,11 +9,7 @@
 </mask>
 <path d="M0 41.5C0 18.5802 18.5802 0 41.5 0H124.5C147.42 0 166 18.5802 166 41.5V124.5C166 147.42 147.42 166 124.5 166H41.5C18.5802 166 0 147.42 0 124.5V41.5Z" fill="#FF6B6B"/>
 <path d="M41.5 0V6.91667H124.5V0V-6.91667H41.5V0ZM166 41.5H159.083V124.5H166H172.917V41.5H166ZM124.5 166V159.083H41.5V166V172.917H124.5V166ZM0 124.5H6.91667V41.5H0H-6.91667V124.5H0ZM41.5 166V159.083C22.4002 159.083 6.91667 143.6 6.91667 124.5H0H-6.91667C-6.91667 151.24 14.7602 172.917 41.5 172.917V166ZM166 124.5H159.083C159.083 143.6 143.6 159.083 124.5 159.083V166V172.917C151.24 172.917 172.917 151.24 172.917 124.5H166ZM124.5 0V6.91667C143.6 6.91667 159.083 22.4002 159.083 41.5H166H172.917C172.917 14.7602 151.24 -6.91667 124.5 -6.91667V0ZM41.5 0V-6.91667C14.7602 -6.91667 -6.91667 14.7602 -6.91667 41.5H0H6.91667C6.91667 22.4002 22.4002 6.91667 41.5 6.91667V0Z" fill="#1A1A1A" mask="url(#fw_body_mask)"/>
-<path d="M51 73.5H35.5M115 73.5H130.5M83 85.5V99.5L99 115.5" stroke-width="6" stroke="black" stroke-linecap="round" stroke-linejoin="round"/>
-<circle cx="35.5" cy="73.5" r="8" fill="#FF6B6B" stroke-width="5" stroke="black"/>
-<circle cx="130.5" cy="73.5" r="8" fill="#FF6B6B" stroke-width="5" stroke="black"/>
-<circle cx="99" cy="115.5" r="8" fill="#FF6B6B" stroke-width="5" stroke="black"/>
-<path d="M51 73.4998C58.111 56.1667 65.222 56.1667 72.333 73.4998C79.444 90.8328 86.556 90.8328 93.667 73.4998C100.778 56.1667 107.889 56.1667 115 73.4998" stroke-width="10" stroke="black" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M35.20 63.70 L36.20 63.87 L37.19 64.36 L38.19 65.17 L39.18 66.29 L40.18 67.69 L41.18 69.35 L42.17 71.25 L43.17 73.35 L44.16 75.61 L45.16 78.00 L46.15 80.48 L47.15 83.00 L48.15 85.52 L49.14 88.00 L50.14 90.39 L51.13 92.65 L52.13 94.75 L53.12 96.65 L54.12 98.31 L55.12 99.71 L56.11 100.83 L57.11 101.64 L58.10 102.13 L59.10 102.30 L60.10 102.13 L61.09 101.64 L62.09 100.83 L63.08 99.71 L64.08 98.31 L65.08 96.65 L66.07 94.75 L67.07 92.65 L68.06 90.39 L69.06 88.00 L70.05 85.52 L71.05 83.00 L72.05 80.48 L73.04 78.00 L74.04 75.61 L75.03 73.35 L76.03 71.25 L77.03 69.35 L78.02 67.69 L79.02 66.29 L80.01 65.17 L81.01 64.36 L82.00 63.87 L83.00 63.70 L84.00 63.87 L84.99 64.36 L85.99 65.17 L86.98 66.29 L87.98 67.69 L88.98 69.35 L89.97 71.25 L90.97 73.35 L91.96 75.61 L92.96 78.00 L93.95 80.48 L94.95 83.00 L95.95 85.52 L96.94 88.00 L97.94 90.39 L98.93 92.65 L99.93 94.75 L100.93 96.65 L101.92 98.31 L102.92 99.71 L103.91 100.83 L104.91 101.64 L105.90 102.13 L106.90 102.30 L107.90 102.13 L108.89 101.64 L109.89 100.83 L110.88 99.71 L111.88 98.31 L112.88 96.65 L113.87 94.75 L114.87 92.65 L115.86 90.39 L116.86 88.00 L117.85 85.52 L118.85 83.00 L119.85 80.48 L120.84 78.00 L121.84 75.61 L122.83 73.35 L123.83 71.25 L124.83 69.35 L125.82 67.69 L126.82 66.29 L127.81 65.17 L128.81 64.36 L129.80 63.87 L130.80 63.70" stroke-width="12.5" stroke="black" stroke-linecap="round" stroke-linejoin="round"/>
 </g>
 <defs>
 <filter id="fw_shadow" x="0" y="0" width="179.833" height="179.833" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
