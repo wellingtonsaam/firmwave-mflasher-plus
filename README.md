@@ -36,6 +36,22 @@ FM-1. Nothing is connected or written.
 
 The prototype's source is [docs/prototype/index.html](docs/prototype/index.html).
 
+### Supported platforms and installers
+
+| Platform | Installer | Status |
+|---|---|---|
+| **macOS** 11 or newer (Apple Silicon and Intel) | [FirmWave-2.0.0-macos.dmg](../../releases/download/v2.0.0/FirmWave-2.0.0-macos.dmg) | tested on an FM-1 and an SMK-37 |
+| **Android** 9 or newer (ARM64 phones), over a USB OTG cable | [FirmWave-2.0.0-android.apk](../../releases/download/v2.0.0/FirmWave-2.0.0-android.apk) | tested on an FM-1 |
+| **Windows** 10 or 11 (x64) | [FirmWave-2.0.0-windows.zip](../../releases/download/v2.0.0/FirmWave-2.0.0-windows.zip) | builds, not yet tested |
+| **Linux** x86_64: Debian, Ubuntu | [firmwave_2.0.0-1_amd64.deb](../../releases/download/v2.0.0/firmwave_2.0.0-1_amd64.deb) | builds, not yet tested |
+| **Linux** x86_64: Fedora, openSUSE | [firmwave-2.0.0-1.x86_64.rpm](../../releases/download/v2.0.0/firmwave-2.0.0-1.x86_64.rpm) | builds, not yet tested |
+| **Linux** x86_64: other distributions | [firmwave-2.0.0-linux-x86_64.tar.gz](../../releases/download/v2.0.0/firmwave-2.0.0-linux-x86_64.tar.gz) | builds, not yet tested |
+| **Linux** ARM64 (Raspberry Pi and others) | [.deb](../../releases/download/v2.0.0/firmwave_2.0.0-1_arm64.deb) · [.rpm](../../releases/download/v2.0.0/firmwave-2.0.0-1.aarch64.rpm) · [.tar.gz](../../releases/download/v2.0.0/firmwave-2.0.0-linux-aarch64.tar.gz) | builds, not yet tested |
+| **Web** (Chrome, Edge, Opera; Safari through the MIDI Browser app) | [m-flasher-plus-web-app](https://github.com/wellingtonsaam/m-flasher-plus-web-app) | experimental beta, not published yet |
+
+All versions: [releases](../../releases). How to install on each system:
+[Using FirmWave](docs/usage.md).
+
 ## Why FirmWave
 
 M-Flasher is ingenious and reliable: it reaches the chip's download mode, reads
