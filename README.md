@@ -1,10 +1,10 @@
-# M-Flasher +
+# FirmWave
 
-> **Versions 1.0.0 and 1.0.1 were withdrawn**: they had bugs, among them a
-> wrong identification of the app when it reads the firmware list. If you
-> installed one of them, replace it with 1.0.2 or newer. On Android, 1.0.2 is
-> a new app (`io.github.wellingtonsaam.mflasherplus`): keep the backups saved
-> on the phone before removing the old one.
+**Firmware manager and custom firmware hub for the M-VAVE FM-1 and SMK-37.**
+
+> **Note:** M-Flasher+ has been renamed to **FirmWave** to reflect its
+> redesigned UX, integrated Firmware Hub library, and independent direction.
+> Links to the old repository and site still lead here.
 
 **Free for macOS and Android.** Download it from the
 [releases](../../releases). (Windows and Linux build from the same code, as
@@ -16,14 +16,14 @@ a **built-in firmware library** and a safer way to install. It talks to the
 chip's built-in USB download mode, so it also works when the firmware on the
 unit is broken.
 
-M-Flasher + is maintained by [Wellington Saam](https://github.com/wellingtonsaam).
+FirmWave is maintained by [Wellington Saam](https://github.com/wellingtonsaam).
 It is based on [M-Flasher](https://github.com/jvitkauskas/m-flasher) by Julius
-Vitkauskas, who does not maintain or support this version: please send
-questions and bug reports about M-Flasher + to [this repository's
-issues](../../issues), not to M-Flasher's.
+Vitkauskas, who does not maintain or support it: please send questions and bug
+reports about FirmWave to [this repository's issues](../../issues), not to
+M-Flasher's.
 
 > Unofficial: not affiliated with M-VAVE or JieLi, and not supported by
-> M-Flasher's author: M-Flasher + is supported by Wellington Saam, in [this
+> M-Flasher's author: FirmWave is supported by Wellington Saam, in [this
 > repository's issues](../../issues). It saves a backup before it writes
 > anything and checks every write, but use it at your own risk.
 
@@ -32,29 +32,44 @@ issues](../../issues), not to M-Flasher's.
 Click a screen to open the interactive prototype of that app, with a simulated
 FM-1. Nothing is connected or written.
 
-<a href="https://m-flasher-plus-prototype.vercel.app/#mac"><img src="docs/prototype/cover-mac.png" alt="M-Flasher + for Mac: open the interactive prototype" height="360"></a>&nbsp;&nbsp;<a href="https://m-flasher-plus-prototype.vercel.app/#android"><img src="docs/prototype/cover-android.png" alt="M-Flasher + for Android: open the interactive prototype" height="360"></a>
+<a href="https://m-flasher-plus-prototype.vercel.app/#mac"><img src="docs/prototype/cover-mac.png" alt="FirmWave for Mac: open the interactive prototype" height="360"></a>&nbsp;&nbsp;<a href="https://m-flasher-plus-prototype.vercel.app/#android"><img src="docs/prototype/cover-android.png" alt="FirmWave for Android: open the interactive prototype" height="360"></a>
 
 The prototype's source is [docs/prototype/index.html](docs/prototype/index.html).
 
-## Why M-Flasher +
+## Why FirmWave
 
 M-Flasher is ingenious and reliable: it reaches the chip's download mode, reads
 and writes the flash safely, and verifies everything. Two things were missing:
 
 - **A firmware library inside the app.** Finding a firmware meant searching
   forums and releases, downloading a package and choosing the file by hand.
-  M-Flasher + lists the community firmwares, downloads them from their
-  authors' releases, checks each one by SHA-256 and keeps it on your computer
-  or phone, so it installs **offline** too.
+  FirmWave lists the community firmwares, downloads them from their authors'
+  releases, checks each one by SHA-256 and keeps it on your computer or phone,
+  so it installs **offline** too.
 - **A design that guides the user.** The window puts every action on one
   screen, for every situation at once. As a Product Designer, I mapped the use
   cases of the app (no unit, a unit to check, one to protect, one to flash)
-  and am rebuilding the Device tab around them: **check the FM-1 first,
-  protect it, then operate**.
+  and rebuilt the Device tab around them: **check the FM-1 first, protect it,
+  then operate**.
+
+### From M-Flasher + to FirmWave
+
+The project started as a fork of M-Flasher called **M-Flasher +**, and offered
+its changes back to M-Flasher. M-Flasher's author chose to keep his project on
+its own course, which is his to decide. The fork had grown its own scope (the
+firmware library, a redesigned UX, the Android app), and a name close to
+M-Flasher's mixed up who supports what. So from 2.0.0 it is **FirmWave**:
+*firmware* and *wave*, for the community's custom firmwares and the waves of FM
+synthesis.
+
+The last state under the old name is kept as the tag
+[`v1.0.0-m-flasher-plus-baseline`](../../tree/v1.0.0-m-flasher-plus-baseline).
+Versions 1.0.0 and 1.0.1 of M-Flasher + were withdrawn for bugs; 1.0.2 and
+1.0.3 were its last releases.
 
 ## REQ-BOOT-01: m-bootloader before a firmware
 
-**M-Flasher + never installs a firmware on an FM-1 that has no way back.**
+**FirmWave never installs a firmware on an FM-1 that has no way back.**
 
 An FM-1 with M-VAVE's original bootloader has one weakness: if a new firmware
 does not start, its keys can't reach download mode any more, and only a
@@ -71,8 +86,8 @@ can be skipped, with a clear warning.
 
 ## The new flash chip: no firmware that would brick it
 
-**M-Flasher + checks your FM-1's flash chip, and refuses a firmware made only
-for the older one before anything is written.**
+**FirmWave checks your FM-1's flash chip, and refuses a firmware made only for
+the older one before anything is written.**
 
 FM-1s sold from late 2026 have a new flash chip:
 
@@ -84,7 +99,7 @@ Some community firmwares are made for the older chip only. On a newer FM-1
 they may not start, and the unit is bricked until it is reflashed. So, for
 every firmware of the library:
 
-- M-Flasher + reads the chip when it checks the FM-1, and shows it under
+- FirmWave reads the chip when it checks the FM-1, and shows it under
   **DEVICE INFO** by name, such as *UCUN UC25HQ80 · 0xB36014 (new)*.
 - **This unit only** hides the firmwares marked for the older chip.
 - **INSTALL refuses them** on a newer FM-1, with *WARNING: NEW UCUN UC25HQ80
@@ -96,19 +111,19 @@ author's notes for the chip.
 
 ## Which firmware is on your FM-1
 
-**M-Flasher + shows the firmware by the name you chose it by, not only by
-what it calls itself.**
+**FirmWave shows the firmware by the name you chose it by, not only by what it
+calls itself.**
 
 A firmware names itself inside its code, and one built from another keeps
 that one's name: a firmware made from Felucca shows as *Felucca*, and one made
 from M-VAVE's SDK as *FM-1 901*. So, under **DEVICE INFO › FIRMWARE**,
-M-Flasher + looks for its name in this order:
+FirmWave looks for its name in this order:
 
-1. **What it installed.** After every install, M-Flasher + keeps a
-   fingerprint of the firmware's code (the SHA-256 of its sectors, not of its
-   settings, which change as you play) with the name it was chosen by, in
-   `installed.json` next to the backups. Read later, the same code shows by
-   that name: *zp12 2.5 · Felucca*.
+1. **What it installed.** After every install, FirmWave keeps a fingerprint of
+   the firmware's code (the SHA-256 of its sectors, not of its settings, which
+   change as you play) with the name it was chosen by, in `installed.json`
+   next to the backups. Read later, the same code shows by that name:
+   *zp12 2.5 · Felucca*.
 2. **The library.** Otherwise, a package saved in the **LIBRARY** that is
    identical to what is on the FM-1.
 3. **What the firmware calls itself**, as before: *SLOOP 2.8.5*, *Felucca*,
@@ -120,18 +135,18 @@ after it. The notice at the end of an install says it too: *ZP12-2.5 RUNNING*.
 ## Suggestion for firmware authors: give your firmware its own name
 
 If you make a firmware for the FM-1, here is a small suggestion that would
-help people recognise it by its own name, in M-Flasher + and in other tools:
+help people recognise it by its own name, in FirmWave and in other tools:
 
 - a line with your firmware's name and version somewhere in its code, such as
   `zp12 2.5`, much as SLOOP does with `SLOOP 2.8.5`;
 - your firmware's own name for its USB MIDI port, rather than the name of the
   firmware it started from.
 
-Only if it suits your project, of course. If you would like M-Flasher + to
+Only if it suits your project, of course. If you would like FirmWave to
 recognise your firmware by that line, you are welcome to open an issue with
 it.
 
-## What's new in M-Flasher +
+## What FirmWave adds to M-Flasher
 
 - **Firmware library** (LIBRARY tab): the community firmwares listed by
   [The Firmware Hub](https://thefirmwarehub.com), with search, favorites,
@@ -157,23 +172,30 @@ it.
   operation's form shown only when it is chosen.
 - **Backups named by the firmware**: *20261116-165332-fm1-zp12-2.5.bin* (when first, so that sorting by name is sorting by time).
 
+See [CHANGELOG.md](CHANGELOG.md) for what changed in each version.
+
 ## Getting started
 
-1. Download M-Flasher + from the [releases](../../releases): the macOS disk
-   image or the Android APK. The Mac app is not signed with an Apple
-   certificate: the first time, macOS blocks it; allow it in **System
-   Settings › Privacy & Security › Open Anyway**. On Android, allow installing
-   apps from your browser or file manager.
+1. Download FirmWave from the [releases](../../releases): the macOS disk image
+   or the Android APK. The Mac app is not signed with an Apple certificate:
+   the first time, macOS blocks it; allow it in **System Settings › Privacy &
+   Security › Open Anyway**. On Android, allow installing apps from your
+   browser or file manager.
 2. Connect the FM-1 with a USB **data** cable (on a phone: a USB OTG adapter)
    and switch it on.
-3. Pick a firmware in the **LIBRARY** tab and press **INSTALL**: M-Flasher +
+3. Pick a firmware in the **LIBRARY** tab and press **INSTALL**: FirmWave
    switches the FM-1 to download mode, reads it and opens the review. Nothing
    is written until you confirm. To start with a backup, press **CHECK FM1
    STATUS**, then **SAVE BACKUP**.
 
+**Coming from M-Flasher +?** FirmWave copies your backups from
+`Documents/M-Flasher Plus` to `Documents/FirmWave` the first time it opens, and
+leaves the old folder as it is. The firmware library comes along too. On
+Android, FirmWave updates the M-Flasher + app in place, with its backups.
+
 ## More
 
-- [Using M-Flasher +](docs/usage.md): each system, download mode, the actions,
+- [Using FirmWave](docs/usage.md): each system, download mode, the actions,
   the firmware library, the command line
 - [Safety](docs/safety.md): what is checked before and after every write,
   REQ-BOOT-01
@@ -181,22 +203,22 @@ it.
 
 ## Privacy
 
-M-Flasher + talks to the unit over USB. It goes online only for the firmware
+FirmWave talks to the unit over USB. It goes online only for the firmware
 library: it reads The Firmware Hub's public list (at most once a day) and
 downloads the firmware you choose from its author's release. Nothing about you
 or your unit is sent.
 
-## Credits and license
+## Credits and acknowledgments
 
 MIT ([LICENSE](LICENSE)).
 
 - **M-Flasher** by [Julius Vitkauskas](https://github.com/jvitkauskas): the
-  app this is built on. If it helped you, support his work:
+  app FirmWave is built on. If it helped you, support his work:
   [GitHub Sponsors](https://github.com/sponsors/jvitkauskas) ·
   [Ko-fi](https://ko-fi.com/jvitkauskas).
-- **M-Flasher +** by [Wellington Saam](https://github.com/wellingtonsaam): the
-  firmware library, REQ-BOOT-01, the use cases of the redesign and the
-  Android app.
+- **FirmWave** (formerly M-Flasher +) by
+  [Wellington Saam](https://github.com/wellingtonsaam): the firmware library,
+  REQ-BOOT-01, the use cases of the redesign and the Android app.
 - [m-bootloader](https://github.com/jvitkauskas/m-bootloader) (MIT): the
   bootloader and the flash loader.
 - Firmware list: [The Firmware Hub](https://thefirmwarehub.com) (CC BY 4.0, used unchanged);
