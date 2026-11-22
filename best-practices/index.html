@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="FM-1 recovery guide: install m-bootloader, keep backups, and find the fix when a write goes wrong.">
+<meta name="description" content="FM-1 recovery guide by FirmWave (formerly M-Flasher+): install m-bootloader, keep backups, and find the fix when a write goes wrong.">
 <style>html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}</style>
 <title>FM-1 Best Practices</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500&family=Share+Tech+Mono&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend+Mega:wght@700;900&family=Public+Sans:wght@500;700;900&family=Space+Mono:wght@400;700&display=swap">
 </head>
 <body>
 <style>
@@ -166,11 +166,85 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 @media (min-width: 961px) { .nowbar { display: none; } }
 @media (max-width: 960px) { body.has-now { padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)); } }
 .pagefoot { margin-top: 40px; padding-block: 24px 48px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; display: grid; gap: 6px; }
+
+/* ===== FirmWave · Neo Brutalism, Option A ===== */
+:root {
+  --bg: #FFF4DC; --panel: #FFFFFF; --well: #FFFFFF; --line: #000; --line-hi: #000;
+  --fg: #000; --muted: #4A4A4A; --signal: #1F7A3A; --label: #000; --warn: #C23A00;
+  --display: "Lexend Mega", "Public Sans", sans-serif;
+  --mono: "Space Mono", ui-monospace, Menlo, monospace;
+  --body: "Public Sans", system-ui, sans-serif;
+  color-scheme: light;
+}
+body { font-weight: 500; }
+a { color: #000; font-weight: 700; }
+a:focus-visible, button:focus-visible, input:focus-visible, label:focus-within { outline: 3px solid #000; }
+.fwbrand { display: inline-flex; align-items: center; gap: 12px; flex-wrap: wrap; text-decoration: none; margin-bottom: 10px; }
+.fwname { font-family: "Lexend Mega", sans-serif; font-weight: 900; font-size: 26px; letter-spacing: -0.2em; padding-right: .2em; color: #000; }
+.fwicon { width: 42px; height: 42px; background: #FF6B6B; border: 3px solid #000; border-radius: 11px; box-shadow: 3px 3px 0 #000; display: grid; place-items: center; }
+.fwicon svg { width: 28px; height: 20px; }
+.fwformer { font-family: var(--mono); font-weight: 400; font-size: 12px; color: var(--muted); }
+.masthead { border-bottom: 3px solid #000; }
+.eyebrow { font-family: var(--display); font-size: 13px; letter-spacing: .04em; color: #000; background: #7DF9FF; border: 2px solid #000; border-radius: 8px; padding: 6px 10px; display: inline-block; }
+h1 { font-family: var(--display); font-weight: 900; letter-spacing: -0.06em; font-size: clamp(36px, 6.4vw, 72px); }
+.lede { font-family: var(--body); color: #000; }
+.mast-screen.screen { background: #fff; }
+.screen { background: #fff; border: 3px solid #000; border-radius: 12px; box-shadow: 5px 5px 0 #000; }
+.triage { background: #fff; border: 3px solid #000; border-radius: 14px; box-shadow: 8px 8px 0 #000; }
+.triage h2 { font-family: var(--display); font-weight: 900; letter-spacing: -0.05em; }
+.q { font-family: var(--display); font-weight: 700; font-size: 12px; color: #000; }
+.choice { background: #fff; color: #000; border: 2px solid #000; border-radius: 10px; box-shadow: 3px 3px 0 #000; font-weight: 700; }
+.choice:hover { border-color: #000; transform: translate(1px,1px); box-shadow: 2px 2px 0 #000; }
+.choice[aria-pressed="true"] { background: #7DF9FF; color: #000; border-color: #000; }
+.answer { border-top: 2px dashed #000; }
+.answer strong { font-family: var(--display); font-weight: 900; letter-spacing: -0.04em; }
+.go { background: #FFE500; color: #000; border: 3px solid #000; border-radius: 10px; box-shadow: 4px 4px 0 #000; font-family: var(--body); font-weight: 900; }
+.toc details { border-top: 2px solid #000; } .toc details:last-of-type { border-bottom: 2px solid #000; }
+.toc summary { font-family: var(--display); font-size: 12px; letter-spacing: .02em; color: #000; }
+.toc summary::before { color: #000; }
+.toc summary .rg, .toc a span:first-child { color: var(--muted); }
+.toc details.current summary { color: #000; background: #7DF9FF; border-radius: 6px; }
+.toc a { color: #000; font-weight: 500; }
+.toc a.active { background: #FFE500; border: 2px solid #000; }
+.toc a.active span:first-child, .toc a.done span:first-child::after { color: #000; }
+.toolbar { border-bottom: 3px solid #000; }
+.search { background: #fff; color: #000; border: 2px solid #000; border-radius: 10px; }
+.chip { color: #000; border: 2px solid #000; background: #fff; font-weight: 700; }
+.chip[aria-pressed="true"] { color: #000; background: #7DF9FF; border-color: #000; box-shadow: 3px 3px 0 #000; }
+.count { color: #000; }
+.chapter h2 { font-family: var(--display); font-weight: 900; letter-spacing: -0.05em; }
+.chapter .range { color: var(--muted); }
+.post { background: #fff; border: 3px solid #000; border-radius: 14px; box-shadow: 8px 8px 0 #000; }
+.post.flash { border-color: #000; box-shadow: 8px 8px 0 #FFE500, 0 0 0 3px #FFE500; }
+.post-top { border-bottom: 2px solid #000; }
+.kicker { font-family: var(--display); font-size: 12px; color: #000; background: #7DF9FF; border: 2px solid #000; border-radius: 8px; padding: 4px 8px; }
+.copy { background: #fff; border: 2px solid #000; color: #000; border-radius: 8px; font-weight: 700; }
+.post h3 { font-family: var(--display); font-weight: 900; letter-spacing: -0.05em; font-size: clamp(26px, 3.6vw, 38px); }
+.sub { font-family: var(--body); color: #000; font-weight: 500; }
+.panel { background: #FFF4DC; border: 2px solid #000; border-radius: 12px; }
+.plabel { font-family: var(--display); font-weight: 700; font-size: 11px; color: #000; }
+.step:hover { background: #FFE500; }
+.step .n { color: #000; border: 2px solid #000; background: #fff; font-weight: 700; }
+.step input:checked + .n { background: #90EE90; color: #000; border-color: #000; }
+.step input:checked ~ .t { color: var(--muted); text-decoration-color: #000; }
+.card { background: #fff; border: 2px solid #000; border-radius: 10px; box-shadow: 4px 4px 0 #000; }
+.card .cl { font-family: var(--display); font-weight: 700; font-size: 10px; color: #1F7A3A; }
+.card:last-child .cl { color: #000; }
+.card .ct { font-family: var(--body); font-weight: 900; }
+.card .cd { color: var(--muted); }
+.post-foot, .post-foot a { color: var(--muted); }
+.nowbar { background: #fff; border-top: 3px solid #000; }
+.nowbar button { background: #FFE500; border: 2px solid #000; color: #000; }
+.nowbar .nk { color: #1F7A3A; font-family: var(--display); }
+.nowbar .nt { font-family: var(--body); font-weight: 900; color: #000; }
+.pagefoot { border-top: 3px solid #000; color: var(--muted); }
+body::before { background: var(--bg); }
 </style>
 
 <div class="wrap">
   <header class="masthead">
     <div>
+      <a class="fwbrand" href="https://github.com/wellingtonsaam/firmwave-mflasher-plus"><span class="fwname">FirmWave</span><span class="fwicon" aria-hidden="true"><svg viewBox="22 48 122 82" fill="none"><path d="M51 73.5H35.5M115 73.5H130.5M83 85.5V99.5L99 115.5" stroke-width="6" stroke="#000" stroke-linecap="round" stroke-linejoin="round"/><circle cx="35.5" cy="73.5" r="8" fill="#FF6B6B" stroke-width="5" stroke="#000"/><circle cx="130.5" cy="73.5" r="8" fill="#FF6B6B" stroke-width="5" stroke="#000"/><circle cx="99" cy="115.5" r="8" fill="#FF6B6B" stroke-width="5" stroke="#000"/><path d="M51 73.5C58.1 56.2 65.2 56.2 72.3 73.5C79.4 90.8 86.6 90.8 93.7 73.5C100.8 56.2 107.9 56.2 115 73.5" stroke-width="10" stroke="#000" stroke-linecap="round"/></svg></span><span class="fwformer">formerly M-Flasher+</span></a>
       <div class="eyebrow">M-VAVE FM-1 · recovery guide</div>
       <h1>FM-1 Best Practices</h1>
       <p class="lede">Install m-bootloader first, keep backups, and know the way back when a write goes wrong. 21 short guides in 4 chapters.</p>
@@ -211,6 +285,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
   </nav>
 
   <footer class="pagefoot">
+    <div>A guide by FirmWave (formerly M-Flasher+): <a href="https://github.com/wellingtonsaam/firmwave-mflasher-plus" target="_blank" rel="noopener">github.com/wellingtonsaam/firmwave-mflasher-plus</a></div>
     <div>m-bootloader: <a href="https://github.com/jvitkauskas/m-bootloader" target="_blank" rel="noopener">github.com/jvitkauskas/m-bootloader</a></div>
     <div>FM-1 screens are drawn from the m-bootloader source code. Size and flash values on them are examples.</div>
   </footer>
@@ -239,7 +314,7 @@ const POSTS = [
   { n:1, title:"Install m-bootloader first", sub:"It is insurance against bricks: a way back that does not depend on the firmware.",
     label:"What it adds at power-on", steps:["Hold REC → download mode, with any firmware or none.","Hold PLAY → recovery menu → MIDI MODE.","Broken firmware? MIDI MODE opens by itself (2.4)."],
     screen:["menu","FM-1 screen · PLAY at power-on"],
-    cards:[["REC","Download mode","A flasher (M-Flasher, MvaveFM1Unbricker, jl-uboot-tool) reads and writes all of it."],["PLAY","MIDI MODE","Browser installers: firmware authors', M-Flasher +."],["Automatic","Broken firmware","MIDI MODE opens on its own."]] },
+    cards:[["REC","Download mode","A flasher (M-Flasher, MvaveFM1Unbricker, jl-uboot-tool) reads and writes all of it."],["PLAY","MIDI MODE","Browser installers: firmware authors', FirmWave."],["Automatic","Broken firmware","MIDI MODE opens on its own."]] },
   { n:2, title:"Install it while the FM-1 still works", sub:"Insurance is bought before the accident. Installing needs a working FM-1, or at least download mode.",
     label:"How", steps:["Use M-Flasher (or a fork) in download mode, or M-UPGRADE with the m-bootloader package.","Stock bootloader found → install m-bootloader 2.4.","Step 1 writes the boot area only: 4 sectors, 16 KiB.","Your firmware stays as it is: only the bootloader changes."],
     cards:[["Writes","Boot area only","4 sectors, 16 KiB."],["Tools","M-Flasher or M-UPGRADE","M-UPGRADE takes the m-bootloader .fwsc package."],["From then on","A way back","REC or PLAY at power-on."]] },
@@ -253,7 +328,7 @@ const POSTS = [
     label:"Find out", steps:["Which firmware is running.","Stock bootloader or m-bootloader.","Older or newer chip.","Which way back this FM-1 has today."],
     cards:[["Download mode","Any flasher","Reads everything, boot area included."],["USB MIDI","A browser page","Reads through the firmware or MIDI MODE."],["Then","Decide","Pick the path for that FM-1."]] },
   { n:6, title:"Get firmware from its author", sub:"Use the release its author publishes, not a copy passed around.",
-    label:"How", steps:["Download it from the author's repository or installer page.","Catalogs point to the same releases: The Firmware Hub, M-Flasher +.","Read the release notes: what changes, what is kept.","Back up, then write."],
+    label:"How", steps:["Download it from the author's repository or installer page.","Catalogs point to the same releases: The Firmware Hub, FirmWave.","Read the release notes: what changes, what is kept.","Back up, then write."],
     cards:[["Source","Author's release","Repository or installer page."],["Read","Release notes","What changes, what is kept."],["Before","A backup","Every time."]] },
   { n:7, title:"Know your rescue keys", sub:"Which key, when, and what it opens.",
     label:"At power-on, with m-bootloader", steps:["REC → download mode → a flasher.","PLAY → menu → MIDI MODE → a browser installer.","PLAY → menu → Boot anyway: start the firmware once.","Firmware running: OCT- + OCT+ for 5 s → download mode, only on Felucca, SLOOP and Snoop37."],
