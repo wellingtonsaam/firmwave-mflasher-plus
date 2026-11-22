@@ -1,20 +1,20 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-Upstream-Name: M-Flasher +
-Upstream-Contact: Wellington Saam <https://github.com/wellingtonsaam/m-flasher-plus/issues>
-Source: https://github.com/wellingtonsaam/m-flasher-plus
+Upstream-Name: FirmWave
+Upstream-Contact: Wellington Saam <https://github.com/wellingtonsaam/firmwave-mflasher-plus/issues>
+Source: https://github.com/wellingtonsaam/firmwave-mflasher-plus
 
 Files: *
 Copyright: 2026 Julius Vitkauskas
- 2026 Wellington Saam (M-Flasher + additions)
+ 2026 Wellington Saam (FirmWave additions)
 License: MIT
 
-Files: usr/bin/m-flasher-plus
+Files: usr/bin/firmwave
 Comment: The executable also contains the m-bootloader builds and its flash
  loader (MIT, https://github.com/jvitkauskas/m-bootloader), and the fonts
  Barlow Condensed, IBM Plex Mono, Share Tech Mono, VT323 and Saira (OFL-1.1).
- See https://github.com/wellingtonsaam/m-flasher-plus/blob/plus/data/NOTICE.md
+ See https://github.com/wellingtonsaam/firmwave-mflasher-plus/blob/plus/data/NOTICE.md
 Copyright: 2026 Julius Vitkauskas
- 2026 Wellington Saam (M-Flasher + additions)
+ 2026 Wellington Saam (FirmWave additions)
 License: MIT and OFL-1.1
 
 License: MIT

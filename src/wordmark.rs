@@ -166,7 +166,7 @@ pub fn draw(painter: &eframe::egui::Painter, x: f32, baseline: f32, cap: f32, co
     w.width * k
 }
 
-/// The "+" of M-Flasher +, after the wordmark: outlined as "-FLASHER" and
+/// The "+" of FirmWave, after the wordmark: outlined as "-FLASHER" and
 /// leaning with its italic. Its left end at `x`; returns its width.
 pub fn plus(painter: &eframe::egui::Painter, x: f32, baseline: f32, cap: f32, color: Color32) -> f32 {
     let (h, a) = (0.3 * cap, 0.09 * cap); // half its size, half a bar

@@ -1,16 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-  <id>io.github.wellingtonsaam.m-flasher-plus</id>
+  <id>io.github.wellingtonsaam.firmwave</id>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>MIT AND OFL-1.1</project_license>
-  <name>M-Flasher Plus</name>
+  <name>FirmWave</name>
   <summary>Back up, restore and reinstall the firmware of M-VAVE synthesizers</summary>
   <developer id="io.github.wellingtonsaam">
     <name>Wellington Saam</name>
   </developer>
   <description>
     <p>
-      M-Flasher + backs up, restores and reinstalls the firmware of an M-VAVE FM-1 or
+      FirmWave backs up, restores and reinstalls the firmware of an M-VAVE FM-1 or
       SMK-37 Pro / Elite over USB, and installs m-bootloader. It talks to the
       chip's built-in USB download mode, so it also works when the firmware on the
       unit is broken.
@@ -23,17 +23,17 @@
     </ul>
     <p>Unofficial: not affiliated with M-VAVE or JieLi.</p>
   </description>
-  <launchable type="desktop-id">io.github.wellingtonsaam.m-flasher-plus.desktop</launchable>
-  <url type="homepage">https://github.com/wellingtonsaam/m-flasher-plus</url>
-  <url type="bugtracker">https://github.com/wellingtonsaam/m-flasher-plus/issues</url>
+  <launchable type="desktop-id">io.github.wellingtonsaam.firmwave.desktop</launchable>
+  <url type="homepage">https://github.com/wellingtonsaam/firmwave-mflasher-plus</url>
+  <url type="bugtracker">https://github.com/wellingtonsaam/firmwave-mflasher-plus/issues</url>
   <screenshots>
     <screenshot type="default">
-      <image>https://raw.githubusercontent.com/wellingtonsaam/m-flasher-plus/main/docs/screenshot.jpg</image>
+      <image>https://raw.githubusercontent.com/wellingtonsaam/firmwave/main/docs/screenshot.jpg</image>
       <caption>Connected to an SMK-37 Pro: the device, the operations and the flash map</caption>
     </screenshot>
   </screenshots>
   <provides>
-    <binary>m-flasher-plus</binary>
+    <binary>firmwave</binary>
     <!-- a unit in download mode -->
     <modalias>usb:v4C4Ap8057d*</modalias>
   </provides>

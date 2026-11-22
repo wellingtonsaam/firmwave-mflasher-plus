@@ -210,6 +210,12 @@ pub struct Shared {
     pub restore_review: bool,
     /// Library INSTALL with no unit in download mode: the firmware (id) to plan once one is.
     pub install_after: Option<String>,
+    /// INSTALL M-BOOTLOADER with no unit in download mode: m-bootloader is
+    /// planned once one is read.
+    pub boot_after: bool,
+    /// INSTALL M-BOOTLOADER's unit is read: the window chooses m-bootloader and
+    /// opens its review.
+    pub boot_review: bool,
     /// How to put the unit in download mode by hand, shown while INSTALL waits for it.
     pub how_to: Option<String>,
     /// Library INSTALL planned: the window goes back to DEVICE, its firmware form open.
@@ -238,7 +244,7 @@ pub struct Controller {
     shared: Arc<Mutex<Shared>>,
     unit: Arc<Mutex<Option<Unit>>>,
     plan: Arc<Mutex<Option<Plan>>>,
-    /// The unit M-Flasher + had no rights to open (the system's dialog for
+    /// The unit FirmWave had no rights to open (the system's dialog for
     /// administrator rights cancelled, Linux's udev rule missing), or on
     /// Windows could not open at all: not tried, nor asked about, again every
     /// scan, only once it is reconnected.
@@ -302,6 +308,8 @@ impl Shared {
             review_next: false,
             restore_review: false,
             install_after: None,
+            boot_after: false,
+            boot_review: false,
             how_to: None,
             library_review: false,
             library_choice: None,
@@ -361,8 +369,10 @@ impl Controller {
             picking: Arc::new(AtomicU64::new(0)),
             ctx,
         };
-        c.log(format!("M-Flasher + {} started · m-bootloader {open_version} bundled", env!("CARGO_PKG_VERSION")));
-        c.refresh_backups();
+        c.log(format!("FirmWave {} started · m-bootloader {open_version} bundled", env!("CARGO_PKG_VERSION")));
+        // the backups' list in the background: their files can be in iCloud only, and the window must open anyway
+        let refresher = c.clone();
+        std::thread::spawn(move || refresher.refresh_backups());
         let scanner = c.clone();
         std::thread::spawn(move || scanner.scan_loop());
         c
@@ -442,6 +452,11 @@ impl Controller {
     // ---- connection ----
 
     fn scan_loop(&self) {
+        // FIRMWAVE_PREVIEW=1: the window only, for screenshots of the design; no unit is looked for or touched
+        if std::env::var_os("FIRMWAVE_PREVIEW").is_some() {
+            self.log("Preview: not looking for units (FIRMWAVE_PREVIEW)".into());
+            return;
+        }
         loop {
             if self.shared.lock().unwrap().watching_restart {
                 let ports = crate::midi::port_names();
@@ -590,7 +605,7 @@ impl Controller {
             Mode::Bootloader => "m-bootloader was installed",
             _ => "The firmware was installed",
         };
-        say(AlertKind::Done, format!("{what} and verified ({total} sectors), and the FM-1 restarted. M-Flasher + couldn't \
+        say(AlertKind::Done, format!("{what} and verified ({total} sectors), and the FM-1 restarted. FirmWave couldn't \
             confirm it's running: the FM-1 didn't show up on USB within 60 seconds. Look at the FM-1 display: if the new \
             firmware shows up, it's ready. If not, switch the FM-1 off and on."));
     }
@@ -635,7 +650,13 @@ impl Controller {
                 // INSTALL was waiting for download mode: on with it
                 match c.with(|s| { s.how_to = None; s.install_after.take() }) {
                     Some(id) => c.library_plan(&id),
-                    None => Ok(()),
+                    None => {
+                        // INSTALL M-BOOTLOADER was waiting for download mode: on with it
+                        if c.with(|s| std::mem::take(&mut s.boot_after)) {
+                            c.boot_read();
+                        }
+                        Ok(())
+                    }
                 }
             });
             let mut f = c.failures.lock().unwrap();
@@ -939,7 +960,7 @@ impl Controller {
                     "No file dialog: it goes through the XDG desktop portal, which is not \
                      installed here. Add xdg-desktop-portal and the backend for your desktop \
                      (xdg-desktop-portal-gtk, -kde or -gnome). The command line takes the file \
-                     without one: see `m-flasher-plus --help`."
+                     without one: see `firmwave --help`."
                         .into(),
                 );
             }
@@ -1103,7 +1124,7 @@ impl Controller {
         self.work("the library", move |c| {
             // download mode first: the soft key, or the keys by hand (then the scan carries on)
             if c.unit.lock().unwrap().is_none() {
-                match c.reach_download_mode(true)? {
+                match c.reach_download_mode("INSTALL")? {
                     Some(path) => c.connect_now(&path)?,
                     None => {
                         c.with(|s| s.install_after = Some(id));
@@ -1113,6 +1134,43 @@ impl Controller {
             }
             c.library_plan(&id)
         });
+    }
+
+    /// INSTALL M-BOOTLOADER in one click: with no unit read yet, the unit is put
+    /// in download mode and read first (as CHECK FM1 STATUS), then m-bootloader
+    /// is chosen and its review opens. The flash is always read before anything
+    /// is planned: the reading picks the board's m-bootloader and keeps the
+    /// unit's configuration.
+    pub fn install_bootloader(&self) {
+        self.work("checking the unit", |c| {
+            if c.unit.lock().unwrap().is_none() {
+                match c.reach_download_mode("INSTALL M-BOOTLOADER")? {
+                    Some(path) => c.connect_now(&path)?,
+                    None => {
+                        c.with(|s| s.boot_after = true);
+                        return Ok(());
+                    }
+                }
+            }
+            c.boot_read();
+            Ok(())
+        });
+    }
+
+    /// The unit for INSTALL M-BOOTLOADER is read: the window takes it from
+    /// here, unless it has m-bootloader already.
+    fn boot_read(&self) {
+        let open = self.with(|s| s.device.as_ref().is_some_and(|d| d.boot_open));
+        if open {
+            self.log("m-bootloader is installed already: nothing to install".into());
+        } else {
+            self.with(|s| s.boot_review = true);
+        }
+    }
+
+    /// INSTALL M-BOOTLOADER's review: taken by the window.
+    pub fn take_boot_review(&self) -> bool {
+        self.with(|s| std::mem::take(&mut s.boot_review))
     }
 
     /// INSTALL's wait for download mode given up.
@@ -1126,7 +1184,7 @@ impl Controller {
                 c.drop_unit();
                 return c.connect_now(&path);
             }
-            match c.reach_download_mode(false)? {
+            match c.reach_download_mode("CHECK FM1 STATUS")? {
                 Some(path) => c.connect_now(&path),
                 // switched by hand: the scan reads it when it shows up
                 None => Ok(()),
@@ -1135,7 +1193,7 @@ impl Controller {
     }
 
     pub fn cancel_install_wait(&self) {
-        if self.with(|s| { s.how_to = None; s.install_after.take() }).is_some() {
+        if self.with(|s| { s.how_to = None; std::mem::take(&mut s.boot_after) | s.install_after.take().is_some() }) {
             self.log("Install cancelled".into());
         }
     }
@@ -1147,7 +1205,7 @@ impl Controller {
     /// The unit in download mode for INSTALL: the one already in it, or the one
     /// on USB MIDI switched by the soft key. None when it has to be switched by
     /// hand: `how_to` then says how, for this unit as last read.
-    fn reach_download_mode(&self, install: bool) -> Result<Option<String>, Error> {
+    fn reach_download_mode(&self, button: &str) -> Result<Option<String>, Error> {
         let devs = find_devices();
         match devs.len() {
             0 => {}
@@ -1183,7 +1241,7 @@ impl Controller {
             self.log("No unit in download mode or running on USB MIDI".into());
         }
         let (rescue, firmware, model) = last_unit();
-        self.with(|s| s.how_to = Some(how_to(&rescue, &firmware, &model, running.as_deref(), install)));
+        self.with(|s| s.how_to = Some(how_to(&rescue, &firmware, &model, running.as_deref(), button)));
         Ok(None)
     }
 
@@ -1368,7 +1426,7 @@ impl Controller {
         }
     }
 
-    /// macOS: M-Flasher +'s folders left to root by a run with sudo (the library's favorites and packages
+    /// macOS: FirmWave's folders left to root by a run with sudo (the library's favorites and packages
     /// can't be written then) are given back through the helper, which runs once the unit is reached.
     #[cfg(target_os = "macos")]
     fn give_back_folders(&self) {
@@ -1377,9 +1435,9 @@ impl Controller {
             return;
         }
         match crate::scsi::macos::give_back(&dirs) {
-            Ok(n) => self.log(format!("Gave back to you {n} files of M-Flasher +'s folders (an M-Flasher + run with sudo \
+            Ok(n) => self.log(format!("Gave back to you {n} files of FirmWave's folders (an FirmWave run with sudo \
                                        had left them to the administrator)")),
-            Err(e) => self.log(format!("M-Flasher +'s folders are partly the administrator's (a run with sudo): {e}")),
+            Err(e) => self.log(format!("FirmWave's folders are partly the administrator's (a run with sudo): {e}")),
         }
     }
 
@@ -1517,9 +1575,13 @@ fn device_view(u: &Unit) -> DeviceView {
     }
 }
 
-/// Which firmware a unit holds by name: the one installed with that code (installed.json, next to the
-/// backups), else a package saved in the library that would change nothing.
+/// Which firmware a unit holds by name: the name the firmware gives itself (FWNAME= in app.bin), else the one
+/// installed with that code (installed.json, next to the backups), else a package saved in the library that would
+/// change nothing.
 fn firmware_named(u: &Unit, backup_dir: &Path) -> Option<String> {
+    if let Some(n) = u.analysis.fw_name.clone() {
+        return Some(n);                         // first: the name the firmware gives itself (FWNAME= in app.bin)
+    }
     if let Some(n) = crate::library::installed_name(backup_dir, &u.flash) {
         return Some(n);
     }
@@ -1539,13 +1601,16 @@ fn recent_backups(dir: &Path, n: usize) -> Vec<BackupInfo> {
         .collect();
     v.sort_by(|a, b| b.0.cmp(&a.0));
     v.into_iter().take(n).map(|(t, p)| {
-        let json = std::fs::read_to_string(p.with_extension("json")).unwrap_or_default();
+        // a backup only in iCloud: its .json is not read (that would wait for the download), it says so instead
+        let in_cloud = crate::cloud::only_in_cloud(&p) || crate::cloud::only_in_cloud(&p.with_extension("json"));
+        let json = if in_cloud { String::new() } else { std::fs::read_to_string(p.with_extension("json")).unwrap_or_default() };
         let field = |k: &str| json.split(&format!("\"{k}\": \"")).nth(1).and_then(|r| r.split('"').next()).unwrap_or("").to_string();
         // the name it was installed by first, then what the firmware calls itself
         let firmware = match (field("firmware name"), field("firmware")) {
             (n, f) if !n.is_empty() && n != f => format!("{n} · {f}"),
             (_, f) => f,
         };
+        let firmware = if in_cloud { "only in iCloud: download it in the Finder first".to_string() } else { firmware };
         let time: chrono::DateTime<chrono::Local> = t.into();
         BackupInfo { name: p.file_name().unwrap().to_string_lossy().into_owned(),
                      time: time.format("%Y-%m-%d %H:%M").to_string(), firmware }
@@ -1571,7 +1636,8 @@ fn remember_unit(u: &Unit, view: &DeviceView) {
 
 /// The last unit read: rescue ("yes", "no", "" unknown), firmware, model.
 fn last_unit() -> (String, String, String) {
-    let text = std::fs::read_to_string(unit_memo()).unwrap_or_default();
+    let memo = unit_memo();
+    let text = if crate::cloud::only_in_cloud(&memo) { String::new() } else { std::fs::read_to_string(memo).unwrap_or_default() };
     let get = |k: &str| text.lines().find_map(|l| l.strip_prefix(k).and_then(|v| v.strip_prefix('=')))
         .unwrap_or_default().to_string();
     (get("rescue"), get("firmware"), get("model"))
@@ -1587,7 +1653,7 @@ pub(crate) fn unit_name(model: &str, midi: &str) -> &'static str {
     if model.contains("SMK") || midi.to_uppercase().contains("SMK") { "M-Vave SMK-37" } else { "M-Vave FM-1" }
 }
 
-pub(crate) fn how_to(rescue: &str, firmware: &str, model: &str, running: Option<&str>, install: bool) -> String {
+pub(crate) fn how_to(rescue: &str, firmware: &str, model: &str, running: Option<&str>, button: &str) -> String {
     let rec = if model.contains("SMK") { "SEQ REC" } else { "REC" };
     let u = if model.contains("SMK") { "SMK-37" } else { "FM-1" };
     let fw = format!("{firmware} {}", running.unwrap_or_default()).to_lowercase();
@@ -1596,30 +1662,34 @@ pub(crate) fn how_to(rescue: &str, firmware: &str, model: &str, running: Option<
         // the unit by its model, not by the name its firmware gives the MIDI port ("Caravel"): that is metadata
         Some(n) => format!("The {} did not switch automatically to Download Mode. Switch it manually following these steps:",
                            unit_name(model, n)),
-        None => format!("M-Flasher + can't see your M-Vave {u} running. Check it is connected and switched on, or switch it \
+        None => format!("FirmWave can't see your M-Vave {u} running. Check it is connected and switched on, or switch it \
                          manually following these steps:"),
     };
     let keys = match rescue {
-        "yes" => format!("1 · Switch it off.\n2 · Hold {rec} and switch {u} on.\n3 · When M-Flasher + finds your {u}, release the \
+        "yes" => format!("1 · Switch it off.\n2 · Hold {rec} and switch {u} on.\n3 · When FirmWave finds your {u}, release the \
                           {rec} button.{}",
                          if oct { format!("\nOr, if your {u} is running, hold OCT- and OCT+ buttons together for 5 seconds.") } else { String::new() }),
         _ if oct => format!("If your {u} is running, hold OCT- and OCT+ buttons together for 5 seconds."),
-        "no" => format!("It has M-VAVE's original bootloader: its buttons can't do it, only the message from M-Flasher +. Switch \
+        "no" => format!("It has M-VAVE's original bootloader: its buttons can't do it, only the message from FirmWave. Switch \
                          it on, connect it with a data cable (some cables only charge) and press {} again.",
-                        if install { "INSTALL" } else { "CHECK FM1 STATUS" }),
+                        button),
         _ => format!("· With m-bootloader: hold {rec} while switching {u} on.\n\
                       · With Felucca, SLOOP or Snoop37 running: hold OCT- and OCT+ buttons together for 5 seconds.\n\
-                      · With M-VAVE's own firmware: switch it on, connect it and press {} again: M-Flasher + switches it.",
-                     if install { "INSTALL" } else { "CHECK FM1 STATUS" }),
+                      · With M-VAVE's own firmware: switch it on, connect it and press {} again: FirmWave switches it.",
+                     button),
     };
-    format!("{why}\n{keys}\nM-Flasher + needs Download Mode to check your {u} properly.")
+    format!("{why}\n{keys}\nFirmWave needs Download Mode to check your {u} properly.")
 }
 
-/// The operation log kept on disk too, in M-Flasher +'s own folder (see
+/// The operation log kept on disk too, in FirmWave's own folder (see
 /// `default_log_path`): the window shows only its last lines. Past 1 MiB the
-/// file starts again, the last one kept as m-flasher-plus.log.1.
+/// file starts again, the last one kept as firmwave.log.1.
 pub(crate) fn log_to_file(path: &Path, text: &str) {
     use std::io::Write;
+    // a log only in iCloud: appending would wait for its download (the window too, at start): not written
+    if crate::cloud::only_in_cloud(path) {
+        return;
+    }
     if std::fs::metadata(path).is_ok_and(|m| m.len() > 1 << 20) {
         let _ = std::fs::rename(path, path.with_extension("log.1"));
     }

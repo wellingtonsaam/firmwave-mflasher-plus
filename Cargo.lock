@@ -832,6 +832,28 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "aedcfb3409746eddb02b9e19ebda1c3394f759a152e48ee875a0844d1b955484"
 
 [[package]]
+name = "firmwave"
+version = "2.0.0"
+dependencies = [
+ "chrono",
+ "eframe",
+ "embed-manifest",
+ "libc",
+ "lyon_tessellation",
+ "midir",
+ "regex",
+ "rfd",
+ "rusb",
+ "serde_json",
+ "sha2",
+ "skrifa",
+ "ureq",
+ "wgpu",
+ "windows-sys 0.61.2",
+ "winresource",
+]
+
+[[package]]
 name = "flate2"
 version = "1.1.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1596,28 +1618,6 @@ dependencies = [
  "float_next_after",
  "lyon_path",
  "num-traits",
-]
-
-[[package]]
-name = "m-flasher-plus"
-version = "1.0.3"
-dependencies = [
- "chrono",
- "eframe",
- "embed-manifest",
- "libc",
- "lyon_tessellation",
- "midir",
- "regex",
- "rfd",
- "rusb",
- "serde_json",
- "sha2",
- "skrifa",
- "ureq",
- "wgpu",
- "windows-sys 0.61.2",
- "winresource",
 ]
 
 [[package]]

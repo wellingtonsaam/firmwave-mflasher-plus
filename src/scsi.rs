@@ -317,7 +317,7 @@ mod imp {
                 if e == ERROR_ACCESS_DENIED {
                     // only with administrator rights: without, the helper is used (Device::open)
                     return Err(ScsiError::Failed(format!(
-                        "command {} refused by Windows (access denied, error 5) although M-Flasher + has administrator \
+                        "command {} refused by Windows (access denied, error 5) although FirmWave has administrator \
                          rights: security software or a policy that blocks removable drives can do that",
                         cmd_name(cdb)
                     )));
@@ -564,8 +564,8 @@ pub fn permission_advice() -> String {
 /// `permission_advice` over the directories to look in, so that it can be tested.
 #[cfg(target_os = "linux")]
 pub(crate) fn permission_advice_in(rule_dirs: &[&std::path::Path], seats: &[&std::path::Path]) -> String {
-    // M-Flasher +'s own rule, or M-Flasher's: either gives the unit to the user
-    const RULES: [&str; 2] = ["70-m-flasher-plus.rules", "70-m-flasher.rules"];
+    // FirmWave's own rule (70-m-flasher-plus.rules before 2.0.0), or M-Flasher's: any gives the unit to the user
+    const RULES: [&str; 3] = ["70-firmwave.rules", "70-m-flasher-plus.rules", "70-m-flasher.rules"];
     if !rule_dirs.iter().any(|dir| RULES.iter().any(|rule| dir.join(rule).exists())) {
         return "install the udev rule and reconnect the unit (see README.txt), or run as root".into();
     }
@@ -585,11 +585,11 @@ pub(crate) fn permission_advice_in(rule_dirs: &[&std::path::Path], seats: &[&std
 }
 
 /// What to do when `needs_sg_driver`, for the window and the command line.
-pub const SG_DRIVER: &str = "a unit is in download mode, but Linux's SCSI generic driver, which M-Flasher + reaches it \
+pub const SG_DRIVER: &str = "a unit is in download mode, but Linux's SCSI generic driver, which FirmWave reaches it \
                              through, is not loaded: run `sudo modprobe sg`, then try again";
 
 /// Linux: a unit is in download mode on USB, but the SCSI generic driver that
-/// M-Flasher + finds it through isn't loaded.
+/// FirmWave finds it through isn't loaded.
 #[cfg(all(target_os = "linux", not(feature = "usb")))]
 pub fn needs_sg_driver() -> bool {
     use std::path::Path;

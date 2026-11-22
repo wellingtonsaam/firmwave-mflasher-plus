@@ -21,4 +21,4 @@ pyftsubset SairaExpanded-BlackItalic.ttf --text=M-FLASHER --layout-features= --o
 ```
 
 `icon-256.png` is the window's icon on macOS; `../macos/render.sh` makes it,
-`../linux/m-flasher-plus.png` and `../windows/m-flasher-plus.ico` from `../macos/icon.svg`.
+`../linux/firmwave.png` and `../windows/firmwave.ico` from `../macos/icon.svg`.

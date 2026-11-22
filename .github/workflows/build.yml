@@ -38,15 +38,15 @@ jobs:
       - run: cargo build --release
       - name: Package
         run: |
-          mkdir -p pkg/m-flasher-plus
-          cp target/release/m-flasher-plus linux/70-m-flasher-plus.rules linux/m-flasher-plus.png linux/README.txt LICENSE pkg/m-flasher-plus/
-          tar -C pkg -czf m-flasher-plus-linux-${{ matrix.arch }}.tar.gz m-flasher-plus
-          ls -l target/release/m-flasher-plus m-flasher-plus-linux-${{ matrix.arch }}.tar.gz
-          file target/release/m-flasher-plus
+          mkdir -p pkg/firmwave
+          cp target/release/firmwave linux/70-firmwave.rules linux/firmwave.png linux/README.txt LICENSE pkg/firmwave/
+          tar -C pkg -czf firmwave-linux-${{ matrix.arch }}.tar.gz firmwave
+          ls -l target/release/firmwave firmwave-linux-${{ matrix.arch }}.tar.gz
+          file target/release/firmwave
       - uses: actions/upload-artifact@v7
         with:
-          name: m-flasher-plus-linux-${{ matrix.arch }}
-          path: m-flasher-plus-linux-${{ matrix.arch }}.tar.gz
+          name: firmwave-linux-${{ matrix.arch }}
+          path: firmwave-linux-${{ matrix.arch }}.tar.gz
       - name: Packages (.deb, .rpm)
         env:
           GH_TOKEN: ${{ github.token }}
@@ -61,7 +61,7 @@ jobs:
           ls -l dist
       - uses: actions/upload-artifact@v7
         with:
-          name: m-flasher-plus-linux-${{ matrix.arch }}-packages
+          name: firmwave-linux-${{ matrix.arch }}-packages
           path: dist/*
 
   packages-test:
@@ -87,7 +87,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/download-artifact@v7
         with:
-          name: m-flasher-plus-linux-${{ matrix.arch }}-packages
+          name: firmwave-linux-${{ matrix.arch }}-packages
           path: dist
       - name: Install and run in ${{ matrix.image }}
         run: docker run --rm -v "$PWD:/w" -w /w '${{ matrix.image }}' linux/package/test-install.sh dist/*.${{ matrix.pkg }}
@@ -112,7 +112,7 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory pkg | Out-Null
-          Copy-Item target/release/m-flasher-plus.exe pkg/M-Flasher-Plus.exe
+          Copy-Item target/release/firmwave.exe pkg/FirmWave.exe
           Copy-Item windows/README.txt, LICENSE pkg/
       - name: Which signature
         # SignPath signs the program: with the test certificate on branches, with
@@ -138,8 +138,8 @@ jobs:
         id: unsigned
         uses: actions/upload-artifact@v7
         with:
-          name: M-Flasher-Plus-windows-unsigned
-          path: pkg/M-Flasher-Plus.exe
+          name: FirmWave-windows-unsigned
+          path: pkg/FirmWave.exe
       - name: Sign
         if: steps.signing.outputs.policy != ''
         uses: signpath/github-action-submit-signing-request@v3
@@ -157,20 +157,20 @@ jobs:
         if: steps.signing.outputs.policy != ''
         shell: pwsh
         run: |
-          $signature = Get-AuthenticodeSignature signed/M-Flasher-Plus.exe
+          $signature = Get-AuthenticodeSignature signed/FirmWave.exe
           $signature | Format-List Status, StatusMessage, SignerCertificate
           if (-not $signature.SignerCertificate) { throw 'SignPath returned a program without a signature' }
-          Copy-Item signed/M-Flasher-Plus.exe pkg/M-Flasher-Plus.exe -Force
+          Copy-Item signed/FirmWave.exe pkg/FirmWave.exe -Force
       - name: Package
         # a zip: browsers warn about downloading a bare .exe
         shell: pwsh
         run: |
-          Compress-Archive pkg/* M-Flasher-Plus-windows.zip
-          Get-Item pkg/M-Flasher-Plus.exe, M-Flasher-Plus-windows.zip | Format-Table Name, Length
+          Compress-Archive pkg/* FirmWave-windows.zip
+          Get-Item pkg/FirmWave.exe, FirmWave-windows.zip | Format-Table Name, Length
       - uses: actions/upload-artifact@v7
         with:
-          name: M-Flasher-Plus-windows
-          path: M-Flasher-Plus-windows.zip
+          name: FirmWave-windows
+          path: FirmWave-windows.zip
 
   macos:
     # Intel: the Apple silicon runners queue for long stretches; lipo still makes one universal binary
@@ -183,21 +183,21 @@ jobs:
         run: |
           cargo build --release --target aarch64-apple-darwin
           cargo build --release --target x86_64-apple-darwin
-          lipo -create -output m-flasher-plus target/aarch64-apple-darwin/release/m-flasher-plus target/x86_64-apple-darwin/release/m-flasher-plus
-          lipo -info m-flasher-plus
-          otool -L m-flasher-plus
+          lipo -create -output firmwave target/aarch64-apple-darwin/release/firmwave target/x86_64-apple-darwin/release/firmwave
+          lipo -info firmwave
+          otool -L firmwave
       - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
       - name: The app and the disk image
         run: |
           v=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
-          macos/package.sh m-flasher-plus "$v" dist
-          mv dist/M-Flasher-Plus-$v-macos.dmg M-Flasher-Plus-macos.dmg
+          macos/package.sh firmwave "$v" dist
+          mv dist/FirmWave-$v-macos.dmg FirmWave-macos.dmg
       - uses: actions/upload-artifact@v7
         with:
-          name: M-Flasher-Plus-macos
-          path: M-Flasher-Plus-macos.dmg
+          name: FirmWave-macos
+          path: FirmWave-macos.dmg
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
@@ -212,16 +212,16 @@ jobs:
       - name: Name the files after the version
         run: |
           v=${GITHUB_REF_NAME#v}
-          mv M-Flasher-Plus-windows.zip M-Flasher-Plus-$v-windows.zip
-          mv m-flasher-plus-linux-x86_64.tar.gz m-flasher-plus-$v-linux-x86_64.tar.gz
-          mv m-flasher-plus-linux-aarch64.tar.gz m-flasher-plus-$v-linux-aarch64.tar.gz
-          mv M-Flasher-Plus-macos.dmg M-Flasher-Plus-$v-macos.dmg
+          mv FirmWave-windows.zip FirmWave-$v-windows.zip
+          mv firmwave-linux-x86_64.tar.gz firmwave-$v-linux-x86_64.tar.gz
+          mv firmwave-linux-aarch64.tar.gz firmwave-$v-linux-aarch64.tar.gz
+          mv FirmWave-macos.dmg FirmWave-$v-macos.dmg
       - uses: softprops/action-gh-release@v3
         with:
           files: |
-            M-Flasher-Plus-*-windows.zip
-            m-flasher-plus-*-linux-x86_64.tar.gz
-            m-flasher-plus-*-linux-aarch64.tar.gz
-            m-flasher-plus_*.deb
-            m-flasher-plus-*.rpm
-            M-Flasher-Plus-*-macos.dmg
+            FirmWave-*-windows.zip
+            firmwave-*-linux-x86_64.tar.gz
+            firmwave-*-linux-aarch64.tar.gz
+            firmwave_*.deb
+            firmwave-*.rpm
+            FirmWave-*-macos.dmg

@@ -82,7 +82,7 @@ final class BackupsView extends LinearLayout {
         list.removeAllViews();
         File[] bins = dir.listFiles((d, n) -> n.endsWith(".bin"));
         if (bins == null) bins = new File[0];
-        // newest first by when each was saved: the name holds the firmware too ("fm1-zp12-2.5-20261116-165332.bin")
+        // newest first by when each was saved: the name holds the firmware too ("20261116-165332-fm1-zp12-2.5.bin")
         Arrays.sort(bins, (a, b) -> Ui.savedAt(b).compareTo(Ui.savedAt(a)));
         count.setText(bins.length + (bins.length == 1 ? " BACKUP" : " BACKUPS"));
         if (bins.length == 0) {

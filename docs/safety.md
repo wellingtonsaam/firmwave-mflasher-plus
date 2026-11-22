@@ -1,6 +1,6 @@
 # Safety
 
-What M-Flasher + checks, so that a write cannot leave the unit worse off than a
+What FirmWave checks, so that a write cannot leave the unit worse off than a
 backup can repair.
 
 **Before writing**

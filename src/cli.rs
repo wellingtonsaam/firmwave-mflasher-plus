@@ -1,7 +1,7 @@
 //! Command-line mode (the same operations as the window):
 //!
 //! ```text
-//! m-flasher-plus find | download-mode | restart | info | backup [DIR] | restore BACKUP.bin [--keep-bootloader]
+//! firmwave find | download-mode | restart | info | backup [DIR] | restore BACKUP.bin [--keep-bootloader]
 //!           firmware PACKAGE.fwsc
 //!           bootloader [--stock PACKAGE.fwsc | --file UBOOT.boot]
 //!           run-ram IMAGE --addr ADDR [--call OPCODE]... [--read ADDR:LEN -o OUT]
@@ -18,7 +18,7 @@ use crate::scsi::{Device, ScsiError, find_devices};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
-const USAGE: &str = "usage: m-flasher-plus [find | download-mode | restart | info | backup [DIR] | restore BACKUP.bin [--keep-bootloader] |
+const USAGE: &str = "usage: firmwave [find | download-mode | restart | info | backup [DIR] | restore BACKUP.bin [--keep-bootloader] |
                  firmware PACKAGE.fwsc |
                  bootloader [--stock PACKAGE.fwsc | --file UBOOT.boot] |
                  run-ram IMAGE --addr ADDR [--call OPCODE]... [--read ADDR:LEN -o OUT] |
@@ -26,11 +26,11 @@ const USAGE: &str = "usage: m-flasher-plus [find | download-mode | restart | inf
                  library install ID [--skip-bootloader | --stock-bootloader] | midi-ports]
        options: --device PATH  --board fm1|smk37  --backup-dir DIR  --yes
                 --port NAME (find, download-mode: a MIDI port named otherwise taken for a unit;
-                             MFLASHER_PLUS_MIDI_PORTS=NAME,... does the same, for the window too)
+                             FIRMWAVE_MIDI_PORTS=NAME,... does the same, for the window too)
                 --restart (restore, firmware, bootloader: start the unit when written)
-       without arguments: the window (`m-flasher-plus run-ram --help`: the run-ram command)";
+       without arguments: the window (`firmwave run-ram --help`: the run-ram command)";
 
-const RUN_RAM_HELP: &str = "usage: m-flasher-plus run-ram IMAGE --addr ADDR [--call OPCODE]... [--read ADDR:LEN -o OUT] [--device PATH]
+const RUN_RAM_HELP: &str = "usage: firmwave run-ram IMAGE --addr ADDR [--call OPCODE]... [--read ADDR:LEN -o OUT] [--device PATH]
 
 Runs your own program in the unit's RAM, through the chip's download mode, and
 talks to it. It does not start the flash loader and does not touch the
@@ -63,13 +63,18 @@ pub fn default_backup_dir() -> PathBuf {
     let home = sudo_user_home().unwrap_or(home);
     let docs = home.join("Documents");
     let base = if docs.is_dir() { docs } else { home };
-    let dir = base.join("M-Flasher Plus").join("backups");
+    let dir = base.join("FirmWave").join("backups");
     static ADOPTED: std::sync::Once = std::sync::Once::new();
-    ADOPTED.call_once(|| adopt_old_backups(&dir, &base.join("M-Flasher").join("backups")));
+    ADOPTED.call_once(|| {
+        // FirmWave's folder was Documents/M-Flasher Plus until 2.0.0: all it holds comes along (copied;
+        // what is only in iCloud comes at a later start)
+        crate::migrate::adopt_folder(&base.join("FirmWave"), &base.join("M-Flasher Plus"));
+        adopt_old_backups(&dir, &base.join("M-Flasher").join("backups"));
+    });
     dir
 }
 
-/// M-Flasher + kept its backups in M-Flasher's folder (Documents/M-Flasher/backups) before it had a
+/// M-Flasher + (FirmWave's name until 2.0.0) kept its backups in M-Flasher's folder (Documents/M-Flasher/backups) before it had a
 /// folder of its own: the first time that one is missing, they are copied over, so none is lost from
 /// view. Copied, not moved: M-Flasher's own backups may be there too, and stay where it looks for them.
 pub(crate) fn adopt_old_backups(new: &Path, old: &Path) {
@@ -91,11 +96,11 @@ pub(crate) fn adopt_old_backups(new: &Path, old: &Path) {
     }
 }
 
-/// The operation log, in M-Flasher +'s own folder (Documents/M-Flasher Plus/m-flasher-plus.log), so
+/// The operation log, in FirmWave's own folder (Documents/FirmWave/firmwave.log), so
 /// that a log from this app never ends up in a report about M-Flasher.
 pub fn default_log_path() -> PathBuf {
     let backups = default_backup_dir();
-    backups.parent().map(Path::to_path_buf).unwrap_or(backups).join("m-flasher-plus.log")
+    backups.parent().map(Path::to_path_buf).unwrap_or(backups).join("firmwave.log")
 }
 
 /// The home folder of the user who ran sudo, when running as root under it.
@@ -204,7 +209,7 @@ fn pick_device(device: Option<String>) -> Result<String, Error> {
     let devs = find_devices();
     match devs.len() {
         0 if !crate::midi::find_units().is_empty() => {
-            Err(Error::Refused("the unit is running, not in download mode: `m-flasher-plus download-mode` switches it".into()))
+            Err(Error::Refused("the unit is running, not in download mode: `firmwave download-mode` switches it".into()))
         }
         0 if crate::scsi::needs_sg_driver() => Err(Error::Refused(SG_DRIVER.into())),
         0 => Err(Error::Refused("no unit in download mode found (a USB disk \"WL82 UBOOT1.00\")".into())),
@@ -339,7 +344,7 @@ fn main(args: Vec<String>) -> Result<(), Error> {
             "--with-bootloader" => {
                 return Err(Error::Refused("--with-bootloader was removed: installing firmware keeps the unit's \
                                            bootloader. To put back a package's stock bootloader, use \
-                                           `m-flasher-plus bootloader --stock PACKAGE.fwsc`"
+                                           `firmwave bootloader --stock PACKAGE.fwsc`"
                     .into()));
             }
             "--wipe-settings" => {
@@ -352,7 +357,7 @@ fn main(args: Vec<String>) -> Result<(), Error> {
             "--stock-bootloader" => install_opts.stock_bootloader = true,
             "--restart" => then_restart = true,
             "--version" => {
-                println!("M-Flasher + {}", env!("CARGO_PKG_VERSION"));
+                println!("FirmWave {}", env!("CARGO_PKG_VERSION"));
                 return Ok(());
             }
             "-h" | "--help" => {
@@ -385,7 +390,7 @@ fn main(args: Vec<String>) -> Result<(), Error> {
         for (name, unit) in ports {
             println!("{}\t{name}", if unit { "unit" } else { "-" });
         }
-        println!("A unit whose port has another name: --port NAME (or MFLASHER_PLUS_MIDI_PORTS=NAME for the window).");
+        println!("A unit whose port has another name: --port NAME (or FIRMWAVE_MIDI_PORTS=NAME for the window).");
         return Ok(());
     }
     if cmd == "find" {
@@ -461,7 +466,7 @@ fn main(args: Vec<String>) -> Result<(), Error> {
         println!("    {} {t}", if *strong { "*" } else { "-" });
     }
     if install.is_none() && cmd != "bootloader" && s.bootloader_suggestion().is_some() {
-        println!("Recommended: this unit has M-VAVE's stock bootloader. `m-flasher-plus bootloader` installs m-bootloader, \
+        println!("Recommended: this unit has M-VAVE's stock bootloader. `firmwave bootloader` installs m-bootloader, \
                   so that a firmware that fails to start can be reflashed from the unit's keys.");
     }
     if let Some(inst) = install {

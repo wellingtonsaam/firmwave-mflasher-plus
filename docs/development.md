@@ -2,15 +2,15 @@
 
 The JieLi AC791N's mask ROM has a USB download mode (UBOOT1.00): the chip
 shows up as a USB mass-storage device that takes vendor SCSI commands to
-write its RAM and jump into it. M-Flasher + writes a flash loader into RAM and
+write its RAM and jump into it. FirmWave writes a flash loader into RAM and
 starts it; the loader then reads, erases and writes the SPI flash. The loader
 comes from [m-bootloader](https://github.com/jvitkauskas/m-bootloader), which
 also specifies its commands. If another tool's loader is already running,
-M-Flasher + asks for the unit to be switched off and on. The protocol follows
+FirmWave asks for the unit to be switched off and on. The protocol follows
 [jl-uboot-tool](https://github.com/kagaimiq/jl-uboot-tool) by kagaimiq.
 
 The loader takes the flash's size from its ID once, when it starts, and without
-one refuses every read. M-Flasher + reuses a loader that is already running, so
+one refuses every read. FirmWave reuses a loader that is already running, so
 it checks for that with a small read, and starts a new one in the other slot
 once before giving up with the ID the chip now gives.
 
@@ -56,7 +56,7 @@ flash loader, the m-bootloader builds and the fonts are all inside it.
 | `src/ops.rs` | the actions and their safety rules |
 | `src/controller.rs` | the window's logic, in background threads |
 | `src/ui.rs` | the window: the panel and the flash map |
-| `src/wordmark.rs` | the striped "M-FLASHER +" lettering |
+| `src/wordmark.rs` | the striped lettering of FirmWave (not drawn since 2.0.0) |
 | `src/cli.rs` | the command line, including `run-ram` |
 | `data/` | the bundled flash loader and m-bootloader builds, from its [releases](https://github.com/jvitkauskas/m-bootloader/releases) ([NOTICE](../data/NOTICE.md)) |
 | `assets/` | fonts and the window icon ([README](../assets/README.md)) |
@@ -66,7 +66,7 @@ flash loader, the m-bootloader builds and the fonts are all inside it.
 ## Building
 
 ```sh
-cargo build --release          # target/release/m-flasher-plus
+cargo build --release          # target/release/firmwave
 cargo test --release           # FLASHER_TEST_DATA=DIR adds the tests with real flash images
 ```
 
@@ -97,7 +97,7 @@ their SVGs.
 
 Building the `.deb` and `.rpm` needs one tool beyond the Rust toolchain:
 [nFPM](https://nfpm.goreleaser.com), a single binary with no dependencies of
-its own. It is not needed to build or run M-Flasher + itself, only to package it.
+its own. It is not needed to build or run FirmWave itself, only to package it.
 
 ```sh
 # the latest release into ~/.local/bin, no root needed
@@ -147,8 +147,8 @@ What it needs, as tested on macOS:
 Then:
 
 ```sh
-sh android/build.sh            # android/build/m-flasher-plus.apk, signed with the debug key
-adb install -r android/build/m-flasher-plus.apk
+sh android/build.sh            # android/build/firmwave.apk, signed with the debug key
+adb install -r android/build/firmwave.apk
 ```
 
 The core is the same source as the desktop's: `android/rust/src/lib.rs` takes
@@ -172,7 +172,7 @@ keys, the app has to be uninstalled first, and that deletes what it keeps
 
 FM-1s sold from late 2026 have a UCUN UC25HQ80 flash (`0xB36014`) in place of the
 Puya P25Q80H (`0x856014`). Owners report backups and restores with M-Flasher on
-it, and many report m-bootloader working on it, so M-Flasher + no longer warns about
+it, and many report m-bootloader working on it, so FirmWave no longer warns about
 it. Early on, one unit did not start after m-bootloader 1.1 or 1.2 was installed,
 and why is not known ([#13](https://github.com/jvitkauskas/m-flasher/issues/13)).
 
@@ -186,7 +186,7 @@ m-bootloader 2.0 and newer do not read the boot configuration, so installing the
 keeps only the 34-byte chip-key record, and they may use the room up to there. 2.1 adds
 the five settings 1.3 and older require, at `0x3FA0`, so that those start if installed
 later; 2.0 had only the record, at `0x3FDC`. The ROM loads a full-size image on an FM-1
-and an SMK-37. Build `2.4-395e6cc`, on an FM-1 and an SMK-37 Pro: installing it with M-Flasher, firmware with a flipped bit, an erased sector or no app at all caught each time with MIDI mode opening by itself, **Boot anyway** starting it once, and download mode asked for from MIDI mode. Build `2.3-6bc8f45`, on an SMK-37 Pro: its package from the stock bootloader through the firmware's update route, MIDI mode opening by itself and a web install from it, and installing with M-Flasher +; on an FM-1, the same bootloader code at `0c24142`. Build `2.2-64f7c9c`, on the same two units: installing it, an official 016 update, its MIDI mode and RAM stage, and on the FM-1 M-UPGRADE. Build `2.1-861e43d`, on the same two units: 1.2 and 1.3 installed over it
+and an SMK-37. Build `2.4-395e6cc`, on an FM-1 and an SMK-37 Pro: installing it with M-Flasher, firmware with a flipped bit, an erased sector or no app at all caught each time with MIDI mode opening by itself, **Boot anyway** starting it once, and download mode asked for from MIDI mode. Build `2.3-6bc8f45`, on an SMK-37 Pro: its package from the stock bootloader through the firmware's update route, MIDI mode opening by itself and a web install from it, and installing with FirmWave; on an FM-1, the same bootloader code at `0c24142`. Build `2.2-64f7c9c`, on the same two units: installing it, an official 016 update, its MIDI mode and RAM stage, and on the FM-1 M-UPGRADE. Build `2.1-861e43d`, on the same two units: 1.2 and 1.3 installed over it
 start firmware, and it gives the same boot area over 2.0's configuration as over
 stock's, and through M-UPGRADE. Build `2.0-c43a32f`, the same bootloader code: installing with M-Flasher over 1.3 and with
 M-UPGRADE over 1.2, stock firmware, official 016 updates and Baud Girl's installer,

@@ -258,7 +258,7 @@ impl<F: Flash> Session<F> {
         self.display = true;
         // the name it was installed by, when known (a fork of Felucca calls itself Felucca)
         let firmware = screen_text(self.named.as_deref().unwrap_or(&self.analysis.firmware_text));
-        self.screen(&[(1, " M-FLASHER +", MINT), (3, " CONNECTED", WHITE), (5, &format!(" {}", screen_text(board.name)), LAV),
+        self.screen(&[(1, " FIRMWAVE", MINT), (3, " CONNECTED", WHITE), (5, &format!(" {}", screen_text(board.name)), LAV),
                       (6, &format!(" {firmware}"), LAV), (12, " READY", MINT)]);
     }
 
@@ -276,16 +276,17 @@ impl<F: Flash> Session<F> {
         create_dirs(&dir).map_err(|e| Error::Io(format!("cannot create {}: {e}", dir.display())))?;
         let stamp = chrono::Local::now().format("%Y%m%d-%H%M%S").to_string();
         let model = self.board().map(|b| b.key).unwrap_or("unknown");
-        // the firmware by the name it was installed by, when known: "fm1-zp12-2.5-20261116-153448.bin"
+        // when first, so that sorting by name is sorting by time; then the
+        // firmware by the name it was installed by, when known: "20261116-153448-fm1-zp12-2.5.bin"
         let model = match self.named.as_deref().map(file_part).filter(|n| !n.is_empty()) {
             Some(n) => format!("{model}-{n}"),
             None => model.to_string(),
         };
         // two backups in the same second: the second gets -2 (and so on). The
-        // name is taken by creating the file, so that another M-Flasher + saving
+        // name is taken by creating the file, so that another FirmWave saving
         // at the same moment gets the next one, and neither writes over the other's.
         let (path, file) = (1..)
-            .map(|i| dir.join(if i == 1 { format!("{model}-{stamp}.bin") } else { format!("{model}-{stamp}-{i}.bin") }))
+            .map(|i| dir.join(if i == 1 { format!("{stamp}-{model}.bin") } else { format!("{stamp}-{model}-{i}.bin") }))
             .filter(|p| !p.with_extension("json").exists())
             .find_map(|p| match create_new(&p) {
                 Ok(f) => Some(Ok((p, f))),
@@ -300,7 +301,7 @@ impl<F: Flash> Session<F> {
         }
         let sha: String = Sha256::digest(&self.flash).iter().map(|b| format!("{b:02x}")).collect();
         json += &format!("  \"sha256\": \"{sha}\",\n");
-        json += &format!("  \"saved\": \"{stamp}\",\n  \"tool\": \"m-flasher-plus {}\"\n}}\n", env!("CARGO_PKG_VERSION"));
+        json += &format!("  \"saved\": \"{stamp}\",\n  \"tool\": \"firmwave {}\"\n}}\n", env!("CARGO_PKG_VERSION"));
         let json_path = path.with_extension("json");
         let file = create_new(&json_path).map_err(|e| Error::Io(format!("cannot write {}: {e}", json_path.display())))?;
         write_synced(&json_path, file, json.as_bytes())?;
@@ -675,6 +676,58 @@ fn give_to_sudo_user(_path: &Path) {
             let _ = std::os::unix::fs::chown(_path, Some(uid), Some(gid));
         }
     }
+}
+
+/// Run with sudo (macOS needs it), what root made in the user's home goes back
+/// to the user: `path`, the folders above it up to the home folder and, with
+/// `tree`, everything in it. Only what root owns changes hands.
+pub fn give_back(_path: &Path, _tree: bool) {
+    #[cfg(all(unix, not(target_os = "android")))]
+    {
+        let id = |v| std::env::var(v).ok().and_then(|s| s.parse::<u32>().ok());
+        if let (Some(uid), Some(gid), Some(home)) = (id("SUDO_UID"), id("SUDO_GID"), crate::cli::sudo_user_home()) {
+            hand_back(_path, _tree, &home, 0, (uid, gid));
+        }
+    }
+}
+
+/// What `give_back` does, for any owner: the paths under `home` that `from`
+/// owns are given to `to` (links themselves, never what they point to). The
+/// paths given, in order.
+#[cfg(unix)]
+pub(crate) fn hand_back(path: &Path, tree: bool, home: &Path, from: u32, to: (u32, u32)) -> Vec<PathBuf> {
+    use std::os::unix::fs::MetadataExt;
+    let mut given = vec![];
+    if !path.starts_with(home) || path == home {
+        return given;
+    }
+    let mut give = |p: &Path| {
+        if std::fs::symlink_metadata(p).is_ok_and(|m| m.uid() == from)
+            && std::os::unix::fs::lchown(p, Some(to.0), Some(to.1)).is_ok()
+        {
+            given.push(p.to_path_buf());
+        }
+    };
+    let mut above: Vec<&Path> = path.ancestors().skip(1).take_while(|a| *a != home).collect();
+    above.reverse();
+    above.into_iter().for_each(&mut give);
+    give(path);
+    if tree {
+        let mut todo = vec![path.to_path_buf()];
+        while let Some(dir) = todo.pop() {
+            if !std::fs::symlink_metadata(&dir).is_ok_and(|m| m.is_dir()) {
+                continue;
+            }
+            let Ok(rd) = std::fs::read_dir(&dir) else { continue };
+            let mut names: Vec<PathBuf> = rd.flatten().map(|e| e.path()).collect();
+            names.sort();
+            for p in names {
+                give(&p);
+                todo.push(p);
+            }
+        }
+    }
+    given
 }
 
 /// The model by its key (for the command line's --board).

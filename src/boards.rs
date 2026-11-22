@@ -102,6 +102,8 @@ pub struct Analysis {
     pub firmware_text: String,
     /// The firmware's own model name ("SMK-37 Pro", ...), if found.
     pub model_name: Option<String>,
+    /// The name the firmware gives itself in app.bin ("FWNAME=FM1 Pocket Tutor 0.2"), if it gives one.
+    pub fw_name: Option<String>,
 }
 
 impl Analysis {
@@ -115,6 +117,7 @@ impl Analysis {
             app_status: AppStatus::NotFound,
             firmware_text: String::new(),
             model_name: None,
+            fw_name: None,
         };
         a.model(flash, flash_id, key);
         a.boot(flash);
@@ -218,6 +221,7 @@ impl Analysis {
             return;
         }
         let text = app_read(flash, BOOT_AREA, app.addr as usize, app.len as usize, key);
+        self.fw_name = fw_name(&text);
         let mut idents = find_identities(&text);
         idents.sort_by(|a, b| a.1.cmp(&b.1));
         idents.dedup();
@@ -253,6 +257,19 @@ impl Analysis {
             None => "unknown".into(),
         }
     }
+}
+
+/// The name a firmware gives itself: "FWNAME=" then up to 48 printable characters, ended by a NUL
+/// (docs/firmware-names.md). None when there is no such tag, or it is empty or not ended.
+pub fn fw_name(text: &[u8]) -> Option<String> {
+    const TAG: &[u8] = b"FWNAME=";
+    let at = text.windows(TAG.len()).position(|w| w == TAG)? + TAG.len();
+    let rest = &text[at..text.len().min(at + 49)];
+    let end = rest.iter().position(|&c| c == 0)?;
+    let v = &rest[..end];
+    (!v.is_empty() && v.iter().all(|c| (0x20..0x7f).contains(c)))
+        .then(|| String::from_utf8_lossy(v).trim().to_string())
+        .filter(|n| !n.is_empty())
 }
 
 fn contains(hay: &[u8], needle: &[u8]) -> bool {

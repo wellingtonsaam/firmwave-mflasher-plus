@@ -1,6 +1,6 @@
 package io.github.wellingtonsaam.mflasherplus;
 
-/** The Rust core (android/rust): M-Flasher +'s own modules over the usbfs file descriptor. */
+/** The Rust core (android/rust): FirmWave's own modules over the usbfs file descriptor. */
 public final class Native {
     static {
         System.loadLibrary("mflr_android");

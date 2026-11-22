@@ -37,7 +37,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Device screen (Figma A01): finds an FM-1 in download mode on USB, reads it with M-Flasher +'s core
+ * Device screen (Figma A01): finds an FM-1 in download mode on USB, reads it with FirmWave's core
  * and shows what it holds and its SAFETY CHECK. Read only: diagnose and backup. Nothing is written.
  */
 public class MainActivity extends Activity {
@@ -204,7 +204,7 @@ public class MainActivity extends Activity {
         } else {
             registerReceiver(receiver, f);
         }
-        say("M-Flasher + " + appVersion() + " on " + Build.MODEL + ", Android " + Build.VERSION.RELEASE);
+        say("FirmWave " + appVersion() + " on " + Build.MODEL + ", Android " + Build.VERSION.RELEASE);
         showWaiting();
         library.load();
         readUnit(false);
@@ -296,7 +296,7 @@ public class MainActivity extends Activity {
         bar.setGravity(Gravity.CENTER_VERTICAL);
         bar.setPadding(px(12), px(6), px(12), px(6));
         bar.setBackground(edge(BG, Ui.LINE, false));
-        TextView name = text("M-FLASHER +", MINT, 24, false);
+        TextView name = text("FIRMWAVE", MINT, 24, false);
         name.setTypeface(Ui.font(this, Ui.HEAD));
         name.setLetterSpacing(1f / 24);
         name.setOnClickListener(v -> about());
@@ -305,7 +305,7 @@ public class MainActivity extends Activity {
         android.widget.ImageView about = new android.widget.ImageView(this);
         about.setImageResource(getResources().getIdentifier("ic_info", "drawable", getPackageName()));
         about.setPadding(px(10), px(10), px(10), px(10));
-        about.setContentDescription("About M-Flasher +");
+        about.setContentDescription("About FirmWave");
         about.setOnClickListener(v -> about());
         bar.addView(about, new LinearLayout.LayoutParams(px(40), px(40)));
         unit = text("NO UNIT", DIM, 14, false);
@@ -640,11 +640,11 @@ public class MainActivity extends Activity {
             dialog("No backups yet", "Save one with SAVE BACKUP first.").setPositiveButton("OK", null).show();
             return;
         }
-        // newest first by when each was saved (its name holds the firmware too: "fm1-zp12-2.5-20261116-165332.bin")
+        // newest first by when each was saved (its name holds the firmware too: "20261116-165332-fm1-zp12-2.5.bin")
         java.util.Arrays.sort(all, (x, y) -> Ui.savedAt(y).compareTo(Ui.savedAt(x)));
         String[] names = new String[all.length];
         for (int i = 0; i < all.length; i++) {
-            // fm1-20261116-102922.bin: saved 16/11/2026 10:29
+            // 20261116-102922-fm1.bin: saved 16/11/2026 10:29
             java.util.regex.Matcher m = java.util.regex.Pattern.compile("(\\d{4})(\\d{2})(\\d{2})-(\\d{2})(\\d{2})").matcher(all[i].getName());
             names[i] = m.find() ? m.group(3) + "/" + m.group(2) + "/" + m.group(1) + " " + m.group(4) + ":" + m.group(5)
                     : all[i].getName();
@@ -710,10 +710,10 @@ public class MainActivity extends Activity {
     /** About: what this app is, and whose work it builds on. */
     private void about() {
         Ui.dialog(this)
-                .setTitle("M-Flasher + " + appVersion())
+                .setTitle("FirmWave " + appVersion())
                 .setMessage("Back up, restore and install the firmware of an M-VAVE FM-1 from this phone, through the "
                         + "chip's USB download mode.\n\n"
-                        + "M-Flasher + by Wellington Saam. Based on M-Flasher by Julius Vitkauskas (MIT).")
+                        + "FirmWave by Wellington Saam. Based on M-Flasher by Julius Vitkauskas (MIT).")
                 .setPositiveButton("CLOSE", null).show();
     }
 
@@ -730,14 +730,14 @@ public class MainActivity extends Activity {
     }
 
     /**
-     * The log kept on the phone too (Android/data/…/files/m-flasher-plus.log, in the app's own folder): the screen shows only
-     * its last lines. Past 1 MiB the file starts again, the last one kept as m-flasher-plus.log.1.
+     * The log kept on the phone too (Android/data/…/files/firmwave.log, in the app's own folder): the screen shows only
+     * its last lines. Past 1 MiB the file starts again, the last one kept as firmwave.log.1.
      */
     private void logToFile(String line) {
         File dir = getExternalFilesDir(null);
         if (dir == null) return;
-        File f = new File(dir, "m-flasher-plus.log");
-        if (f.length() > (1 << 20)) f.renameTo(new File(dir, "m-flasher-plus.log.1"));
+        File f = new File(dir, "firmwave.log");
+        if (f.length() > (1 << 20)) f.renameTo(new File(dir, "firmwave.log.1"));
         String when = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.ROOT).format(new java.util.Date());
         try (java.io.FileWriter w = new java.io.FileWriter(f, true)) {
             w.write(when + " " + line + "\n");
@@ -1158,7 +1158,7 @@ public class MainActivity extends Activity {
         // the unit by its model: the name its firmware gives the MIDI port ("Caravel") is metadata, kept for the log
         String why = seenRunning ? "The M-Vave FM-1 did not switch automatically to Download Mode. Switch it manually "
                 + "following these steps:\n"
-                : "M-Flasher + can't see your M-Vave FM-1 running. Check it is connected and switched on, or switch it "
+                : "FirmWave can't see your M-Vave FM-1 running. Check it is connected and switched on, or switch it "
                 + "manually following these steps:\n";
         String last = recalled("firmware");
         howTo = dialog("Manual Action: put FM-1 in Download Mode for checking", why
@@ -1322,7 +1322,7 @@ public class MainActivity extends Activity {
                             say("Restarted; not on USB MIDI within 60 s");
                             shown = "Check FM-1 display";
                             color = LAV;
-                            end = done + "\n\nYour FM-1 restarted, but M-Flasher + couldn't confirm it's running: it didn't "
+                            end = done + "\n\nYour FM-1 restarted, but FirmWave couldn't confirm it's running: it didn't "
                                     + "show up on USB within 60 seconds. Look at the FM-1 display: if the new firmware "
                                     + "shows up, it's ready. If not, switch the FM-1 off and on.";
                         }

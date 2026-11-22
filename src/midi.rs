@@ -31,7 +31,7 @@ pub struct MidiUnit {
 }
 
 /// Port names the user gave for firmwares that name their port otherwise
-/// (fm1-dock: "Caravel"): `--port NAME`, or MFLASHER_PLUS_MIDI_PORTS (comma
+/// (fm1-dock: "Caravel"): `--port NAME`, or FIRMWAVE_MIDI_PORTS (MFLASHER_PLUS_MIDI_PORTS before 2.0.0; comma
 /// separated), which the window reads too. Lowercase.
 static EXTRA: std::sync::Mutex<Vec<String>> = std::sync::Mutex::new(Vec::new());
 static FROM_ENV: std::sync::Once = std::sync::Once::new();
@@ -49,7 +49,7 @@ pub fn add_port_names(list: &str) {
 
 fn extra_names() -> Vec<String> {
     FROM_ENV.call_once(|| {
-        if let Ok(v) = std::env::var("MFLASHER_PLUS_MIDI_PORTS") {
+        if let Some(v) = crate::migrate::env_str("MIDI_PORTS") {
             add_port_names(&v);
         }
     });
@@ -67,7 +67,7 @@ fn known(name: &str) -> bool {
     unit_of(name).is_some()
 }
 
-/// Every MIDI output port's name, units or not (`m-flasher-plus midi-ports`), and
+/// Every MIDI output port's name, units or not (`firmwave midi-ports`), and
 /// whether it is taken for a unit.
 pub fn port_names() -> Vec<(String, bool)> {
     sys::all_names().into_iter().map(|n| { let k = known(&n); (n, k) }).collect()
@@ -357,11 +357,11 @@ mod sys {
             ioctl(f, CLIENT_ID, &mut me).map_err(|e| failed("sequencer client", e))?;
             let mut info: ClientInfo = zeroed();
             info.client = me;
-            info.name[..14].copy_from_slice(b"M-Flasher Plus");
+            info.name[..8].copy_from_slice(b"FirmWave");
             let _ = ioctl(f, SET_CLIENT_INFO, &mut info); // only a name for others to see
             let mut port: PortInfo = zeroed();
             port.addr = Addr { client: me as u8, port: 0 };
-            port.name[..14].copy_from_slice(b"M-Flasher Plus");
+            port.name[..8].copy_from_slice(b"FirmWave");
             port.capability = CAP_READ | CAP_SUBS_READ;
             port.kind = TYPE_MIDI_GENERIC | TYPE_APPLICATION;
             ioctl(f, CREATE_PORT, &mut port).map_err(|e| failed("sequencer port", e))?;
@@ -429,7 +429,7 @@ mod sys {
     pub fn units() -> Vec<(String, Port)> {
         LISTER.with_borrow_mut(|lister| {
             if lister.is_none() {
-                *lister = MidiOutput::new("M-Flasher Plus").ok();
+                *lister = MidiOutput::new("FirmWave").ok();
             }
             let Some(out) = lister.as_ref() else { return vec![] };
             refresh();
@@ -442,7 +442,7 @@ mod sys {
     pub fn all_names() -> Vec<String> {
         LISTER.with_borrow_mut(|lister| {
             if lister.is_none() {
-                *lister = MidiOutput::new("M-Flasher Plus").ok();
+                *lister = MidiOutput::new("FirmWave").ok();
             }
             let Some(out) = lister.as_ref() else { return vec![] };
             refresh();
@@ -451,7 +451,7 @@ mod sys {
     }
 
     pub fn send(p: &Port, msg: &[u8]) -> Result<(), String> {
-        let out = MidiOutput::new("M-Flasher Plus").map_err(|e| e.to_string())?;
+        let out = MidiOutput::new("FirmWave").map_err(|e| e.to_string())?;
         let mut conn = out.connect(&p.0, "soft key").map_err(|e| e.to_string())?;
         conn.send(msg).map_err(|e| e.to_string())?;
         conn.close();

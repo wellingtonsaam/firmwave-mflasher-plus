@@ -1,7 +1,7 @@
 # Linux packages (.deb, .rpm) with nFPM: made by build.sh, which generates
 # the files under target/package-files first. ARCH is amd64 or arm64 (named
 # for the deb and rpm conventions by nFPM).
-name: m-flasher-plus
+name: firmwave
 version: ${VERSION}
 release: 1
 changelog: target/package-files/changelog.yml
@@ -11,7 +11,7 @@ section: utils
 priority: optional
 maintainer: Wellington Saam <wellington.saa@gmail.com>
 vendor: Wellington Saam
-homepage: https://github.com/wellingtonsaam/m-flasher-plus
+homepage: https://github.com/wellingtonsaam/firmwave-mflasher-plus
 license: MIT AND OFL-1.1
 description: |-
   Firmware backup and flasher for M-VAVE FM-1 and SMK-37 synthesizers
@@ -21,58 +21,63 @@ description: |-
   the unit is broken. A window and a command line.
 
 contents:
-  - src: target/release/m-flasher-plus
-    dst: /usr/bin/m-flasher-plus
+  - src: target/release/firmwave
+    dst: /usr/bin/firmwave
     file_info: { mode: 0755 }
-  - src: linux/70-m-flasher-plus.rules
-    dst: /usr/lib/udev/rules.d/70-m-flasher-plus.rules
+  - src: linux/70-firmwave.rules
+    dst: /usr/lib/udev/rules.d/70-firmwave.rules
     file_info: { mode: 0644 }
   - src: linux/package/modules-load.conf
-    dst: /usr/lib/modules-load.d/m-flasher-plus.conf
+    dst: /usr/lib/modules-load.d/firmwave.conf
     file_info: { mode: 0644 }
-  - src: linux/package/io.github.wellingtonsaam.m-flasher-plus.desktop
-    dst: /usr/share/applications/io.github.wellingtonsaam.m-flasher-plus.desktop
+  - src: linux/package/io.github.wellingtonsaam.firmwave.desktop
+    dst: /usr/share/applications/io.github.wellingtonsaam.firmwave.desktop
     file_info: { mode: 0644 }
-  - src: target/package-files/io.github.wellingtonsaam.m-flasher-plus.metainfo.xml
-    dst: /usr/share/metainfo/io.github.wellingtonsaam.m-flasher-plus.metainfo.xml
+  - src: target/package-files/io.github.wellingtonsaam.firmwave.metainfo.xml
+    dst: /usr/share/metainfo/io.github.wellingtonsaam.firmwave.metainfo.xml
     file_info: { mode: 0644 }
-  - src: linux/m-flasher-plus.png
-    dst: /usr/share/icons/hicolor/256x256/apps/io.github.wellingtonsaam.m-flasher-plus.png
+  - src: linux/firmwave.png
+    dst: /usr/share/icons/hicolor/256x256/apps/io.github.wellingtonsaam.firmwave.png
     file_info: { mode: 0644 }
   # (documentation is marked as such in the rpm; nFPM leaves files of that
   # type out of a deb, so the deb lists them plainly)
   - src: README.md
-    dst: /usr/share/doc/m-flasher-plus/README.md
+    dst: /usr/share/doc/firmwave/README.md
     packager: deb
     file_info: { mode: 0644 }
   - src: README.md
-    dst: /usr/share/doc/m-flasher-plus/README.md
+    dst: /usr/share/doc/firmwave/README.md
     type: doc
     packager: rpm
     file_info: { mode: 0644 }
-  - src: target/package-files/m-flasher-plus.1.gz
-    dst: /usr/share/man/man1/m-flasher-plus.1.gz
+  - src: target/package-files/firmwave.1.gz
+    dst: /usr/share/man/man1/firmwave.1.gz
     packager: deb
     file_info: { mode: 0644 }
-  - src: target/package-files/m-flasher-plus.1.gz
-    dst: /usr/share/man/man1/m-flasher-plus.1.gz
+  - src: target/package-files/firmwave.1.gz
+    dst: /usr/share/man/man1/firmwave.1.gz
     type: doc
     packager: rpm
     file_info: { mode: 0644 }
   - src: linux/package/copyright
-    dst: /usr/share/doc/m-flasher-plus/copyright
+    dst: /usr/share/doc/firmwave/copyright
     packager: deb
     file_info: { mode: 0644 }
   - src: LICENSE
-    dst: /usr/share/licenses/m-flasher-plus/LICENSE
+    dst: /usr/share/licenses/firmwave/LICENSE
     type: license
     packager: rpm
     file_info: { mode: 0644 }
 
-# Every file has a name of its own (/usr/bin/m-flasher-plus, its udev rule,
+# Every file has a name of its own (/usr/bin/firmwave, its udev rule,
 # its man page), so that this package and M-Flasher's install side by side
-# without conflicting: neither `conflicts` nor `replaces` (rpm's Obsoletes),
-# which would mark M-Flasher as superseded by M-Flasher +.
+# without conflicting: M-Flasher is never marked as superseded by FirmWave.
+# FirmWave was called M-Flasher + (package m-flasher-plus) until 2.0.0: it
+# replaces that package (rpm's Obsoletes), so an update removes the old one.
+replaces:
+  - m-flasher-plus
+conflicts:
+  - m-flasher-plus
 
 scripts:
   postinstall: linux/package/postinstall.sh
