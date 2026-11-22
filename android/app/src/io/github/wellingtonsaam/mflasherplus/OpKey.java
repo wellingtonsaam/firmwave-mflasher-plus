@@ -8,19 +8,21 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 /**
- * Figma Op Button (7:29): an icon, the label in Barlow Condensed SemiBold 17, a LED on the right.
- * Default #174b4d, Selected #23706f with a 2 dp mint frame and the LED on, Disabled at 40 %.
+ * FirmWave Operation key (Figma Option A, Android): an icon, the label in Public Sans Black 15, a LED on the
+ * right; a card of its own colour (white, the next step yellow, the operations cyan, pink and lilac) with a black
+ * outline and a hard shadow. Selected: a thicker outline and the LED on. Disabled at 40 %.
  */
 final class OpKey extends LinearLayout {
     private final TextView label;
     private final ImageView icon;
     private final View led;
     private boolean lit;
+    private int fill = Ui.WHITE;
 
     OpKey(Context c, String text, String iconName) {
         super(c);
         setGravity(Gravity.CENTER_VERTICAL);
-        setPadding(Ui.px(c, 16), Ui.px(c, 12), Ui.px(c, 16), Ui.px(c, 12));
+        setPadding(Ui.px(c, 14), Ui.px(c, 10), Ui.px(c, 16), Ui.px(c, 10));
         setClickable(true);
         setFocusable(true);
         icon = new ImageView(c);
@@ -30,19 +32,26 @@ final class OpKey extends LinearLayout {
         label.setText(text);
         label.setAllCaps(true);
         label.setTypeface(Ui.font(c, Ui.KEYFONT));
-        label.setTextSize(17);
-        label.setLetterSpacing(0.035f);
+        label.setTextSize(15);
+        label.setLetterSpacing(0.03f);
         label.setTextColor(Ui.KEYINK);
         LayoutParams lp = new LayoutParams(0, -2, 1);
         lp.setMargins(Ui.px(c, 12), 0, Ui.px(c, 12), 0);
         addView(label, lp);
         led = Ui.led(c);
-        addView(led, new LayoutParams(Ui.px(c, 10), Ui.px(c, 10)));
+        addView(led, new LayoutParams(Ui.px(c, 12), Ui.px(c, 12)));
         setLit(false);
     }
 
     void setIcon(String name) {
         icon.setImageResource(getResources().getIdentifier(name, "drawable", getContext().getPackageName()));
+        icon.setImageTintList(android.content.res.ColorStateList.valueOf(Ui.BLACK));
+    }
+
+    /** The key's own colour. */
+    void setFill(int color) {
+        fill = color;
+        setLit(lit);
     }
 
     void setText(CharSequence s) {
@@ -57,7 +66,8 @@ final class OpKey extends LinearLayout {
     void setLit(boolean on) {
         lit = on;
         Context c = getContext();
-        setBackground(on ? Ui.box(c, Ui.KEY, Ui.MINT, 2, 3) : Ui.box(c, Ui.KEYDARK, Ui.KEYLINE, 1, 3));
+        setPadding(Ui.px(c, 14), Ui.px(c, 10), Ui.px(c, 16), Ui.px(c, 10));
+        Ui.cardBg(this, fill, 12, on ? 4 : 2.5f, 4);
         Ui.setLed(c, led, on ? 1 : 0);
     }
 

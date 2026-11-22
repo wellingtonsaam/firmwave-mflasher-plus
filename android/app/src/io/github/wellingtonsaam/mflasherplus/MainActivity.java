@@ -191,8 +191,11 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle b) {
         super.onCreate(b);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        getWindow().setStatusBarColor(BG);
-        getWindow().setNavigationBarColor(PANEL);
+        getWindow().setStatusBarColor(Ui.WHITE);
+        getWindow().setNavigationBarColor(Ui.WHITE);
+        // FirmWave is light: the system bars' icons dark
+        getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+                | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
         usb = getSystemService(UsbManager.class);
         dp = getResources().getDisplayMetrics().density;
         setContentView(build());
@@ -241,14 +244,14 @@ public class MainActivity extends Activity {
         return Ui.text(this, s, color, size, bold);
     }
 
-    /** LCD/Large (40) and LCD/Body (24): VT323, capitals. */
+    /** FirmWave/LCD: Space Mono Bold, capitals (Figma Option A, Android). */
     private TextView lcdText(float size) {
         TextView t = new TextView(this);
         t.setTextColor(LCDINK);
         t.setTextSize(size);
         t.setTypeface(Ui.font(this, Ui.LCDFONT));
         t.setAllCaps(true);
-        t.setLetterSpacing(1f / size);
+        t.setLetterSpacing(0.02f);
         t.setIncludeFontPadding(false);
         return t;
     }
@@ -259,7 +262,7 @@ public class MainActivity extends Activity {
         l.setColor(line);
         android.graphics.drawable.LayerDrawable d = new android.graphics.drawable.LayerDrawable(
                 new android.graphics.drawable.Drawable[] {new android.graphics.drawable.ColorDrawable(fill), l});
-        d.setLayerHeight(1, px(1));
+        d.setLayerHeight(1, px(3));
         d.setLayerGravity(1, top ? Gravity.TOP : Gravity.BOTTOM);
         return d;
     }
@@ -294,36 +297,38 @@ public class MainActivity extends Activity {
         // App Bar (Figma 15:222): the name, the unit, its LED
         LinearLayout bar = new LinearLayout(this);
         bar.setGravity(Gravity.CENTER_VERTICAL);
-        bar.setPadding(px(12), px(6), px(12), px(6));
-        bar.setBackground(edge(BG, Ui.LINE, false));
-        TextView name = text("FIRMWAVE", MINT, 24, false);
+        // App Bar (Figma Option A, Android): the wordmark and its wave (both open About), the unit in a pill
+        bar.setPadding(px(16), px(6), px(12), px(6));
+        bar.setBackground(edge(Ui.WHITE, Ui.LINE, false));
+        TextView name = text("FirmWave", INK, 19, false);
         name.setTypeface(Ui.font(this, Ui.HEAD));
-        name.setLetterSpacing(1f / 24);
+        name.setLetterSpacing(-0.06f);
+        name.setIncludeFontPadding(false);
         name.setOnClickListener(v -> about());
+        name.setContentDescription("FirmWave · About");
         bar.addView(name);
-        // About: the ⓘ beside the name, its touch area 40 dp
         android.widget.ImageView about = new android.widget.ImageView(this);
-        about.setImageResource(getResources().getIdentifier("ic_info", "drawable", getPackageName()));
-        about.setPadding(px(10), px(10), px(10), px(10));
+        about.setImageResource(getResources().getIdentifier("ic_wave", "drawable", getPackageName()));
+        about.setPadding(px(6), px(8), px(6), px(8));
         about.setContentDescription("About FirmWave");
         about.setOnClickListener(v -> about());
         bar.addView(about, new LinearLayout.LayoutParams(px(40), px(40)));
-        unit = text("NO UNIT", DIM, 14, false);
-        unit.setGravity(Gravity.END);
+        bar.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1));
+        unit = Ui.pill(this, "NO UNIT", Ui.WHITE);
         unit.setSingleLine(true);
         unit.setEllipsize(android.text.TextUtils.TruncateAt.END);
-        LinearLayout.LayoutParams up = new LinearLayout.LayoutParams(0, -2, 1);
-        up.setMargins(px(6), 0, px(6), 0);
-        bar.addView(unit, up);
+        unit.setMaxWidth(px(190));
+        bar.addView(unit, new LinearLayout.LayoutParams(-2, -2));
         unitLed = Ui.led(this);
+        unitLed.setVisibility(View.GONE);
         bar.addView(unitLed, new LinearLayout.LayoutParams(px(10), px(10)));
-        root.addView(bar, new LinearLayout.LayoutParams(-1, px(56)));
+        root.addView(bar, new LinearLayout.LayoutParams(-1, px(60)));
 
         FrameLayout content = new FrameLayout(this);
         device = new ScrollView(this);
         LinearLayout body = new LinearLayout(this);
         body.setOrientation(LinearLayout.VERTICAL);
-        body.setPadding(px(12), px(12), px(12), px(16));
+        body.setPadding(px(16), px(16), px(16), px(20));
         device.addView(body);
         content.addView(device);
         library = new LibraryView(this, new File(getFilesDir(), "library"), this::install);
@@ -341,19 +346,18 @@ public class MainActivity extends Activity {
         root.addView(content, new LinearLayout.LayoutParams(-1, 0, 1));
 
         // LCD Display (Figma 7:51): a dark bezel around the green screen, VT323
+        // FirmWave LCD (Figma Option A): a lime card, black outline and hard shadow, Space Mono Bold
         LinearLayout bezel = new LinearLayout(this);
-        bezel.setPadding(px(8), px(8), px(8), px(8));
-        bezel.setBackground(Ui.box(this, Ui.BEZEL, Ui.BEZELLINE, 1, 0));
         LinearLayout lcd = new LinearLayout(this);
         lcd.setOrientation(LinearLayout.VERTICAL);
-        lcd.setPadding(px(16), px(12), px(16), px(12));
-        lcd.setBackground(Ui.box(this, LCD, Ui.LCDLINE, 2, 0));
-        lcdTitle = lcdText(40);
-        lcdStatus = lcdText(24);
-        lcdDetail = lcdText(24);
+        lcd.setPadding(px(18), px(16), px(18), px(16));
+        Ui.cardBg(lcd, LCD, 14, 3, 5);
+        lcdTitle = lcdText(28);
+        lcdStatus = lcdText(13);
+        lcdDetail = lcdText(13);
         lcd.addView(lcdTitle);
-        lcd.addView(lcdStatus, below(-2, -2, px(4)));
-        lcd.addView(lcdDetail, below(-2, -2, px(4)));
+        lcd.addView(lcdStatus, below(-2, -2, px(8)));
+        lcd.addView(lcdDetail, below(-2, -2, px(6)));
         // State=Writing: the bar, framed in ink
         lcdBar = new LinearLayout(this);
         lcdBar.setPadding(px(3), px(3), px(3), px(3));
@@ -367,9 +371,9 @@ public class MainActivity extends Activity {
         lcd.addView(lcdBar, below(-1, -2, px(4)));
         View rule = new View(this);
         rule.setBackgroundColor(LCDINK);
-        lcd.addView(rule, below(-1, px(2), px(4)));
-        lcdPrompt = lcdText(24);
-        lcd.addView(lcdPrompt, below(-2, -2, px(4)));
+        lcd.addView(rule, below(-1, px(3), px(10)));
+        lcdPrompt = lcdText(12);
+        lcd.addView(lcdPrompt, below(-2, -2, px(10)));
         bezel.addView(lcd, new LinearLayout.LayoutParams(-1, -2));
         body.addView(bezel);
 
@@ -378,13 +382,19 @@ public class MainActivity extends Activity {
         read.setOnClickListener(v -> switchThen(DIAGNOSE));
         body.addView(read, keyParams(12));
         bootBtn = new OpKey(this, "INSTALL M-BOOTLOADER", "ic_bootloader");
+        bootBtn.setFill(Ui.KEY);
         bootBtn.setOnClickListener(v -> run(PLAN_BOOT));
         body.addView(bootBtn, keyParams(6));
+        // the Safety bar (Figma Option A): orange, a boxed "!", black text
         LinearLayout w = new LinearLayout(this);
+        w.setGravity(Gravity.CENTER_VERTICAL);
+        w.setPadding(px(10), px(8), px(12), px(8));
+        w.setBackground(Ui.box(this, Ui.STATUS_WARN, Ui.BLACK, 2.5f, 10));
         android.widget.ImageView wi = new android.widget.ImageView(this);
         wi.setImageResource(getResources().getIdentifier("ic_check_attention", "drawable", getPackageName()));
-        w.addView(wi, new LinearLayout.LayoutParams(px(18), px(18)));
-        TextView wt = text("You don't have m-bootloader · It's a safeguard to prevent bricks", WARN, 14, false);
+        wi.setImageTintList(android.content.res.ColorStateList.valueOf(Ui.BLACK));
+        w.addView(wi, new LinearLayout.LayoutParams(px(20), px(20)));
+        TextView wt = text("You don't have m-bootloader · It's a safeguard to prevent bricks", INK, 13, true);
         LinearLayout.LayoutParams wp = new LinearLayout.LayoutParams(0, -2, 1);
         wp.setMargins(px(8), 0, 0, 0);
         w.addView(wt, wp);
@@ -397,6 +407,8 @@ public class MainActivity extends Activity {
         checkedPart.addView(section("DEVICE INFO"), below(-1, px(18), px(12)));
         info = new LinearLayout(this);
         info.setOrientation(LinearLayout.VERTICAL);
+        info.setPadding(px(16), px(12), px(14), px(12));
+        Ui.cardBg(info, Ui.WHITE, 14, 3, 5);
         checkedPart.addView(info, below(-1, -2, px(12)));
         checkedPart.addView(section("OPERATIONS"), below(-1, px(18), px(12)));
         OpKey bk = new OpKey(this, "SAVE BACKUP", "ic_backup"), rs = new OpKey(this, "RESTORE BACKUP", "ic_restore"),
@@ -407,6 +419,10 @@ public class MainActivity extends Activity {
         });
         rs.setOnClickListener(v -> chooseOp(RESTORE_OP));
         fwk.setOnClickListener(v -> chooseOp(FW_OP));
+        // the operations in their colours (Figma Option A): save cyan, restore pink, install lilac
+        bk.setFill(Ui.OP_SAVE);
+        rs.setFill(Ui.OP_RESTORE);
+        fwk.setFill(Ui.OP_INSTALL);
         opKeys = new OpKey[] {bk, rs, fwk};
         for (int i = 0; i < opKeys.length; i++) checkedPart.addView(opKeys[i], keyParams(i == 0 ? 12 : 6));
 
@@ -425,7 +441,7 @@ public class MainActivity extends Activity {
         field.setGravity(Gravity.CENTER_VERTICAL);
         field.setSingleLine(true);
         field.setEllipsize(android.text.TextUtils.TruncateAt.MIDDLE);
-        field.setBackground(Ui.box(this, Ui.FIELD, Ui.SECLINE, 1, 0));
+        field.setBackground(Ui.box(this, Ui.FIELD, Ui.BLACK, 2.5f, 8));
         LinearLayout.LayoutParams fp = new LinearLayout.LayoutParams(0, px(38), 1);
         fp.setMargins(px(6), 0, 0, 0);
         row.addView(field, fp);
@@ -442,12 +458,14 @@ public class MainActivity extends Activity {
         LinearLayout head = new LinearLayout(this);
         head.setGravity(Gravity.CENTER_VERTICAL);
         head.addView(section("SAFETY CHECK"), new LinearLayout.LayoutParams(0, px(18), 1));
-        summary = Ui.label(this, "", DIM);
-        summary.setPadding(px(8), 0, 0, 0);
+        summary = Ui.pill(this, "", Ui.STATUS_OK);
+        summary.setVisibility(View.GONE);
         head.addView(summary);
         checkedPart.addView(head, below(-1, -2, px(12)));
         checks = new LinearLayout(this);
         checks.setOrientation(LinearLayout.VERTICAL);
+        checks.setPadding(px(14), px(8), px(12), px(8));
+        Ui.cardBg(checks, Ui.WHITE, 14, 3, 5);
         checkedPart.addView(checks, below(-1, -2, px(12)));
 
         // progress and log: always
@@ -455,31 +473,38 @@ public class MainActivity extends Activity {
         LinearLayout st = new LinearLayout(this);
         String[] sn = {"READ", "BACKUP", "WRITE", "VERIFY"};
         for (int i = 0; i < 4; i++) {
-            steps[i] = Ui.label(this, sn[i], DIM);
+            steps[i] = Ui.pill(this, sn[i], Ui.WHITE);
             steps[i].setGravity(Gravity.CENTER);
             steps[i].setSingleLine(true);
+            steps[i].setPadding(px(4), 0, px(4), 0);
             LinearLayout.LayoutParams sp = new LinearLayout.LayoutParams(0, px(28), 1);
             sp.setMargins(i == 0 ? 0 : px(4), 0, 0, 0);
             st.addView(steps[i], sp);
         }
         body.addView(st, below(-1, -2, px(12)));
         body.addView(section("LOG"), below(-1, px(18), px(12)));
-        log = Ui.mono(this, "", DIM, 12);
+        log = Ui.mono(this, "", INK, 11);
         log.setTextIsSelectable(true);
+        log.setPadding(px(12), px(10), px(12), px(10));
+        Ui.cardBg(log, Ui.BG_LOG, 12, 2.5f, 4);
         body.addView(log, below(-1, -2, px(12)));
 
         // Bottom Nav (Figma 15:211): DEVICE, LIBRARY, BACKUPS
         LinearLayout nav = new LinearLayout(this);
-        nav.setBackground(edge(PANEL, Ui.LINE, true));
+        nav.setBackground(edge(Ui.WHITE, Ui.LINE, true));
+        nav.setPadding(px(10), px(3), px(10), 0);
         String[] names = {"DEVICE", "LIBRARY", "BACKUPS"};
         tabs = new TextView[names.length];
         for (int i = 0; i < names.length; i++) {
             final int tab = i;
-            TextView t = text(names[i], DIM, 14, false);
+            TextView t = text(names[i], INK, 13, false);
+            t.setTypeface(Ui.font(this, Ui.KEYFONT));
             t.setGravity(Gravity.CENTER);
             t.setOnClickListener(v -> showTab(tab));
             tabs[i] = t;
-            nav.addView(t, new LinearLayout.LayoutParams(0, px(64), 1));
+            LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(0, px(44), 1);
+            tp.setMargins(px(6), px(10), px(6), px(10));
+            nav.addView(t, tp);
         }
         root.addView(nav);
         showTab(0);
@@ -487,14 +512,21 @@ public class MainActivity extends Activity {
     }
 
 
+    /** The App Bar's unit pill: green when a unit is ready (1), white otherwise. */
+    private void unitPill(int state) {
+        unit.setBackground(Ui.box(this, state == 1 ? Ui.STATUS_OK : Ui.WHITE, Ui.BLACK, 2, 12));
+    }
+
     private void showTab(int tab) {
         device.setVisibility(tab == 0 ? View.VISIBLE : View.GONE);
         library.setVisibility(tab == 1 ? View.VISIBLE : View.GONE);
         backups.setVisibility(tab == 2 ? View.VISIBLE : View.GONE);
         if (tab == 2) backups.load();
+        // the active tab: a cyan pill with its hard shadow (Figma DS · Tab, Active)
         for (int i = 0; i < tabs.length; i++) {
-            tabs[i].setTextColor(i == tab ? MINT : DIM);
-            tabs[i].setBackground(i == tab ? topLine() : null);
+            tabs[i].setTextColor(INK);
+            tabs[i].setPadding(0, 0, 0, 0);
+            if (i == tab) Ui.cardBg(tabs[i], Ui.CYAN, 12, 2.5f, 3); else tabs[i].setBackground(null);
         }
     }
 
@@ -521,8 +553,9 @@ public class MainActivity extends Activity {
         for (int i = 0; i < 4; i++) {
             char c = states.charAt(i);
             // Figma Step: Current, Done, Pending
-            steps[i].setBackground(box(c == 'A' ? Ui.KEY : c == 'D' ? Ui.KEYDARK : Ui.STEPIDLE, 0, 2));
-            steps[i].setTextColor(c == 'A' ? Ui.KEYINK : c == 'D' ? MINT : DIM);
+            // FirmWave Stage pills: white waiting, cyan now, green with a tick done
+            steps[i].setBackground(Ui.box(this, c == 'A' ? Ui.CYAN : c == 'D' ? Ui.STATUS_OK : Ui.WHITE, Ui.BLACK, 2, 14));
+            steps[i].setTextColor(INK);
             String n = steps[i].getText().toString().replace("✓ ", "");
             steps[i].setText(c == 'D' ? "✓ " + n : n);
         }
@@ -748,11 +781,12 @@ public class MainActivity extends Activity {
 
     private void showWaiting() {
         unit.setText("NO UNIT");
-        Ui.setLed(this, unitLed, 0);
+        unitPill(0);
         lcdTitle.setText("NO UNIT");
         lcdStatus.setText("WAITING FOR THE FM-1");
         lcdDetail.setText("USB OTG");
         summary.setText("");
+        summary.setVisibility(View.GONE);
         checks.removeAllViews();
         info.removeAllViews();
         library.setUnit(null);
@@ -815,7 +849,7 @@ public class MainActivity extends Activity {
         Ui.enable(bootBtn, !bootOpen);
         if (!writing) setSteps("DIII");
         unit.setText(model + " · DOWNLOAD MODE");
-        Ui.setLed(this, unitLed, 1);
+        unitPill(1);
         lcdTitle.setText(model);
         lcdStatus.setText("USB OTG · DOWNLOAD MODE");
         lcdDetail.setText("FLASH 1 MiB");
@@ -827,7 +861,8 @@ public class MainActivity extends Activity {
             checks.addView(checkRow(c));
         }
         summary.setText(need == 0 ? "ALL CLEAR" : need + (need == 1 ? " NEEDS" : " NEED") + " ATTENTION");
-        summary.setTextColor(need == 0 ? MINT : WARN);
+        summary.setBackground(Ui.box(this, need == 0 ? Ui.STATUS_OK : Ui.STATUS_WARN, Ui.BLACK, 2, 12));
+        summary.setVisibility(View.VISIBLE);
 
         info.removeAllViews();
         String[][] rows = {{"MODEL", facts.getOrDefault("model", "")}, {"FIRMWARE", facts.getOrDefault("firmware", "")},
@@ -837,14 +872,23 @@ public class MainActivity extends Activity {
         for (String[] e : rows) {
             LinearLayout r = new LinearLayout(this);
             r.setGravity(Gravity.CENTER_VERTICAL);
-            r.setMinimumHeight(px(24));
-            r.setPadding(0, px(1), 0, px(1));
-            r.addView(Ui.label(this, e[0], Ui.LAVKEY), new LinearLayout.LayoutParams(px(150), -2));
-            int col = e[0].equals("FIRMWARE CHECK") ? (e[1].equals("OK") ? MINT : BAD)
-                    : e[0].equals("BOOTLOADER") && !bootOpen ? WARN : INK;
-            LinearLayout.LayoutParams vp = new LinearLayout.LayoutParams(0, -2, 1);
-            vp.setMargins(px(12), 0, 0, 0);
-            r.addView(text(e[1], col, 14, false), vp);
+            r.setMinimumHeight(px(30));
+            r.setPadding(0, px(3), 0, px(3));
+            TextView k = text(e[0], Ui.GRAY_700, 10, true);
+            k.setAllCaps(true);
+            k.setLetterSpacing(0.06f);
+            r.addView(k, new LinearLayout.LayoutParams(px(112), -2));
+            // the firmware's check, and a bootloader with no rescue mode, in a pill of their status colour
+            int pill = e[0].equals("FIRMWARE CHECK") ? (e[1].equals("OK") ? Ui.STATUS_OK : Ui.CORAL)
+                    : e[0].equals("BOOTLOADER") && !bootOpen ? Ui.STATUS_WARN : 0;
+            LinearLayout.LayoutParams vp = new LinearLayout.LayoutParams(pill == 0 ? 0 : -2, -2, pill == 0 ? 1 : 0);
+            vp.setMargins(px(8), 0, 0, 0);
+            TextView v = Ui.mono(this, e[1], INK, 12);
+            if (pill != 0) {
+                v.setPadding(px(8), px(2), px(8), px(2));
+                v.setBackground(Ui.box(this, pill, Ui.BLACK, 2, 6));
+            }
+            r.addView(v, vp);
             info.addView(r);
         }
         refreshForm();
@@ -854,21 +898,26 @@ public class MainActivity extends Activity {
     private View checkRow(Check c) {
         LinearLayout r = new LinearLayout(this);
         r.setGravity(Gravity.CENTER_VERTICAL);
-        r.setPadding(px(2), px(4), px(2), px(4));
-        r.setBackground(edge(BG, Ui.LINE, false));
+        r.setPadding(0, px(8), 0, px(8));
+        // a boxed mark (Figma Option A): green with a tick, or orange with "!"
         android.widget.ImageView icon = new android.widget.ImageView(this);
         icon.setImageResource(getResources().getIdentifier(c.ok ? "ic_check_ok" : "ic_check_attention", "drawable",
                 getPackageName()));
-        r.addView(icon, new LinearLayout.LayoutParams(px(18), px(18)));
+        icon.setImageTintList(android.content.res.ColorStateList.valueOf(Ui.BLACK));
+        icon.setPadding(px(4), px(4), px(4), px(4));
+        icon.setBackground(Ui.box(this, c.ok ? Ui.STATUS_OK : Ui.STATUS_WARN, Ui.BLACK, 2, 5));
+        r.addView(icon, new LinearLayout.LayoutParams(px(28), px(28)));
         LinearLayout col = new LinearLayout(this);
         col.setOrientation(LinearLayout.VERTICAL);
-        col.addView(text(c.name, LAV, 14, false));
-        col.addView(Ui.mono(this, c.detail, c.ok ? INK : WARN, 12));
+        TextView cn = text(c.name, INK, 14, false);
+        cn.setTypeface(Ui.font(this, Ui.KEYFONT));
+        col.addView(cn);
+        col.addView(Ui.mono(this, c.detail, c.ok ? DIM : INK, 11));
         LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(0, -2, 1);
         cp.setMargins(px(6), px(2), px(6), px(2));
         r.addView(col, cp);
         if (!c.action.isEmpty()) {
-            Button k = key(c.action, false);
+            Button k = key(c.action, true);
             if (c.action.equals("SAVE")) {
                 k.setOnClickListener(v -> readUnit(true));
             } else {
@@ -1377,7 +1426,7 @@ public class MainActivity extends Activity {
         lcdDetail.setText("RESTARTED" + (fw.isEmpty() ? "" : " · " + fw + " RUNNING"));
         lcdPrompt.setText("TAP CHECK TO READ IT AGAIN");
         unit.setText("FM-1 RUNNING");
-        Ui.setLed(this, unitLed, 0);
+        unitPill(0);
         setSteps("DDDD");
     }
 
@@ -1403,14 +1452,14 @@ public class MainActivity extends Activity {
             lcdPrompt.setText("DO NOT UNPLUG");
             setLcdBar(0);
             unit.setText("WRITING");
-            Ui.setLed(this, unitLed, 1);
+            unitPill(1);
         } else {
             lcdTitle.setText(mode == BACKUP ? "SAVING…" : mode == DIAGNOSE ? "CHECKING…" : "PREPARING…");
             lcdStatus.setText(mode == BACKUP ? "COPYING THE FLASH" : "READING THE FLASH");
             lcdDetail.setText(mode == BACKUP ? "TO THIS PHONE" : mode == DIAGNOSE ? "AND CHECKING IT" : "PLANNING THE WRITE");
             lcdPrompt.setText("DO NOT UNPLUG");
             unit.setText(mode == BACKUP ? "SAVING…" : mode == DIAGNOSE ? "CHECKING…" : "PREPARING…");
-            Ui.setLed(this, unitLed, 0);
+            unitPill(0);
         }
     }
 

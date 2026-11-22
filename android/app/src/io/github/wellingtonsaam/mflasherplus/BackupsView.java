@@ -40,7 +40,7 @@ final class BackupsView extends LinearLayout {
         int p = Ui.px(c, 16);
         LinearLayout body = new LinearLayout(c);
         body.setOrientation(VERTICAL);
-        body.setPadding(p, Ui.px(c, 4), p, p);
+        body.setPadding(p, Ui.px(c, 16), p, p);
         ScrollView scroll = new ScrollView(c);
         scroll.addView(body);
         addView(scroll, new LayoutParams(-1, -1));
@@ -48,7 +48,7 @@ final class BackupsView extends LinearLayout {
         LinearLayout head = new LinearLayout(c);
         head.setGravity(Gravity.BOTTOM);
         head.addView(Ui.section(c, "BACKUPS ON THIS PHONE"), new LayoutParams(0, -2, 1));
-        count = Ui.text(c, "", Ui.DIM, 11, false);
+        count = Ui.label(c, "", Ui.INK);
         count.setPadding(0, 0, 0, Ui.px(c, 6));
         head.addView(count);
         body.addView(head);
@@ -110,36 +110,61 @@ final class BackupsView extends LinearLayout {
 
         LinearLayout r = new LinearLayout(c);
         r.setOrientation(VERTICAL);
-        r.setPadding(Ui.px(c, 12), Ui.px(c, 10), Ui.px(c, 12), Ui.px(c, 10));
-        r.setBackground(Ui.box(c, Ui.RAISED, Ui.LINE, 3));
+        r.setPadding(Ui.px(c, 14), Ui.px(c, 12), Ui.px(c, 12), Ui.px(c, 12));
+        // FirmWave Backup card (Figma B1): white, black outline, hard shadow
+        Ui.cardBg(r, Ui.WHITE, 14, 3, 5);
         LayoutParams lp = new LayoutParams(-1, -2);
-        lp.bottomMargin = Ui.px(c, 8);
+        lp.bottomMargin = Ui.px(c, 12);
         r.setLayoutParams(lp);
-        r.addView(Ui.text(c, date, Ui.INK, 15, true));
+        TextView dt = Ui.text(c, date, Ui.INK, 17, true);
+        dt.setTypeface(Ui.font(c, Ui.KEYFONT));
+        r.addView(dt);
         String what = (model.isEmpty() ? "" : model + " · ") + (firmware.isEmpty() ? "firmware unknown" : firmware);
-        r.addView(Ui.text(c, what, Ui.DIM, 12, false));
+        r.addView(Ui.mono(c, what, Ui.DIM, 12));
         boolean rescue = boot.startsWith("m-bootloader");
-        r.addView(Ui.text(c, boot.isEmpty() ? "bootloader unknown" : rescue ? "with rescue mode (m-bootloader)"
-                : "M-VAVE's original start-up program: no rescue mode", rescue || boot.isEmpty() ? Ui.DIM : Ui.WARN, 11, false));
+        String bootLine = boot.isEmpty() ? "bootloader unknown" : rescue ? "with rescue mode (m-bootloader)"
+                : "M-VAVE's original start-up program: no rescue mode";
+        if (rescue || boot.isEmpty()) {
+            r.addView(Ui.text(c, bootLine, Ui.INK, 13, false));
+        } else {
+            // no rescue mode: an orange box (Figma B1)
+            TextView bw = Ui.text(c, bootLine, Ui.INK, 12, true);
+            bw.setPadding(Ui.px(c, 8), Ui.px(c, 4), Ui.px(c, 8), Ui.px(c, 4));
+            bw.setBackground(Ui.box(c, Ui.STATUS_WARN, Ui.BLACK, 2, 6));
+            LayoutParams bp = new LayoutParams(-1, -2);
+            bp.topMargin = Ui.px(c, 4);
+            r.addView(bw, bp);
+        }
 
         LinearLayout foot = new LinearLayout(c);
         foot.setGravity(Gravity.CENTER_VERTICAL);
         foot.setPadding(0, Ui.px(c, 6), 0, 0);
-        foot.addView(Ui.text(c, json.contains("\"sha256\"") ? "CHECKED BEFORE RESTORING (SHA-256)" : "NO .JSON: CANNOT BE CHECKED",
-                json.contains("\"sha256\"") ? Ui.MINT : Ui.WARN, 10, false), new LayoutParams(0, -2, 1));
+        foot.setPadding(0, Ui.px(c, 10), 0, 0);
+        // the check in its status box: green when the .json's SHA-256 can check it, orange when not (Figma B1)
+        boolean sha = json.contains("\"sha256\"");
+        TextView ck = Ui.pill(c, sha ? "CHECKED BEFORE RESTORING (SHA-256)" : "NO .JSON: CANNOT BE CHECKED",
+                sha ? Ui.STATUS_OK : Ui.STATUS_WARN);
+        ck.setTextSize(10);
+        ck.setBackground(Ui.box(c, sha ? Ui.STATUS_OK : Ui.STATUS_WARN, Ui.BLACK, 2, 6));
+        LayoutParams ckp = new LayoutParams(0, -2, 1);
+        ckp.rightMargin = Ui.px(c, 8);
+        foot.addView(ck, ckp);
         android.widget.ImageView trash = new android.widget.ImageView(c);
         trash.setImageResource(c.getResources().getIdentifier("ic_delete", "drawable", c.getPackageName()));
-        trash.setImageTintList(android.content.res.ColorStateList.valueOf(Ui.DIM));
-        int pad = Ui.px(c, 8);
+        trash.setImageTintList(android.content.res.ColorStateList.valueOf(Ui.INK));
+        int pad = Ui.px(c, 9);
         trash.setPadding(pad, pad, pad, pad);
+        Ui.cardBg(trash, Ui.WHITE, 10, 2.5f, 3);
         trash.setContentDescription("Delete this backup");
         trash.setOnClickListener(v -> confirmDelete(bin, jf, date));
-        foot.addView(trash, new LayoutParams(Ui.px(c, 38), Ui.px(c, 38)));
+        LayoutParams tp = new LayoutParams(Ui.px(c, 46), Ui.px(c, 44));
+        tp.rightMargin = Ui.px(c, 8);
+        foot.addView(trash, tp);
         Button k = Ui.key(c, "RESTORE", true);
-        k.setTextSize(12);
+        k.setTextSize(14);
         Ui.enable(k, unit);
         k.setOnClickListener(v -> restorer.restore(bin));
-        foot.addView(k, new LayoutParams(-2, Ui.px(c, 40)));
+        foot.addView(k, new LayoutParams(-2, Ui.px(c, 44)));
         r.addView(foot);
         return r;
     }

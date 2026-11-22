@@ -61,7 +61,7 @@ final class LibraryView extends LinearLayout {
         int p = Ui.px(c, 16);
         LinearLayout body = new LinearLayout(c);
         body.setOrientation(VERTICAL);
-        body.setPadding(p, Ui.px(c, 4), p, p);
+        body.setPadding(p, Ui.px(c, 16), p, p);
         scroll = new ScrollView(c);
         scroll.addView(body);
         addView(scroll, new LayoutParams(-1, -1));
@@ -75,8 +75,9 @@ final class LibraryView extends LinearLayout {
         field.setTextColor(Ui.INK);
         field.setTextSize(13);
         field.setSingleLine(true);
-        field.setTypeface(android.graphics.Typeface.MONOSPACE);
-        field.setBackground(Ui.box(c, Ui.FIELD, Ui.LINE, 3));
+        field.setTypeface(Ui.font(c, Ui.TECH));
+        // FirmWave Search field (Figma L3): white, black outline, rounded
+        field.setBackground(Ui.box(c, Ui.FIELD, Ui.LINE, 2.5f, 10));
         field.setPadding(Ui.px(c, 12), Ui.px(c, 8), Ui.px(c, 12), Ui.px(c, 8));
         field.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int a, int b, int d) {}
@@ -87,28 +88,33 @@ final class LibraryView extends LinearLayout {
             }
         });
         search.addView(field, new LayoutParams(0, Ui.px(c, 44), 1));
-        star = icon("ic_star_outline", Ui.DIM, 24);
+        star = icon("ic_star_outline", Ui.INK, 24);
         star.setContentDescription("Favorites only");
         star.setOnClickListener(v -> {
             favoritesOnly = !favoritesOnly;
             star.setImageResource(c.getResources().getIdentifier(favoritesOnly ? "ic_star" : "ic_star_outline", "drawable", c.getPackageName()));
-            star.setImageTintList(android.content.res.ColorStateList.valueOf(favoritesOnly ? Ui.WARN : Ui.DIM));
+            star.setImageTintList(android.content.res.ColorStateList.valueOf(favoritesOnly ? Ui.WARN : Ui.INK));
             render();
         });
         search.addView(star);
-        body.addView(search);
+        LayoutParams sp = new LayoutParams(-1, -2);
+        sp.topMargin = Ui.px(c, 10);
+        body.addView(search, sp);
 
         LinearLayout filters = new LinearLayout(c);
         filters.setGravity(Gravity.CENTER_VERTICAL);
         filters.setPadding(0, Ui.px(c, 6), 0, 0);
         filters.addView(check(c, "This unit only", true, on -> unitOnly = on));
         filters.addView(check(c, "Betas", true, on -> betas = on));
-        count = Ui.text(c, "", Ui.DIM, 11, false);
+        count = Ui.mono(c, "", Ui.INK, 11);
         count.setGravity(Gravity.END);
         filters.addView(count, new LayoutParams(0, -2, 1));
         body.addView(filters);
-        hidden = Ui.text(c, "", Ui.WARN, 11, false);
-        body.addView(hidden);
+        // what the filters hide, in an orange pill (Figma L3)
+        hidden = Ui.pill(c, "", Ui.STATUS_WARN);
+        LayoutParams hp = new LayoutParams(-2, -2);
+        hp.topMargin = Ui.px(c, 4);
+        body.addView(hidden, hp);
 
         list = new LinearLayout(c);
         list.setOrientation(VERTICAL);
@@ -116,7 +122,7 @@ final class LibraryView extends LinearLayout {
         list.setDescendantFocusability(FOCUS_BLOCK_DESCENDANTS);
         list.setPadding(0, Ui.px(c, 8), 0, 0);
         body.addView(list);
-        note = Ui.text(c, "", Ui.DIM, 11, false);
+        note = Ui.text(c, "", Ui.DIM, 12, false);
         note.setPadding(0, Ui.px(c, 12), 0, 0);
         body.addView(note);
     }
@@ -133,7 +139,7 @@ final class LibraryView extends LinearLayout {
         b.setText(label);
         b.setTextColor(Ui.INK);
         b.setTextSize(12);
-        b.setTypeface(android.graphics.Typeface.MONOSPACE);
+        b.setTypeface(Ui.font(c, Ui.BOLD));
         b.setButtonTintList(android.content.res.ColorStateList.valueOf(Ui.MINT));
         b.setChecked(on);
         b.setOnCheckedChangeListener((v, checked) -> { f.set(checked); render(); });
@@ -243,24 +249,29 @@ final class LibraryView extends LinearLayout {
         Context c = getContext();
         LinearLayout r = new LinearLayout(c);
         r.setOrientation(VERTICAL);
-        r.setPadding(Ui.px(c, 12), Ui.px(c, 10), Ui.px(c, 12), Ui.px(c, 10));
-        r.setBackground(Ui.box(c, Ui.RAISED, Ui.LINE, 3));
+        r.setPadding(Ui.px(c, 10), Ui.px(c, 10), Ui.px(c, 12), Ui.px(c, 12));
+        // FirmWave Library row (Figma L3): a white card, light green when saved on this phone
+        Ui.cardBg(r, it.saved ? Ui.SURFACE_SAVED : Ui.WHITE, 14, 3, 5);
         LayoutParams lp = new LayoutParams(-1, -2);
-        lp.bottomMargin = Ui.px(c, 8);
+        lp.bottomMargin = Ui.px(c, 10);
         r.setLayoutParams(lp);
 
         LinearLayout head = new LinearLayout(c);
         head.setGravity(Gravity.CENTER_VERTICAL);
-        android.widget.ImageView fav = icon(it.favorite ? "ic_star" : "ic_star_outline", it.favorite ? Ui.WARN : Ui.DIM, 20);
+        android.widget.ImageView fav = icon(it.favorite ? "ic_star" : "ic_star_outline", it.favorite ? Ui.WARN : Ui.INK, 20);
         fav.setContentDescription(it.favorite ? "Favorite" : "Not a favorite");
         fav.setOnClickListener(v -> toggleFavorite(it));
         head.addView(fav);
-        head.addView(Ui.text(c, it.name, Ui.INK, 15, true));
-        TextView ver = Ui.text(c, "  " + it.version, Ui.DIM, 12, false);
+        TextView nm = Ui.text(c, it.name.toUpperCase(Locale.ROOT), Ui.INK, 15, true);
+        nm.setTypeface(Ui.font(c, Ui.KEYFONT));
+        head.addView(nm);
+        TextView ver = Ui.mono(c, "  " + it.version, Ui.DIM, 12);
         head.addView(ver);
         r.addView(head);
         String meta = it.byline + (it.kinds.isEmpty() ? "" : " · " + it.kinds.toUpperCase(Locale.ROOT)) + (it.beta ? " · BETA" : "");
-        r.addView(Ui.text(c, meta, Ui.DIM, 11, false));
+        TextView mt = Ui.mono(c, meta, Ui.DIM, 11);
+        mt.setPadding(Ui.px(c, 8), 0, 0, 0);
+        r.addView(mt);
 
         LinearLayout foot = new LinearLayout(c);
         foot.setGravity(Gravity.CENTER_VERTICAL);
@@ -274,9 +285,17 @@ final class LibraryView extends LinearLayout {
         else if (!it.older.isEmpty()) { status = it.older + " SAVED · " + it.version + " OUT"; color = Ui.WARN; }
         else if (it.elsewhere) { status = "INSTALLED WITH THE AUTHOR'S OWN TOOL"; color = Ui.DIM; }
         else { status = "NOT ON THIS PHONE"; color = Ui.DIM; }
-        foot.addView(Ui.text(c, status, color, 11, false), new LayoutParams(0, -2, 1));
+        TextView stt = Ui.text(c, status, color, 11, true);
+        stt.setTypeface(Ui.font(c, Ui.KEYFONT));
+        stt.setPadding(Ui.px(c, 8), 0, 0, 0);
+        foot.addView(stt, new LayoutParams(0, -2, 1));
         if (it.saved || !it.older.isEmpty()) {
-            android.widget.ImageView trash = icon("ic_delete", Ui.DIM, 22);
+            android.widget.ImageView trash = icon("ic_delete", Ui.INK, 20);
+            // a white key with the trash can (Figma L3)
+            Ui.cardBg(trash, Ui.WHITE, 10, 2.5f, 3);
+            LayoutParams tlp = new LayoutParams(Ui.px(c, 46), Ui.px(c, 44));
+            tlp.rightMargin = Ui.px(c, 8);
+            trash.setLayoutParams(tlp);
             trash.setContentDescription("Delete from this phone");
             trash.setOnClickListener(v -> confirmDelete(it));
             foot.addView(trash);
@@ -284,7 +303,7 @@ final class LibraryView extends LinearLayout {
         if (!it.elsewhere || it.saved) {
             String label = it.saved ? "INSTALL" : it.older.isEmpty() ? "GET" : "UPDATE";
             Button k = Ui.key(c, label, it.saved);
-            k.setTextSize(12);
+            k.setTextSize(14);
             if (it.saved) {
                 // switched to download mode first when needed; the plan is reviewed before anything is written
                 Ui.enable(k, fits(it) && !it.elsewhere);
@@ -293,7 +312,7 @@ final class LibraryView extends LinearLayout {
                 Ui.enable(k, !getting);
                 k.setOnClickListener(v -> get(it));
             }
-            foot.addView(k, new LayoutParams(-2, Ui.px(c, 40)));
+            foot.addView(k, new LayoutParams(-2, Ui.px(c, 44)));
         }
         r.addView(foot);
         return r;
