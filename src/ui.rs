@@ -180,6 +180,11 @@ impl eframe::App for App {
         let noise = self.noise.get_or_insert_with(|| noise_texture(&ctx)).clone();
         let dev = st.device.as_ref();
         let busy = st.busy;
+        if st.boot_review && !st.busy && st.alert.is_none() && self.ctl.take_boot_review() {
+            // INSTALL M-BOOTLOADER's unit is read: chosen and reviewed as any write
+            self.op_open = None;
+            self.review_when_planned = self.ctl.answer_boot_suggestion(true);
+        }
         if self.review_when_planned && !st.busy {
             // planned (installing m-bootloader, chosen when it was recommended): review it as any write
             if st.mode == Mode::Bootloader && st.phase == Phase::Ready && st.alert.is_none()
@@ -334,8 +339,9 @@ impl eframe::App for App {
         let bx = 38.0 + half + 14.0;
         let br = board.r(bx, 384.0, half, 62.0);
         let (bc, bh) = clicked("installboot", br);
-        let can_boot = active && dev.is_some() && !open;
-        key(&p, br, dev.is_some() && !open, bh && can_boot, !can_boot);
+        // one click: with no unit read, INSTALL M-BOOTLOADER reads it first (as CHECK FM1 STATUS)
+        let can_boot = active && !open && !checking;
+        key(&p, br, !open && !checking, bh && can_boot, !can_boot);
         draw_icon(&p, Icon::Boot, bx + 22.0, 399.0, 32.0, KEYINK);
         if open {
             // "m-bootloader 2.4-395e6cc": its version
@@ -346,11 +352,13 @@ impl eframe::App for App {
         } else {
             p.text(bx + 72.0, 415.0, Align2::LEFT_CENTER, "INSTALL M-BOOTLOADER", "cond", 24.0, KEYINK, 2.0);
         }
-        led(&p, board.p(bx + half - 20.0, 400.0), dev.is_some() && !open);
-        if bc && can_boot {
+        led(&p, board.p(bx + half - 20.0, 400.0), !open && !checking);
+        if bc && can_boot && dev.is_some() {
             // reviewed as any write once planned
             self.op_open = None;
             self.review_when_planned = self.ctl.answer_boot_suggestion(true);
+        } else if bc && can_boot {
+            self.ctl.install_bootloader();
         } else if bc && !modal {
             self.nudged = now;
         }

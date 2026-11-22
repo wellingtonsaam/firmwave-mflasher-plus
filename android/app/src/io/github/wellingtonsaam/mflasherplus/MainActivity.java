@@ -640,11 +640,11 @@ public class MainActivity extends Activity {
             dialog("No backups yet", "Save one with SAVE BACKUP first.").setPositiveButton("OK", null).show();
             return;
         }
-        // newest first by when each was saved (its name holds the firmware too: "fm1-zp12-2.5-20261116-165332.bin")
+        // newest first by when each was saved (its name holds the firmware too: "20261116-165332-fm1-zp12-2.5.bin")
         java.util.Arrays.sort(all, (x, y) -> Ui.savedAt(y).compareTo(Ui.savedAt(x)));
         String[] names = new String[all.length];
         for (int i = 0; i < all.length; i++) {
-            // fm1-20261116-102922.bin: saved 16/11/2026 10:29
+            // 20261116-102922-fm1.bin: saved 16/11/2026 10:29
             java.util.regex.Matcher m = java.util.regex.Pattern.compile("(\\d{4})(\\d{2})(\\d{2})-(\\d{2})(\\d{2})").matcher(all[i].getName());
             names[i] = m.find() ? m.group(3) + "/" + m.group(2) + "/" + m.group(1) + " " + m.group(4) + ":" + m.group(5)
                     : all[i].getName();

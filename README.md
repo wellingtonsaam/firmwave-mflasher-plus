@@ -155,7 +155,7 @@ it.
 - **The Device tab, redesigned** around the use cases: **CHECK FM1 STATUS**
   and **INSTALL M-BOOTLOADER** first, then the unit's details, and each
   operation's form shown only when it is chosen.
-- **Backups named by the firmware**: *fm1-zp12-2.5-20261116-165332.bin*.
+- **Backups named by the firmware**: *20261116-165332-fm1-zp12-2.5.bin* (when first, so that sorting by name is sorting by time).
 
 ## Getting started
 

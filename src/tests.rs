@@ -326,6 +326,9 @@ fn a_backup_that_no_longer_matches_its_checksum_is_refused() {
     let dir = std::env::temp_dir().join(format!("mflasher-plus-sha-{}", std::process::id()));
     let mut s = session(vec![0xFF; 0x100000]);
     let path = s.save_backup(Some(&dir)).unwrap();
+    // named when first ("20261118-090339-fm1…"), so that sorting by name is sorting by time
+    let name = path.file_name().unwrap().to_string_lossy().into_owned();
+    assert!(regex::Regex::new(r"^\d{8}-\d{6}-[a-z0-9.-]+\.bin$").unwrap().is_match(&name), "{name}");
     let mut data = std::fs::read(&path).unwrap();
     crate::ops::check_backup_file(&path, &data).unwrap();
     data[0x1234] ^= 1;
@@ -1694,41 +1697,43 @@ mod download_mode {
 
     #[test]
     fn m_bootloader_says_rec_while_switching_on() {
-        let t = how_to("yes", "ChoralRoot", "FM-1", Some("ChoralRoot FM-1"), true);
+        let t = how_to("yes", "ChoralRoot", "FM-1", Some("ChoralRoot FM-1"), "INSTALL");
         assert!(t.contains("Hold REC and switch FM-1 on"));
         assert!(!t.contains("OCT-"));
         assert!(t.contains("did not switch automatically to Download Mode"));
         assert!(t.starts_with("The M-Vave FM-1 did not switch"), "the unit by its model, not its MIDI port's name");
-        assert!(how_to("", "", "", Some("Caravel"), false).starts_with("The M-Vave FM-1 "));
-        assert!(how_to("yes", "", "SMK-37 Pro", Some("SMK-37 Elite"), false).starts_with("The M-Vave SMK-37 "));
+        assert!(how_to("", "", "", Some("Caravel"), "CHECK FM1 STATUS").starts_with("The M-Vave FM-1 "));
+        assert!(how_to("yes", "", "SMK-37 Pro", Some("SMK-37 Elite"), "CHECK FM1 STATUS").starts_with("The M-Vave SMK-37 "));
     }
 
     #[test]
     fn smk37_uses_seq_rec() {
-        assert!(how_to("yes", "", "SMK-37 Pro", None, true).contains("Hold SEQ REC"));
+        assert!(how_to("yes", "", "SMK-37 Pro", None, "INSTALL").contains("Hold SEQ REC"));
     }
 
     #[test]
     fn felucca_adds_the_oct_keys() {
-        let t = how_to("yes", "Felucca", "FM-1", None, true);
+        let t = how_to("yes", "Felucca", "FM-1", None, "INSTALL");
         assert!(t.contains("REC") && t.contains("OCT- and OCT+"));
-        assert!(how_to("no", "Felucca", "FM-1", None, true).starts_with("M-Flasher + can't see your M-Vave FM-1"));
-        assert!(how_to("", "", "FM-1", Some("Caravel"), true).contains("OCT- and OCT+ buttons together for 5 seconds"));
+        assert!(how_to("no", "Felucca", "FM-1", None, "INSTALL").starts_with("M-Flasher + can't see your M-Vave FM-1"));
+        assert!(how_to("", "", "FM-1", Some("Caravel"), "INSTALL").contains("OCT- and OCT+ buttons together for 5 seconds"));
     }
 
     #[test]
     fn stock_firmware_on_stock_bootloader_has_no_keys() {
-        let t = how_to("no", "M-VAVE 015", "FM-1", None, true);
+        let t = how_to("no", "M-VAVE 015", "FM-1", None, "INSTALL");
         assert!(t.contains("its buttons can't do it"));
         assert!(!t.contains("Hold REC"));
     }
 
     #[test]
     fn unknown_unit_lists_every_way() {
-        let t = how_to("", "", "", None, true);
+        let t = how_to("", "", "", None, "INSTALL");
         assert!(t.contains("With m-bootloader") && t.contains("OCT-") && t.contains("M-VAVE's own firmware"));
         assert!(t.ends_with("M-Flasher + needs Download Mode to check your FM-1 properly."));
-        assert!(how_to("", "", "", None, false).contains("press CHECK FM1 STATUS again"));
+        assert!(how_to("", "", "", None, "CHECK FM1 STATUS").contains("press CHECK FM1 STATUS again"));
+        // INSTALL M-BOOTLOADER in one click waits for download mode too: its own key is named
+        assert!(how_to("", "", "", None, "INSTALL M-BOOTLOADER").contains("press INSTALL M-BOOTLOADER again"));
     }
 }
 
@@ -1870,6 +1875,54 @@ fn a_firmware_name_in_a_backup_file_name() {
     assert_eq!(crate::ops::file_part("  ../etc/passwd  "), "etc-passwd");
     assert_eq!(crate::ops::file_part("???"), "");
     assert!(crate::ops::file_part(&"x".repeat(80)).len() <= 40);
+}
+
+/// Run with sudo, what root made in the user's home goes back to the user.
+#[cfg(unix)]
+mod give_back {
+    use crate::ops::hand_back;
+    use std::fs;
+
+    #[test]
+    fn the_path_its_folders_up_to_home_and_with_tree_what_is_inside() {
+        let home = std::env::temp_dir().join(format!("mflr-giveback-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&home);
+        let app = home.join("Library/Application Support/M-Flasher Plus");
+        fs::create_dir_all(app.join("library/packages")).unwrap();
+        fs::write(app.join("library/catalog.json"), b"{}").unwrap();
+        fs::write(app.join("library/packages/a.fwsc"), b"a").unwrap();
+        std::os::unix::fs::symlink("/etc", app.join("library/link")).unwrap();
+        let me = unsafe { (libc::getuid(), libc::getgid()) };
+        let rel = |v: Vec<std::path::PathBuf>| v.iter().map(|p| p.strip_prefix(&home).unwrap().display().to_string()).collect::<Vec<_>>();
+
+        // one file: it and the folders above it, never home itself
+        let one = rel(hand_back(&app.join("library/catalog.json"), false, &home, me.0, me));
+        assert_eq!(one, ["Library", "Library/Application Support", "Library/Application Support/M-Flasher Plus",
+                         "Library/Application Support/M-Flasher Plus/library",
+                         "Library/Application Support/M-Flasher Plus/library/catalog.json"]);
+        // a tree: everything in it, the link itself and not what it points to
+        let tree = rel(hand_back(&app, true, &home, me.0, me));
+        assert!(tree.contains(&"Library/Application Support/M-Flasher Plus/library/packages/a.fwsc".to_string()));
+        assert!(tree.contains(&"Library/Application Support/M-Flasher Plus/library/link".to_string()));
+        assert!(!tree.iter().any(|p| p.contains("link/")));
+        // what someone else owns stays theirs; outside home and home itself, nothing
+        assert!(hand_back(&app, true, &home, me.0 + 1, me).is_empty());
+        assert!(hand_back(std::path::Path::new("/etc"), true, &home, me.0, me).is_empty());
+        assert!(hand_back(&home, true, &home, me.0, me).is_empty());
+        let _ = fs::remove_dir_all(&home);
+    }
+}
+
+/// A file on this Mac is not "only in iCloud": the app reads it as before (21/11).
+#[test]
+fn a_local_file_is_not_only_in_icloud() {
+    let dir = std::env::temp_dir().join(format!("fw-cloud-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let f = dir.join("fm1.json");
+    std::fs::write(&f, "{}").unwrap();
+    assert!(!crate::cloud::only_in_cloud(&f));
+    assert!(!crate::cloud::only_in_cloud(&dir.join("missing.json")), "a missing file is not in iCloud either");
+    let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[test]

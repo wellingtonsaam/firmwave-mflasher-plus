@@ -293,7 +293,17 @@ pub fn default_dir() -> PathBuf {
         (base.join("m-flasher-plus/library"), [base.join("m-flasher/library"), base.join("m-flasher-library")])
     };
     static ADOPTED: std::sync::Once = std::sync::Once::new();
-    ADOPTED.call_once(|| olds.iter().for_each(|old| adopt_old_library(&dir, old)));
+    ADOPTED.call_once(|| {
+        olds.iter().for_each(|old| adopt_old_library(&dir, old));
+        // run with sudo before, root may own these folders: the user can't keep the library then
+        // (M-Flasher Plus' folder, M-Flasher's, and the old libraries set aside)
+        for app in [dir.parent(), olds[0].parent()].into_iter().flatten() {
+            crate::ops::give_back(app, true);
+        }
+        for old in &olds {
+            crate::ops::give_back(&moved_name(old), true);
+        }
+    });
     dir
 }
 
@@ -337,8 +347,12 @@ pub(crate) fn adopt_old_library(new: &Path, old: &Path) {
             let _ = std::fs::rename(old.join(f), new.join(f));
         }
     }
-    let moved = old.with_file_name(format!("{} (moved)", old.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default()));
-    let _ = std::fs::rename(old, moved);
+    let _ = std::fs::rename(old, moved_name(old));
+}
+
+/// Where an old library folder is set aside once adopted: "<name> (moved)".
+fn moved_name(old: &Path) -> PathBuf {
+    old.with_file_name(format!("{} (moved)", old.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default()))
 }
 
 /// Writes through a temporary file, so that a file is either whole or absent.
@@ -387,6 +401,9 @@ pub fn remember_installed(dir: &Path, image: &[u8], sectors: &[usize], name: &st
 
 /// The name a firmware was installed by, if this flash holds one remembered in `<dir>/installed.json`.
 pub fn installed_name(dir: &Path, flash: &[u8]) -> Option<String> {
+    if crate::cloud::only_in_cloud(&dir.join(INSTALLED)) {
+        return None; // only in iCloud: not waited for
+    }
     let list: Vec<Value> = serde_json::from_slice(&std::fs::read(dir.join(INSTALLED)).ok()?).ok()?;
     list.iter().find_map(|e| {
         let sectors: Vec<usize> = e["sectors"].as_array()?.iter().filter_map(|v| v.as_u64().map(|v| v as usize)).collect();
@@ -397,7 +414,10 @@ pub fn installed_name(dir: &Path, flash: &[u8]) -> Option<String> {
 
 fn write_whole(path: &Path, data: &[u8]) -> Result<(), String> {
     let tmp = path.with_extension("part");
-    std::fs::write(&tmp, data).and_then(|_| std::fs::rename(&tmp, path)).map_err(|e| format!("cannot write {}: {e}", path.display()))
+    std::fs::write(&tmp, data).and_then(|_| std::fs::rename(&tmp, path)).map_err(|e| format!("cannot write {}: {e}", path.display()))?;
+    // run with sudo, the file and the folders made for it are still the user's
+    crate::ops::give_back(path, false);
+    Ok(())
 }
 
 pub struct Library {

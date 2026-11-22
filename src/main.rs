@@ -7,6 +7,7 @@
 
 mod boards;
 mod cli;
+mod cloud;
 mod controller;
 mod fonts;
 mod formats;
