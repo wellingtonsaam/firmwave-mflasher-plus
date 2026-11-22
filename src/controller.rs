@@ -453,8 +453,27 @@ impl Controller {
 
     fn scan_loop(&self) {
         // FIRMWAVE_PREVIEW=1: the window only, for screenshots of the design; no unit is looked for or touched
-        if std::env::var_os("FIRMWAVE_PREVIEW").is_some() {
+        if let Some(v) = std::env::var_os("FIRMWAVE_PREVIEW") {
             self.log("Preview: not looking for units (FIRMWAVE_PREVIEW)".into());
+            // FIRMWAVE_PREVIEW=fm1: a made-up stock FM-1 to draw the checked unit's screens (Figma Option A);
+            // nothing is read or written, the USB is never touched
+            if v == "fm1" {
+                self.with(|s| {
+                    use crate::sectormap::Region;
+                    s.device = Some(DeviceView {
+                        model: "FM-1".into(), certain: true, firmware: "FM-1 016 (stock)".into(), app: "OK".into(), app_ok: true,
+                        bootloader: "stock (M-VAVE)".into(), boot_open: false, flash: "0x856014 (old)".into(),
+                        flash_label: "Puya P25Q80H · 0x856014 (old)".into(), chip_key: "0x980F".into(), chip_key_ok: true,
+                        evidence: vec![], named: None,
+                    });
+                    s.map = (0..256).map(|i| match i {
+                        0..=3 => Region::Boot, 4..=0x92 => Region::Firmware, 0x93..=0xE8 => Region::Settings,
+                        0xE9 => Region::Pairings, 0xEA..=0xFB => Region::Sounds, 0xFF => Region::Mac, _ => Region::Free,
+                    }).collect();
+                });
+                self.log("Read 1 MiB · the chip's CRC-32 matches".into());
+                self.log("FM-1 · FM-1 016 (stock) · stock bootloader".into());
+            }
             return;
         }
         loop {
