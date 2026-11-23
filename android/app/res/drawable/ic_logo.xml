@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- FirmWave's icon as the logo (Figma App Icon 308:102285): the coral square, black outline and hard shadow,
+     and the wave shaped as a W (macos/icon.svg) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="36dp" android:height="36dp" android:viewportWidth="182" android:viewportHeight="182">
+    <group android:translateX="2" android:translateY="2">
+        <group android:translateX="13.8" android:translateY="13.8">
+            <path android:fillColor="#FF000000" android:pathData="M41.5,0 H124.5 A41.5,41.5 0 0 1 166,41.5 V124.5 A41.5,41.5 0 0 1 124.5,166 H41.5 A41.5,41.5 0 0 1 0,124.5 V41.5 A41.5,41.5 0 0 1 41.5,0 Z" />
+        </group>
+        <path android:fillColor="#FFFF6B6B" android:strokeColor="#FF000000" android:strokeWidth="7" android:pathData="M41.5,0 H124.5 A41.5,41.5 0 0 1 166,41.5 V124.5 A41.5,41.5 0 0 1 124.5,166 H41.5 A41.5,41.5 0 0 1 0,124.5 V41.5 A41.5,41.5 0 0 1 41.5,0 Z" />
+        <path android:strokeColor="#FF000000" android:strokeWidth="12.5" android:strokeLineCap="round" android:strokeLineJoin="round"
+            android:fillColor="#00000000" android:pathData="M35.20,63.70 L36.69,64.07 L38.19,65.17 L39.68,66.95 L41.18,69.35 L42.67,72.28 L44.16,75.61 L45.66,79.23 L47.15,83.00 L48.64,86.77 L50.14,90.39 L51.63,93.72 L53.12,96.65 L54.62,99.05 L56.11,100.83 L57.61,101.93 L59.10,102.30 L60.59,101.93 L62.09,100.83 L63.58,99.05 L65.08,96.65 L66.57,93.72 L68.06,90.39 L69.56,86.77 L71.05,83.00 L72.54,79.23 L74.04,75.61 L75.53,72.28 L77.03,69.35 L78.52,66.95 L80.01,65.17 L81.51,64.07 L83.00,63.70 L84.49,64.07 L85.99,65.17 L87.48,66.95 L88.98,69.35 L90.47,72.28 L91.96,75.61 L93.46,79.23 L94.95,83.00 L96.44,86.77 L97.94,90.39 L99.43,93.72 L100.93,96.65 L102.42,99.05 L103.91,100.83 L105.41,101.93 L106.90,102.30 L108.39,101.93 L109.89,100.83 L111.38,99.05 L112.88,96.65 L114.37,93.72 L115.86,90.39 L117.36,86.77 L118.85,83.00 L120.34,79.23 L121.84,75.61 L123.33,72.28 L124.83,69.35 L126.32,66.95 L127.81,65.17 L129.31,64.07 L130.80,63.70" />
+    </group>
+</vector>

@@ -60,6 +60,9 @@ enum Tab {
 
 /// Rows of the Library tab shown at once.
 const LIB_ROWS: usize = 8;
+/// Where the Library's rows start, and a row's height with its gap (board units).
+const LIB_TOP: f32 = 470.0;
+const LIB_STEP: f32 = 61.0;
 
 #[derive(PartialEq)]
 enum Dialog {
@@ -171,6 +174,7 @@ impl eframe::App for App {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         let st = self.ctl.snapshot();
         let ctx = ui.ctx().clone();
+        preview_shot(&ctx);
         let screen = ctx.content_rect();
         let s = (screen.width() / W).min(screen.height() / H);
         let board = Board { s, o: screen.center() - vec2(W * s, H * s) / 2.0 };
@@ -238,15 +242,13 @@ impl eframe::App for App {
         let _ = origin;
         // the logo (Figma DS · Logo, 308:12075): "FirmWave" in Lexend Mega Black, letter spacing -20%, then the app
         // icon: the coral square with a 3 px black outline, a hard shadow and the black wave (DS · Container)
-        let ww = p.text(38.0, 84.0, Align2::LEFT_CENTER, "FirmWave", "logo", 36.0, INK, -7.2);
+        let ww = p.text(38.0, 76.0, Align2::LEFT_CENTER, "FirmWave", "logo", 36.0, INK, -7.2);
+        // the Logo's "Transition subtitle" (Figma 308:12075): the old name, while people still look for it
+        p.text(40.0, 106.0, Align2::LEFT_CENTER, "formerly M-Flasher+", "plex", 13.0, DIM, 0.0);
         let ix = 38.0 + ww + 13.0;
         let icon = board.r(ix, 84.0 - 38.0, 76.0, 76.0);
         p.card(icon, fw::CORAL, 19.0, 6.0);
-        let pts: Vec<Pos2> = (0..=48).map(|k| {
-            let t = k as f32 / 48.0;
-            board.p(ix + 14.0 + t * 48.0, 84.0 - (t * std::f32::consts::TAU * 1.5).sin() * 9.0)
-        }).collect();
-        painter.add(Shape::line(pts, Stroke::new(5.5 * s, fw::INK_PRIMARY)));
+        wave_w(&p, ix, 84.0 - 38.0, 76.0);
         let ww = ww + 13.0 + 76.0;
         p.text(38.0 + ww + 24.0, 72.0, Align2::LEFT_CENTER, "USB FIRMWARE UTILITY", "cond", 15.0, INK, 1.8);
         p.text(38.0 + ww + 24.0, 94.0, Align2::LEFT_CENTER, "FOR MUSIC CREATIVES · FM-1 AND SMK-37", "tech", 12.0, DIM, 1.2);
@@ -289,9 +291,9 @@ impl eframe::App for App {
         p.label(38.0, 148.0, "CONNECTED DEVICE", None);
         let lcd = board.r(38.0, 166.0, 853.0, 196.0);
         p.card(lcd, LCD1, 12.0, 6.0);
-        lcd_icon(&p, 92.0, 196.0, dev.is_some());
-        p.vline(346.0, 185.0, 312.0, LCDINK);
-        p.hline(84.0, 845.0, 317.0, LCDINK);
+        // FirmWave LCD (Figma Option A, W1): text only, the title big, two lines, a rule and what to do
+        let _ = lcd_icon;
+        painter.line_segment([board.p(70.0, 306.0), board.p(860.0, 306.0)], Stroke::new(3.0 * s, LCDINK));
         let (l1, l2, l3) = match dev {
             Some(d) => (d.model.replace(" (probably)", "").to_uppercase(),
                         if d.certain { "USB CONNECTED · DOWNLOAD MODE".to_string() } else { "MODEL NOT CERTAIN · CHECK BELOW".into() },
@@ -299,10 +301,9 @@ impl eframe::App for App {
             None if st.phase == Phase::Connecting => ("READING".into(), "FLASH READ · CHECKING".into(), format!("{}%", (st.pct * 100.0) as u32)),
             None => ("NO UNIT".into(), if st.multiple { "MORE THAN ONE UNIT".into() } else { "WAITING FOR DOWNLOAD MODE".into() }, "USB".into()),
         };
-        p.text_fit(372.0, 214.0, &l1, "lcd", 58.0, 470.0, LCDINK, 2.0);
-        p.text_fit(372.0, 254.0, &l2, "lcd", 30.0, 470.0, LCDINK, 1.5);
-        p.hline(372.0, 845.0, 272.0, LCDINK);
-        p.text(372.0, 293.0, Align2::LEFT_CENTER, &l3, "lcd", 30.0, LCDINK, 1.5);
+        p.text_fit(70.0, 206.0, &l1, "lcd", 44.0, 780.0, LCDINK, 1.0);
+        p.text_fit(70.0, 248.0, &l2, "lcd", 20.0, 780.0, LCDINK, 0.6);
+        p.text_fit(70.0, 280.0, &l3, "lcd", 20.0, 780.0, LCDINK, 0.6);
         let line = prompt(&st, self.op_open.is_some());
         let alert_ink = st.plan.as_ref().is_some_and(|p| p.kind == PlanKind::Refused);
         let mut ink = if alert_ink { hex(0x5b1206) } else { LCDINK };
@@ -313,14 +314,14 @@ impl eframe::App for App {
         if (0.0..NUDGE).contains(&t) {
             dx = (t * 45.0).sin() as f32 * 5.0 * (1.0 - t as f32 / 0.45).max(0.0);
             if ((t / 0.2) as i64) % 2 == 0 {
-                p.rect(board.r(76.0, 323.0, 784.0, 28.0), ink);
+                p.rect(board.r(62.0, 320.0, 800.0, 28.0), ink);
                 ink = LCD1;
             }
             ctx.request_repaint_after(std::time::Duration::from_millis(16));
         }
-        let pw = p.text_fit(84.0 + dx, 337.0, &line, "lcd", 29.0, 740.0, ink, 1.4);
+        let pw = p.text_fit(70.0 + dx, 334.0, &line, "lcd", 20.0, 760.0, ink, 0.6);
         if (now * 2.0) as i64 % 2 == 0 {
-            p.rect(board.r(84.0 + dx + pw + 8.0, 326.0, 13.0, 22.0), ink);
+            p.rect(board.r(70.0 + dx + pw + 6.0, 324.0, 11.0, 20.0), ink);
         }
         ctx.request_repaint_after(std::time::Duration::from_millis(500));
 
@@ -367,45 +368,59 @@ impl eframe::App for App {
             self.nudged = now;
         }
         if dev.is_some() && !open {
-            p.p.add(Shape::convex_polygon(vec![board.p(47.5, 459.0), board.p(55.0, 472.0), board.p(40.0, 472.0)], WARN, Stroke::NONE));
-            p.text(47.5, 467.5, Align2::CENTER_CENTER, "!", "tech", 11.0, hex(0x1a1410), 0.0);
-            let lw = p.text(66.0, 466.0, Align2::LEFT_CENTER, "SAFETY CHECK", "tech", 13.0, LAV, 1.6);
-            p.text(66.0 + lw + 14.0, 466.0, Align2::LEFT_CENTER, "You don't have m-bootloader · It's a safeguard to prevent bricks",
-                   "plex", 15.0, WARN, 0.0);
+            // FirmWave Safety banner (Figma Option A): an orange bar, a black "!" square, the label and the reason
+            p.pill(board.r(38.0, 462.0, 853.0, 36.0), fw::STATUS_WARN, 10.0, 2.5, 0.0);
+            alert_box(&p, 54.0, 470.0, 20.0);
+            let lw = p.text(88.0, 480.0, Align2::LEFT_CENTER, "SAFETY CHECK", "label", 12.0, INK, 1.6);
+            p.text_fit(88.0 + lw + 16.0, 480.0, "You don't have m-bootloader · It's a safeguard to prevent bricks",
+                       "tech", 15.0, 853.0 - lw - 80.0, INK, 0.0);
         }
 
         if let Some(d) = dev {
         // ---- device info: once checked ----
-        p.label(38.0, 492.0, "DEVICE INFO", Some(891.0));
+        p.label(38.0, 516.0, "DEVICE INFO", None);
+        p.card(board.r(38.0, 532.0, 853.0, 114.0), fw::SURFACE_CARD, 12.0, 5.0);
         let rows: [[(&str, String, Color32); 2]; 3] = [
             [("MODEL", d.model.to_uppercase(), if d.certain { INK } else { WARN }), ("BOOTLOADER", d.bootloader.clone(), if d.boot_open { INK } else { WARN })],
             [("FIRMWARE", d.firmware_shown(), INK), ("FLASH CHIP", d.flash_label.clone(), INK)],
             [("FIRMWARE CHECK", d.app.clone(), if d.app_ok { MINT } else { BAD }), ("CHIP KEY", d.chip_key.clone(), if d.chip_key_ok { INK } else { WARN })],
         ];
         for (i, row) in rows.iter().enumerate() {
-            let y = 517.0 + i as f32 * 29.0;
+            let y = 551.0 + i as f32 * 37.0;
+            if i > 0 {
+                painter.line_segment([board.p(56.0, y - 18.5), board.p(873.0, y - 18.5)], Stroke::new(2.0 * s, fw::BORDER_DEFAULT));
+            }
             for (j, (k, v, c)) in row.iter().enumerate() {
-                let x = if j == 0 { 38.0 } else { 484.0 };
-                p.text(x + 10.0, y, Align2::LEFT_CENTER, k, "tech", 14.0, LAV, 1.6);
-                p.text_fit(x + 160.0, y, v, "plex", 15.0, 245.0, *c, 0.0);
-                p.hline(x, x + 407.0, y + 14.5, hex(0x3c3433));
+                let x = if j == 0 { 58.0 } else { 478.0 };
+                p.text(x, y, Align2::LEFT_CENTER, k, "tech", 12.0, DIM, 1.2);
+                // what needs a look, and the firmware's check, in a pill of their status colour
+                let pill = match (*k, *c) {
+                    (_, c) if c == WARN => Some(fw::STATUS_WARN),
+                    ("FIRMWARE CHECK", c) if c == MINT => Some(fw::STATUS_OK),
+                    (_, c) if c == BAD => Some(fw::CORAL),
+                    _ => None,
+                };
+                if let Some(f) = pill {
+                    let w = p.measure(v, "plex", 14.0, 0.0).min(240.0);
+                    p.pill(board.r(x + 142.0, y - 12.0, w + 18.0, 24.0), f, 6.0, 2.0, 0.0);
+                }
+                p.text_fit(x + 151.0, y, v, "plex", 14.0, 240.0, INK, 0.0);
             }
         }
-        p.vline(465.0, 506.0, 588.0, LAVLINE);
         if !d.certain {
-            let r = board.r(48.0, 504.0, 400.0, 26.0);
+            let r = board.r(54.0, 539.0, 400.0, 26.0);
             let (c, h) = clicked("model", r);
             if h && active {
-                painter.rect_stroke(r, CornerRadius::ZERO, Stroke::new(s, WARN), StrokeKind::Inside);
+                painter.rect_stroke(r, CornerRadius::same((4.0 * s) as u8), Stroke::new(2.0 * s, INK), StrokeKind::Inside);
             }
-            p.text(440.0, 517.0, Align2::RIGHT_CENTER, "CHOOSE ▸", "tech", 12.0, WARN, 1.0);
+            p.text(446.0, 551.0, Align2::RIGHT_CENTER, "CHOOSE ▸", "tech", 12.0, INK, 1.0);
             if c && active {
                 self.dialog = Dialog::Model;
             }
         }
 
         // ---- operations: backup saves at once; restore and firmware open their form ----
-        p.label(38.0, 612.0, "OPERATIONS", Some(891.0));
+        p.label(38.0, 670.0, "OPERATIONS", None);
         let keys = [
             // labels as in Figma (W8 · 101:4991)
             (Mode::Backup, "SAVE", "BACKUP", Icon::Backup),
@@ -415,14 +430,16 @@ impl eframe::App for App {
         let kw = (853.0 - 2.0 * 14.0) / 3.0;
         for (i, (mode, t1, t2, icon)) in keys.iter().enumerate() {
             let x = 38.0 + i as f32 * (kw + 14.0);
-            let r = board.r(x, 626.0, kw, 72.0);
+            let r = board.r(x, 684.0, kw, 64.0);
             let (c, h) = clicked(&format!("op{i}"), r); // ids must be unique: two keys say BACKUP
             let on = self.op_open == Some(*mode);
-            key(&p, r, on, h && active, !active && !on);
-            draw_icon(&p, *icon, x + 22.0, 645.0, 34.0, KEYINK);
-            p.text(x + 70.0, 651.0, Align2::LEFT_CENTER, t1, "cond", 16.0, KEYINK, 1.0);
-            p.text(x + 70.0, 673.0, Align2::LEFT_CENTER, t2, "cond", 16.0, KEYINK, 1.0);
-            led(&p, board.p(x + kw - 18.0, 644.0), on);
+            // FirmWave Operation key (Figma Option A): SAVE cyan, RESTORE pink, INSTALL lilac
+            let fill = match mode { Mode::Backup => fw::OP_SAVE, Mode::Restore => fw::OP_RESTORE, _ => fw::OP_INSTALL };
+            key_fill(&p, r, fill, h && active, !active && !on);
+            draw_icon(&p, *icon, x + 20.0, 699.0, 34.0, KEYINK);
+            p.text(x + 66.0, 705.0, Align2::LEFT_CENTER, t1, "cond", 17.0, KEYINK, 1.0);
+            p.text(x + 66.0, 727.0, Align2::LEFT_CENTER, t2, "cond", 17.0, KEYINK, 1.0);
+            led(&p, board.p(x + kw - 24.0, 716.0), on);
             if c && active {
                 self.op_open = Some(*mode);
                 if *mode == Mode::Backup {
@@ -443,17 +460,16 @@ impl eframe::App for App {
         };
         if let Some(mode) = form {
             let fw = mode == Mode::Firmware;
-            p.label(38.0, 724.0, if fw { "FIRMWARE FILE" } else { "BACKUP TO RESTORE" }, Some(891.0));
-            let cb = board.r(38.0, 738.0, 170.0, 38.0);
+            p.label(38.0, 772.0, if fw { "FIRMWARE FILE" } else { "BACKUP TO RESTORE" }, None);
+            let cb = board.r(38.0, 784.0, 170.0, 34.0);
             let (c, h) = clicked("choose", cb);
             key(&p, cb, false, h && active, !active);
-            p.text(123.0, 757.0, Align2::CENTER_CENTER, if fw { "CHOOSE FILE" } else { "CHOOSE BACKUP" }, "cond", 15.0, KEYINK, 1.0);
+            p.text(123.0, 801.0, Align2::CENTER_CENTER, if fw { "CHOOSE FILE" } else { "CHOOSE BACKUP" }, "cond", 15.0, KEYINK, 1.0);
             if c && active {
                 self.ctl.choose_file(if fw { FileKind::Firmware } else { FileKind::Restore });
             }
-            let field = board.r(222.0, 738.0, 669.0, 38.0);
-            p.rect(field, hex(0x1d1917));
-            p.frame(field, hex(0x5a5060), 1.0);
+            let field = board.r(222.0, 784.0, 669.0, 34.0);
+            p.pill(field, fw::SURFACE_CARD, 8.0, 2.5, 0.0);
             let value = if fw {
                 match (&st.library_choice, st.file(FileKind::Firmware)) {
                     (Some(n), Some(_)) => Some(format!("{n} · from the library · SHA-256 OK")),
@@ -465,8 +481,8 @@ impl eframe::App for App {
                     None => n,
                 })
             };
-            let (txt, col) = match value { Some(v) => (v, INK), None => ("no file chosen".into(), hex(0x5c534d)) };
-            p.text_fit(236.0, 757.0, &txt, "plex", 17.0, 640.0, col, 0.0);
+            let (txt, col) = match value { Some(v) => (v, INK), None => ("no file chosen".into(), fw::INK_PLACEHOLDER) };
+            p.text_fit(236.0, 801.0, &txt, "plex", 15.0, 640.0, col, 0.0);
             // the write's review, OR the other source
             let n = st.plan.as_ref().map(|p| p.count).unwrap_or(0);
             let ready = st.plan.as_ref().is_some_and(|p| p.ready) && st.phase != Phase::Done;
@@ -478,10 +494,10 @@ impl eframe::App for App {
                 _ => verb.into(),
             };
             // restore has one source, CHOOSE BACKUP: its review key takes the whole row
-            let pr = if fw { board.r(38.0, 790.0, 480.0, 48.0) } else { board.r(38.0, 790.0, 853.0, 48.0) };
+            let pr = if fw { board.r(38.0, 828.0, 480.0, 38.0) } else { board.r(38.0, 828.0, 853.0, 38.0) };
             let (pc, ph) = clicked("primary", pr);
             key(&p, pr, ready, ph && active && ready, !(active && ready));
-            p.text(pr.center().x, 814.0, Align2::CENTER_CENTER, &label, "cond", 16.0, KEYINK, 1.0);
+            p.text(pr.center().x, 847.0, Align2::CENTER_CENTER, &label, "cond", 16.0, KEYINK, 1.0);
             if pc && active && ready {
                 if fw && st.boot_first.is_some() {
                     self.dialog = Dialog::TwoStep;
@@ -492,11 +508,11 @@ impl eframe::App for App {
                 self.nudged = now;
             }
             if fw {
-                p.text(545.0, 814.0, Align2::CENTER_CENTER, "OR", "tech", 14.0, DIM, 1.6);
-                let sr = board.r(572.0, 790.0, 319.0, 48.0);
+                p.text(545.0, 847.0, Align2::CENTER_CENTER, "OR", "tech", 14.0, DIM, 1.6);
+                let sr = board.r(572.0, 828.0, 319.0, 38.0);
                 let (sc, sh) = clicked("othersource", sr);
                 key(&p, sr, false, sh && active, !active);
-                p.text(731.5, 814.0, Align2::CENTER_CENTER, "INSTALL FROM LIBRARY", "cond", 16.0, KEYINK, 1.0);
+                p.text(731.5, 847.0, Align2::CENTER_CENTER, "INSTALL FROM LIBRARY", "cond", 16.0, KEYINK, 1.0);
                 if sc && active {
                     self.tab = Tab::Library;
                     self.ctl.load_library();
@@ -507,52 +523,50 @@ impl eframe::App for App {
                     Some(n) => format!("AUTO BACKUP SAVED · {n}"),
                     None => "AUTO BACKUP BEFORE EVERY WRITE · THE BOOTLOADER IS KEPT".into(),
                 };
-                p.text(38.0, 858.0, Align2::LEFT_CENTER, &auto_line, "tech", 13.5, LAV, 2.0);
-            } else if checkbox(ui, &p, 38.0, 858.0, "Keep this unit's bootloader (don't restore the boot area)", st.keep_boot, active) {
+                p.text(38.0, 880.0, Align2::LEFT_CENTER, &auto_line, "tech", 12.0, DIM, 1.6);
+            } else if checkbox(ui, &p, 38.0, 880.0, "Keep this unit's bootloader (don't restore the boot area)", st.keep_boot, active) {
                 self.ctl.set_keep_boot(!st.keep_boot);
             }
         }
         }
 
         // ---- transfer progress ----
-        p.label(38.0, 884.0, "TRANSFER PROGRESS", Some(470.0));
-        p.frame(board.r(38.0, 900.0, 432.0, 96.0), hex(0x50465a), 1.0);
-        let sw = 408.0 / 4.0;
+        // FirmWave Stage pills (Figma Option A): white waiting, cyan now, green with a check when done
+        p.label(38.0, 902.0, "TRANSFER PROGRESS", None);
+        let mut x = 38.0;
         for (i, name) in ["READ", "BACKUP", "WRITE", "VERIFY"].iter().enumerate() {
-            let x = 50.0 + i as f32 * sw;
-            let pts: Vec<Pos2> = [(0.0, 0.0), (sw - 12.0, 0.0), (sw, 16.0), (sw - 12.0, 32.0), (0.0, 32.0), (if i == 0 { 0.0 } else { 12.0 }, 16.0)]
-                .iter().map(|(dx, dy)| board.p(x + dx, 912.0 + dy)).collect();
-            let (fill, ink) = match st.stage[i] {
-                Stage::Done => (hex(0x2b4d3f), MINT),
-                Stage::Active => (MINT, hex(0x102a20)),
-                Stage::Idle => (hex(0x2a2a28), hex(0xb7b0aa)),
-            };
-            painter.add(Shape::convex_polygon(pts, fill, Stroke::NONE));
-            let tw = p.text(x + sw / 2.0 + 3.0, 928.0, Align2::CENTER_CENTER, name, "cond", 15.0, ink, 1.6);
-            if st.stage[i] == Stage::Done {
-                let cx = x + sw / 2.0 + 3.0 - tw / 2.0 - 15.0;
-                painter.add(Shape::line(vec![board.p(cx, 928.0), board.p(cx + 4.0, 932.0), board.p(cx + 11.0, 923.0)], Stroke::new(2.0 * s, ink)));
+            let done = st.stage[i] == Stage::Done;
+            let w = p.measure(name, "cond", 13.0, 1.0) + 26.0 + if done { 16.0 } else { 0.0 };
+            let fill = match st.stage[i] { Stage::Done => fw::STATUS_OK, Stage::Active => fw::CYAN, Stage::Idle => fw::SURFACE_CARD };
+            p.pill(board.r(x, 918.0, w, 28.0), fill, 14.0, 2.5, if st.stage[i] == Stage::Active { 3.0 } else { 0.0 });
+            if done {
+                painter.add(Shape::line(vec![board.p(x + 12.0, 932.0), board.p(x + 16.0, 936.0), board.p(x + 23.0, 927.0)], Stroke::new(2.5 * s, INK)));
             }
+            p.text(x + 13.0 + if done { 16.0 } else { 0.0 }, 932.0, Align2::LEFT_CENTER, name, "cond", 13.0, INK, 1.0);
+            x += w + 8.0;
         }
-        let bar = board.r(50.0, 958.0, 348.0, 20.0);
-        p.frame(bar, fw::BORDER_DEFAULT, 2.0);
-        p.rect(board.r(52.0, 960.0, 344.0 * st.pct.clamp(0.0, 1.0), 16.0), MINT);
-        p.text(458.0, 968.0, Align2::RIGHT_CENTER, &format!("{}%", (st.pct * 100.0) as u32), "tech", 19.0, MINT, 0.0);
+        let bar = board.r(38.0, 962.0, 380.0, 18.0);
+        p.pill(bar, fw::SURFACE_CARD, 9.0, 2.5, 0.0);
+        let pct = st.pct.clamp(0.0, 1.0);
+        if pct > 0.0 {
+            p.pill(board.r(38.0, 962.0, (380.0 * pct).max(18.0), 18.0), fw::STATUS_OK, 9.0, 2.5, 0.0);
+        }
+        p.text(470.0, 971.0, Align2::RIGHT_CENTER, &format!("{}%", (st.pct * 100.0) as u32), "tech", 16.0, INK, 0.0);
 
         // ---- log ----
-        p.label(496.0, 884.0, "OPERATION LOG", Some(840.0));
-        p.text(891.0, 884.0, Align2::RIGHT_CENTER, "CLEAR", "tech", 12.0, DIM, 1.5);
-        if clicked("clearlog", board.r(850.0, 874.0, 42.0, 20.0)).0 && !modal {
+        p.label(496.0, 902.0, "OPERATION LOG", None);
+        p.text(891.0, 902.0, Align2::RIGHT_CENTER, "CLEAR", "tech", 12.0, DIM, 1.5);
+        if clicked("clearlog", board.r(850.0, 892.0, 42.0, 20.0)).0 && !modal {
             self.ctl.clear_log();
         }
         // FirmWave log (Figma DS · Log): a light card, black text in Space Mono
-        p.card(board.r(496.0, 900.0, 395.0, 96.0), fw::BG_LOG, 8.0, 0.0);
-        let clip = painter.with_clip_rect(board.r(506.0, 900.0, 378.0, 96.0));
+        p.card(board.r(496.0, 916.0, 395.0, 92.0), fw::BG_LOG, 10.0, 4.0);
+        let clip = painter.with_clip_rect(board.r(506.0, 916.0, 378.0, 92.0));
         let lines: Vec<&String> = st.log.iter().rev().take(4).collect();
         for (i, l) in lines.iter().rev().enumerate() {
             let col = if l.contains("Refused") || l.contains("error") || l.contains("gone") { WARN } else { INK };
             p.note("plex", l);
-            clip.text(board.p(508.0, 920.0 + i as f32 * 19.0), Align2::LEFT_CENTER, l.as_str(), board.f("plex", 13.0), col);
+            clip.text(board.p(508.0, 934.0 + i as f32 * 19.0), Align2::LEFT_CENTER, l.as_str(), board.f("plex", 13.0), col);
         }
 
         } else {
@@ -591,16 +605,16 @@ impl App {
         let chip = dev.and_then(|d| if d.flash.contains("(new)") { Some("new") } else if d.flash.contains("(old)") { Some("old") } else { None });
         p.label(38.0, 388.0, "FIRMWARE LIBRARY", Some(891.0));
         // the search: typed text filters the list at once
-        let field = board.r(38.0, 404.0, 296.0, 30.0);
-        p.rect(field, hex(0x1d1917));
-        p.frame(field, if self.lib_query.is_empty() { hex(0x5a5060) } else { MINT }, 1.0);
-        draw_search(p, 52.0, 419.0, if self.lib_query.is_empty() { DIM } else { MINT });
+        // FirmWave Search field (Figma L1): white, a black outline, rounded
+        let field = board.r(38.0, 402.0, 296.0, 34.0);
+        p.pill(field, fw::SURFACE_CARD, 8.0, if self.lib_query.is_empty() { 2.5 } else { 3.5 }, 0.0);
+        draw_search(p, 56.0, 419.0, INK);
         let edit = egui::TextEdit::singleline(&mut self.lib_query)
             .id(ui.id().with("lib-search"))
             .frame(egui::Frame::NONE)
-            .font(board.f("plex", 15.0))
+            .font(board.f("body", 14.0))
             .text_color(INK)
-            .hint_text(egui::RichText::new("Search name, author, kind").color(hex(0x5c534d)).font(board.f("plex", 15.0)))
+            .hint_text(egui::RichText::new("Search name, author, kind").color(fw::INK_PLACEHOLDER).font(board.f("body", 14.0)))
             .desired_width(field.width() - 70.0 * board.s);
         // a child Ui of its own on the board's layer: the view only holds a shared reference
         let mut field_ui = egui::Ui::new(ui.ctx().clone(), ui.id().with("lib-search-ui"),
@@ -609,7 +623,7 @@ impl App {
         // the favourites filter: a star with no key around it, filled when on
         let fr = board.r(342.0, 405.0, 30.0, 28.0);
         let (fc, fh) = clicked("lib-favorites", fr);
-        draw_star(p, 357.0, 419.0, 10.0, self.lib_favorites, if self.lib_favorites { WARN } else if fh { INK } else { DIM });
+        draw_star(p, 357.0, 419.0, 11.0, self.lib_favorites, if self.lib_favorites { WARN } else if fh { DIM } else { INK });
         if fc && active {
             self.lib_favorites = !self.lib_favorites;
             self.lib_first = 0;
@@ -636,7 +650,7 @@ impl App {
         }
         let refresh = board.r(774.0, 405.0, 100.0, 28.0);
         let (rc, rh) = clicked("lib-refresh", refresh);
-        key(p, refresh, false, rh && active, !active || st.library_loading);
+        key(p, refresh, true, rh && active, !active || st.library_loading);
         p.text(824.0, 419.0, Align2::CENTER_CENTER, "RELOAD", "cond", 15.0, KEYINK, 1.2);
         if rc && active && !st.library_loading {
             self.ctl.load_library();
@@ -655,27 +669,27 @@ impl App {
             .filter(|i| !self.lib_compatible || (fits(i) && !i.elsewhere))
             .collect();
         // scrolling over the list moves it a row at a time
-        let list = board.r(38.0, 440.0, 853.0, LIB_ROWS as f32 * 62.0);
+        let list = board.r(38.0, LIB_TOP, 853.0, LIB_ROWS as f32 * LIB_STEP);
         if ui.rect_contains_pointer(list) && !shown.is_empty() {
-            self.lib_scroll -= ui.input(|i| i.smooth_scroll_delta.y) / (62.0 * board.s);
+            self.lib_scroll -= ui.input(|i| i.smooth_scroll_delta.y) / (LIB_STEP * board.s);
             let max = shown.len().saturating_sub(LIB_ROWS);
             while self.lib_scroll >= 1.0 { self.lib_scroll -= 1.0; self.lib_first = (self.lib_first + 1).min(max); }
             while self.lib_scroll <= -1.0 { self.lib_scroll += 1.0; self.lib_first = self.lib_first.saturating_sub(1); }
         }
         self.lib_first = self.lib_first.min(shown.len().saturating_sub(LIB_ROWS));
         if st.library_loading && st.library.is_empty() {
-            p.text(56.0, 480.0, Align2::LEFT_CENTER, "READING THE FIRMWARE LIST…", "tech", 16.0, LAV, 2.0);
+            p.text(56.0, 490.0, Align2::LEFT_CENTER, "READING THE FIRMWARE LIST…", "tech", 16.0, LAV, 2.0);
         } else if shown.is_empty() {
             let why = if self.lib_favorites && !searching {
                 "No favourites yet: star a firmware with ☆ to find it here.".to_string()
             } else if !searching { "No firmwares to show: RELOAD, or change the filters above.".to_string() }
                 else { format!("Nothing matches \"{}\"{}.", self.lib_query.trim(),
                                if self.lib_compatible || !self.lib_beta { " with these filters: try without them" } else { "" }) };
-            p.text(56.0, 480.0, Align2::LEFT_CENTER, &why, "tech", 15.0, DIM, 0.3);
+            p.text(56.0, 490.0, Align2::LEFT_CENTER, &why, "tech", 15.0, DIM, 0.3);
         }
         for (k, item) in shown.iter().skip(self.lib_first).take(LIB_ROWS).enumerate() {
-            let y = 440.0 + k as f32 * 62.0;
-            let row = board.r(38.0, y, 853.0, 56.0);
+            let y = LIB_TOP + k as f32 * LIB_STEP;
+            let row = board.r(38.0, y, 853.0, 52.0);
             // INSTALL installs what is on this computer: GET (or UPDATE) downloads first
             // with no unit in download mode, INSTALL switches it first
             let installable = active && item.saved && !item.elsewhere && fits(item);
@@ -685,23 +699,24 @@ impl App {
             let update = !item.saved && !item.older.is_empty();
             let gettable = !item.saved && !item.elsewhere && active && !getting;
             let deletable = item.saved || !item.older.is_empty();
-            let br = board.r(728.0, y + 9.0, 146.0, 38.0);
+            let br = board.r(728.0, y + 8.0, 140.0, 34.0);
             let (bc, bh) = clicked(&format!("lib-{}", item.id), br);
-            let gr = board.r(632.0, y + 9.0, 86.0, 38.0);
+            let gr = board.r(632.0, y + 8.0, 86.0, 34.0);
             let (gc, gh) = if !item.saved && !item.elsewhere { clicked(&format!("lib-get-{}", item.id), gr) } else { (false, false) };
-            let tr = board.r(if item.saved { 674.0 } else { 584.0 }, y + 9.0, 44.0, 38.0);
+            let tr = board.r(if item.saved { 674.0 } else { 584.0 }, y + 8.0, 44.0, 34.0);
             let (tc, th) = if deletable { clicked(&format!("lib-del-{}", item.id), tr) } else { (false, false) };
-            p.rect(row, if (bh && installable) || (gh && gettable) || (th && active) { hex(0x312a26) } else { hex(0x221d1a) });
-            p.frame(row, if item.saved { KEYLINE } else { hex(0x3c3433) }, 1.0);
-            // the star: no key around it, filled and amber when starred
-            let sr = board.r(44.0, y + 6.0, 28.0, 26.0);
+            // FirmWave Library row (Figma L1): a white card, light green when saved on this computer
+            let _ = (bh, gh, th);
+            p.card(row, if item.saved { fw::SURFACE_SAVED } else { fw::SURFACE_CARD }, 10.0, 4.0);
+            // the star: no key around it, filled when starred
+            let sr = board.r(44.0, y + 12.0, 28.0, 28.0);
             let (sc, sh) = clicked(&format!("lib-star-{}", item.id), sr);
-            draw_star(p, 58.0, y + 19.0, 9.0, item.favorite, if item.favorite { WARN } else if sh { INK } else { DIM });
+            draw_star(p, 60.0, y + 26.0, 10.0, item.favorite, if item.favorite { WARN } else if sh { DIM } else { INK });
             if sc && active {
                 self.ctl.library_favorite(item.id.clone(), !item.favorite);
             }
-            let nw = p.text_fit(76.0, y + 19.0, &item.name.to_uppercase(), "cond", 20.0, 400.0, INK, 1.0);
-            p.text(76.0 + nw + 10.0, y + 19.0, Align2::LEFT_CENTER, &item.version, "tech", 14.0, DIM, 0.0);
+            let nw = p.text_fit(82.0, y + 17.0, &item.name.to_uppercase(), "cond", 18.0, 400.0, INK, 0.6);
+            p.text(82.0 + nw + 8.0, y + 18.0, Align2::LEFT_CENTER, &item.version, "plex", 13.0, DIM, 0.0);
             let mut tags = vec![item.kinds.to_uppercase()];
             if item.beta { tags.push("BETA".into()); }
             if item.saved { tags.push("SAVED · SHA-256 OK".into()); }
@@ -709,21 +724,21 @@ impl App {
             if getting { tags.push("DOWNLOADING…".into()); }
             if update { tags.push(format!("{} SAVED · NEW {}", item.older.join(", "), item.version)); }
             let room = match (item.saved, item.elsewhere, deletable) { (true, _, _) => 600.0, (_, true, _) => 650.0, (_, _, true) => 520.0, _ => 560.0 };
-            p.text_fit(76.0, y + 41.0, &format!("{} · {}", item.byline, tags.join(" · ")), "tech", 13.0, room - 22.0,
-                       if fits(item) { LAV } else { BAD }, 0.6);
+            p.text_fit(82.0, y + 37.0, &format!("{} · {}", item.byline, tags.join(" · ")), "plex", 12.0, room - 28.0,
+                       if fits(item) { DIM } else { BAD }, 0.0);
             let label = if item.elsewhere { "AUTHOR'S SITE" } else if !fits(item) { "NOT FOR THIS" } else { "INSTALL" };
-            key(p, br, false, bh && installable, !installable);
-            p.text(801.0, y + 28.0, Align2::CENTER_CENTER, label, "cond", 16.0, KEYINK, 1.2);
+            key(p, br, installable, bh && installable, !installable);
+            p.text(798.0, y + 25.0, Align2::CENTER_CENTER, label, "cond", 15.0, KEYINK, 1.0);
             if !item.saved && !item.elsewhere {
                 key(p, gr, false, gh && gettable, !gettable);
-                p.text(675.0, y + 28.0, Align2::CENTER_CENTER, if getting { "…" } else if update { "UPDATE" } else { "GET" }, "cond", 16.0, KEYINK, 1.2);
+                p.text(675.0, y + 25.0, Align2::CENTER_CENTER, if getting { "…" } else if update { "UPDATE" } else { "GET" }, "cond", 15.0, KEYINK, 1.0);
                 if gc && gettable {
                     self.ctl.library_get(item.id.clone());
                 }
             }
             if deletable {
                 key(p, tr, false, th && active, !active);
-                draw_trash(p, tr.center().x / board.s - board.o.x / board.s, y + 28.0, KEYINK);
+                draw_trash(p, (tr.center().x - board.o.x) / board.s, y + 25.0, KEYINK);
                 if tc && active {
                     let versions = if item.saved { std::iter::once(item.version.clone()).chain(item.older.iter().cloned()).collect::<Vec<_>>() }
                                    else { item.older.clone() };
@@ -743,19 +758,21 @@ impl App {
         } else {
             format!("{} FOUND", shown.len())
         };
-        p.text(760.0, 419.0, Align2::RIGHT_CENTER, &count, "tech", 12.0, LAV, 1.2);
+        p.text(760.0, 419.0, Align2::RIGHT_CENTER, &count, "plex", 13.0, INK, 0.0);
         let hidden = found - shown.len();
         if hidden > 0 {
-            p.text(760.0, 436.0, Align2::RIGHT_CENTER,
-                   &format!("{hidden} MORE HIDDEN BY {}", match (self.lib_favorites, self.lib_compatible, self.lib_beta) {
-                       (true, false, true) => "FAVOURITES", (false, true, true) => "THIS UNIT ONLY",
-                       (false, false, false) => "BETAS OFF", _ => "THE FILTERS" }),
-                   "tech", 11.0, WARN, 1.0);
+            // an orange pill (Figma L1): what the filters hide is said, never silently lost
+            let t = format!("{hidden} MORE HIDDEN BY {}", match (self.lib_favorites, self.lib_compatible, self.lib_beta) {
+                (true, false, true) => "FAVOURITES", (false, true, true) => "THIS UNIT ONLY",
+                (false, false, false) => "BETAS OFF", _ => "THE FILTERS" });
+            let w = p.measure(&t, "tech", 11.0, 0.6) + 20.0;
+            p.pill(board.r(891.0 - w, 443.0, w, 20.0), fw::STATUS_WARN, 10.0, 2.0, 0.0);
+            p.text(891.0 - w / 2.0, 453.0, Align2::CENTER_CENTER, &t, "tech", 11.0, INK, 0.6);
         }
         let note = if dev.is_none() { "GET downloads for later. INSTALL checks the FM-1 first, then opens the review." }
                    else { "INSTALL opens the firmware's review: nothing is written before WRITE." };
-        p.text_fit(48.0, 950.0, &format!("{note}  {}", st.library_note), "tech", 13.0, 840.0, DIM, 0.3);
-        p.text(48.0, 974.0, Align2::LEFT_CENTER, crate::library::ATTRIBUTION, "tech", 13.0, LAV, 0.6);
+        p.text_fit(38.0, 978.0, &format!("{note}  {}", st.library_note), "body", 13.0, 853.0, DIM, 0.0);
+        p.text(38.0, 998.0, Align2::LEFT_CENTER, crate::library::ATTRIBUTION, "body", 13.0, DIM, 0.0);
     }
 
     /// The unit's safety at a glance (REQ-BOOT-01 first): each check passed or
@@ -787,26 +804,26 @@ impl App {
              None),
         ];
         let need = checks.iter().filter(|c| !c.1).count();
-        p.label(938.0, 902.0, "SAFETY CHECK", Some(1310.0));
-        p.text(1500.0, 902.0, Align2::RIGHT_CENTER, &if need == 0 { "ALL CLEAR".to_string() } else { format!("{need} NEED ATTENTION") },
-               "tech", 13.0, if need == 0 { MINT } else { WARN }, 1.4);
+        // FirmWave Safety check (Figma Option A): a white card; each check a green box with a tick, or an
+        // orange box with "!" and the yellow key that fixes it
+        p.label(938.0, 836.0, "SAFETY CHECK", None);
+        let t = if need == 0 { "ALL CLEAR".to_string() } else { format!("{need} NEED ATTENTION") };
+        let tw = p.measure(&t, "tech", 11.0, 0.6) + 22.0;
+        p.pill(board.r(1500.0 - tw, 826.0, tw, 20.0), if need == 0 { fw::STATUS_OK } else { fw::STATUS_WARN }, 10.0, 2.0, 0.0);
+        p.text(1500.0 - tw / 2.0, 836.0, Align2::CENTER_CENTER, &t, "tech", 11.0, INK, 0.6);
+        p.card(board.r(938.0, 852.0, 562.0, 160.0), fw::SURFACE_CARD, 12.0, 5.0);
         for (k, (name, ok, text, action)) in checks.iter().enumerate() {
-            let y = 926.0 + k as f32 * 20.0;
-            if *ok {
-                p.p.add(Shape::line(vec![board.p(942.0, y), board.p(946.0, y + 4.0), board.p(953.0, y - 5.0)], Stroke::new(2.0 * board.s, MINT)));
-            } else {
-                p.p.add(Shape::convex_polygon(vec![board.p(947.5, y - 7.0), board.p(955.0, y + 6.0), board.p(940.0, y + 6.0)], WARN, Stroke::NONE));
-                p.text(947.5, y + 1.5, Align2::CENTER_CENTER, "!", "tech", 11.0, hex(0x1a1410), 0.0);
-            }
-            p.text(966.0, y, Align2::LEFT_CENTER, name, "tech", 13.0, LAV, 1.4);
-            let room = if action.is_some() { 330.0 } else { 410.0 };
-            p.text_fit(1062.0, y, text, "plex", 13.0, room, if *ok { INK } else { WARN }, 0.0);
+            let y = 872.0 + k as f32 * 36.0;
+            if *ok { ok_box(p, 954.0, y - 11.0, 22.0) } else { alert_box(p, 954.0, y - 11.0, 22.0) }
+            p.text(988.0, y - 5.0, Align2::LEFT_CENTER, name, "tech", 13.0, INK, 1.0);
+            let room = if action.is_some() { 380.0 } else { 490.0 };
+            p.text_fit(988.0, y + 10.0, text, "plex", 11.5, room, if *ok { DIM } else { INK }, 0.0);
             if let Some((label, code)) = action {
-                let r = board.r(1410.0, y - 9.0, 90.0, 18.0);
+                let r = board.r(1400.0, y - 12.0, 84.0, 24.0);
                 let resp = ui.interact(r, ui.id().with(("safety", *code)), Sense::click());
                 let enabled = active && st.phase != Phase::Working;
-                key(p, r, false, resp.hovered() && enabled, !enabled);
-                p.text(1455.0, y, Align2::CENTER_CENTER, label, "cond", 13.0, KEYINK, 1.0);
+                key(p, r, true, resp.hovered() && enabled, !enabled);
+                p.text(1442.0, y, Align2::CENTER_CENTER, label, "cond", 12.0, KEYINK, 0.8);
                 if resp.clicked() && enabled {
                     match code {
                         // install m-bootloader: reviewed as any write once planned
@@ -826,11 +843,13 @@ impl App {
         if !hovered_now {
             p.text(1500.0, 148.0, Align2::RIGHT_CENTER, "1 MiB = 256 × 4 KiB", "tech", 15.0, LAV, 1.0);
         }
-        let (gx, gy, gw, gh, pad, gap) = (972.0, 198.0, 528.0, 532.0, 4.0, 5.0);
+        // FirmWave Flash map (Figma Option A): the grid in a white card, each sector outlined in black
+        p.card(board.r(938.0, 164.0, 562.0, 520.0), fw::SURFACE_CARD, 12.0, 5.0);
+        let (gx, gy, gw, gh, pad, gap) = (976.0, 196.0, 508.0, 474.0, 0.0, 5.0);
         let cw = (gw - 2.0 * pad - 15.0 * gap) / 16.0;
         let ch = (gh - 2.0 * pad - 15.0 * gap) / 16.0;
         for c in 0..16 {
-            p.text(gx + pad + c as f32 * (cw + gap) + cw / 2.0, 187.0, Align2::CENTER_CENTER, &format!("{c:X}"), "tech", 16.0, INK, 0.0);
+            p.text(gx + pad + c as f32 * (cw + gap) + cw / 2.0, 183.0, Align2::CENTER_CENTER, &format!("{c:X}"), "plex", 12.0, INK, 0.0);
         }
         let writing = st.phase == Phase::Working && st.mode != Mode::Backup;
         let dimmed = !st.marks.is_empty();
@@ -838,7 +857,7 @@ impl App {
         for i in 0..256 {
             let (row, col) = (i / 16, i % 16);
             if col == 0 {
-                p.text(938.0, gy + pad + row as f32 * (ch + gap) + ch / 2.0, Align2::LEFT_CENTER, &format!("{:02X}", row * 16), "tech", 15.0, INK, 0.0);
+                p.text(950.0, gy + pad + row as f32 * (ch + gap) + ch / 2.0, Align2::LEFT_CENTER, &format!("{:02X}", row * 16), "plex", 12.0, INK, 0.0);
             }
             let r = board.r(gx + pad + col as f32 * (cw + gap), gy + pad + row as f32 * (ch + gap), cw, ch);
             if ui.rect_contains_pointer(r) {
@@ -874,9 +893,14 @@ impl App {
                 }
                 None => {}
             }
-            if solid {
-                p.rect(r, fill.gamma_multiply(fade));
-                painter.line_segment([r.left_top(), r.right_top()], Stroke::new(s, Color32::from_white_alpha((40.0 * fade) as u8)));
+            if solid && dev.is_some() {
+                let cr = CornerRadius::same((3.0 * s).round() as u8);
+                p.p.rect_filled(r, cr, fill.gamma_multiply(fade));
+                p.p.rect_stroke(r, cr, Stroke::new(2.0 * s, INK.gamma_multiply(fade.max(0.5))), StrokeKind::Inside);
+            } else if dev.is_some() && region == Region::Free {
+                // a free sector: white, a dashed outline
+                p.p.rect_filled(r, CornerRadius::same((3.0 * s).round() as u8), fw::MAP_FREE);
+                dashed(p, r, INK.gamma_multiply(fade.max(0.5)));
             } else {
                 hatch(p, r, fade);
             }
@@ -891,24 +915,29 @@ impl App {
             }
         }
 
-        // legend: the regions this unit has, with their sectors
-        let mut idx = 0;
+        // legend (Figma Option A): a pill per region this unit has, in its colour, with its sectors
+        let (mut x, mut y) = (938.0, 712.0);
         for reg in Region::LEGEND {
             let ranges = region_ranges(&st.map, reg);
             if dev.is_some() && ranges.is_empty() {
                 continue;
             }
-            let x = 938.0 + (idx % 3) as f32 * 190.0;
-            let y = 762.0 + (idx / 3) as f32 * 24.0;
-            idx += 1;
-            let sq = board.r(x, y - 9.5, 19.0, 19.0);
-            if reg == Region::Free { hatch(p, sq, 1.4) } else { p.rect(sq, region_color(reg)) }
-            let w = p.text(x + 29.0, y, Align2::LEFT_CENTER, reg.name(), "tech", 15.0, INK, 1.2);
-            if dev.is_some() {
-                p.text_fit(x + 29.0 + w + 8.0, y, &ranges, "tech", 13.5, 150.0 - w, DIM, 0.0);
+            let t = if dev.is_some() { format!("{} {ranges}", reg.name().to_uppercase()) } else { reg.name().to_uppercase() };
+            let w = p.measure(&t, "tech", 11.5, 0.5) + 22.0;
+            if x + w > 1500.0 {
+                x = 938.0;
+                y += 30.0;
             }
+            let r = board.r(x, y - 11.0, w, 22.0);
+            if reg == Region::Free {
+                p.p.rect_filled(r, CornerRadius::same((11.0 * s) as u8), fw::MAP_FREE);
+                dashed(p, r, INK);
+            } else {
+                p.pill(r, region_color(reg), 11.0, 2.0, 0.0);
+            }
+            p.text(x + w / 2.0, y, Align2::CENTER_CENTER, &t, "tech", 11.5, INK, 0.5);
+            x += w + 8.0;
         }
-        p.hline(938.0, 1500.0, 848.0, LAVLINE);
         let n = st.marks.len();
         let marks: Vec<(Color32, Option<Color32>, String)> = if writing {
             vec![(hex(0xb7fff0), None, "WRITTEN".into()), (NOW, None, "NOW".into()),
@@ -920,17 +949,21 @@ impl App {
         } else {
             vec![]
         };
-        let mut x = 938.0;
+        // what the map marks, in a white box (Figma Option A)
+        if dev.is_some() {
+            p.card(board.r(938.0, 778.0, 562.0, 34.0), fw::SURFACE_CARD, 8.0, 4.0);
+        }
+        let mut x = 954.0;
         for (fill, ol, t) in &marks {
-            let sq = board.r(x, 862.0, 19.0, 19.0);
+            let sq = board.r(x, 786.0, 18.0, 18.0);
             p.rect(sq, *fill);
             if let Some(c) = ol { p.frame(sq, *c, 2.0) }
-            let w = p.text(x + 29.0, 872.0, Align2::LEFT_CENTER, t, "tech", 15.0, INK, 1.5);
-            x += 29.0 + w + 36.0;
+            let w = p.text(x + 26.0, 795.0, Align2::LEFT_CENTER, t, "tech", 13.0, INK, 0.8);
+            x += 26.0 + w + 28.0;
         }
         if marks.is_empty() && dev.is_some() {
-            let t = if st.mode == Mode::Backup { "A BACKUP READS ALL 256 SECTORS" } else { "NOTHING MARKED: CHOOSE A FILE TO SEE WHAT CHANGES" };
-            p.text(938.0, 872.0, Align2::LEFT_CENTER, t, "tech", 14.0, DIM, 1.2);
+            let t = if st.mode == Mode::Backup { "A backup reads all 256 sectors" } else { "Nothing marked: choose a firmware to see what changes" };
+            p.text(954.0, 795.0, Align2::LEFT_CENTER, t, "cond", 14.0, INK, 0.3);
         }
         if let (Some(i), Some(_)) = (hovered, dev) {
             let what = match st.marks.get(&i) {
@@ -1279,13 +1312,19 @@ impl Painter<'_> {
     }
     /// FirmWave's card: a fill, a 3 px black outline, rounded corners and a hard black shadow (blur 0)
     fn card(&self, r: Rect, fill: Color32, radius: f32, shadow: f32) {
+        self.pill(r, fill, radius, 3.0, shadow);
+    }
+    /// A card with an outline of its own width: pills, tags and fields
+    fn pill(&self, r: Rect, fill: Color32, radius: f32, border: f32, shadow: f32) {
         let s = self.b.s;
         let cr = CornerRadius::same((radius * s).round().min(255.0) as u8);
         if shadow > 0.0 {
             self.p.rect_filled(r.translate(vec2(shadow * s, shadow * s)), cr, fw::SHADOW_DEFAULT);
         }
         self.p.rect_filled(r, cr, fill);
-        self.p.rect_stroke(r, cr, Stroke::new(3.0 * s, fw::BORDER_DEFAULT), StrokeKind::Inside);
+        if border > 0.0 {
+            self.p.rect_stroke(r, cr, Stroke::new(border * s, fw::BORDER_DEFAULT), StrokeKind::Inside);
+        }
     }
     fn frame(&self, r: Rect, color: Color32, width: f32) {
         self.p.rect_stroke(r, CornerRadius::ZERO, Stroke::new(width * self.b.s, color), StrokeKind::Inside);
@@ -1358,6 +1397,52 @@ fn key(p: &Painter, r: Rect, on: bool, hover: bool, disabled: bool) {
     let lift = if hover && !disabled { 3.0 } else { 0.0 };
     let r = r.translate(vec2(lift, lift) * p.b.s);
     p.card(r, fill, 12.0, if disabled { 0.0 } else { 5.0 - lift });
+}
+
+/// A key of its own colour (the operations: SAVE cyan, RESTORE pink, INSTALL lilac)
+fn key_fill(p: &Painter, r: Rect, fill: Color32, hover: bool, disabled: bool) {
+    let lift = if hover && !disabled { 3.0 } else { 0.0 };
+    let r = r.translate(vec2(lift, lift) * p.b.s);
+    p.card(r, if disabled { fw::SURFACE_EMPTY } else { fill }, 12.0, if disabled { 0.0 } else { 5.0 - lift });
+}
+
+/// What needs attention: a black-outlined orange box with "!" (Figma DS · Status Icon · Warn)
+fn alert_box(p: &Painter, x: f32, y: f32, size: f32) {
+    p.pill(p.b.r(x, y, size, size), fw::STATUS_WARN, 4.0, 2.0, 0.0);
+    p.text(x + size / 2.0, y + size / 2.0, Align2::CENTER_CENTER, "!", "cond", size * 0.7, INK, 0.0);
+}
+
+/// What passed: a black-outlined green box with a tick (Figma DS · Status Icon · OK)
+fn ok_box(p: &Painter, x: f32, y: f32, size: f32) {
+    let b = p.b;
+    p.pill(b.r(x, y, size, size), fw::STATUS_OK, 4.0, 2.0, 0.0);
+    let k = size / 22.0;
+    p.p.add(Shape::line(vec![b.p(x + 6.0 * k, y + 11.5 * k), b.p(x + 9.5 * k, y + 15.0 * k), b.p(x + 16.0 * k, y + 7.0 * k)],
+                        Stroke::new(2.5 * b.s, INK)));
+}
+
+/// A dashed black outline around r (a free sector)
+fn dashed(p: &Painter, r: Rect, color: Color32) {
+    let s = p.b.s;
+    let r = r.shrink(0.75 * s);
+    let pts = vec![r.left_top(), r.right_top(), r.right_bottom(), r.left_bottom(), r.left_top()];
+    p.p.extend(Shape::dashed_line(&pts, Stroke::new(1.5 * s, color), 3.0 * s, 2.5 * s));
+}
+
+/// The app icon's drawing (Figma App Icon 308:102285): a black wave shaped as a W, the W of FirmWave
+/// (Wellington, 22/11: no solder pads); in the icon's own 166-unit square at (x, y), as macos/icon.svg
+fn wave_w(p: &Painter, x: f32, y: f32, size: f32) {
+    let b = p.b;
+    let k = size / 166.0;
+    let wave: Vec<Pos2> = (0..=96).map(|i| {
+        let t = i as f32 / 96.0;
+        b.p(x + (35.2 + 95.6 * t) * k, y + (83.0 - 19.3 * (4.0 * std::f32::consts::PI * t).cos()) * k)
+    }).collect();
+    let w = 12.5 * k * b.s;
+    // round ends: the stroke's caps
+    p.p.circle_filled(wave[0], w / 2.0, INK);
+    p.p.circle_filled(wave[96], w / 2.0, INK);
+    p.p.add(Shape::line(wave, Stroke::new(w, INK)));
 }
 
 fn led(p: &Painter, c: Pos2, on: bool) {
@@ -1510,4 +1595,38 @@ fn noise_texture(ctx: &egui::Context) -> TextureHandle {
     let image = egui::ColorImage::new([n, n], pixels);
     let opts = TextureOptions { wrap_mode: TextureWrapMode::Repeat, ..TextureOptions::NEAREST };
     ctx.load_texture("noise", image, opts)
+}
+
+/// FIRMWAVE_SHOT=file.bmp (with FIRMWAVE_PREVIEW): the window saves a picture of itself and closes, for
+/// comparing the design with Figma when the screen can't be captured (a locked Mac, a CI runner)
+fn preview_shot(ctx: &egui::Context) {
+    use std::sync::atomic::{AtomicU32, Ordering};
+    static FRAMES: AtomicU32 = AtomicU32::new(0);
+    let Some(path) = std::env::var_os("FIRMWAVE_SHOT") else { return };
+    let n = FRAMES.fetch_add(1, Ordering::Relaxed);
+    let got = ctx.input(|i| i.events.iter().find_map(|e| match e {
+        egui::Event::Screenshot { image, .. } => Some(image.clone()),
+        _ => None,
+    }));
+    if let Some(img) = got {
+        let [w, h] = img.size;
+        let mut bmp = Vec::with_capacity(54 + w * h * 4);
+        let size = (54 + w * h * 4) as u32;
+        bmp.extend_from_slice(b"BM");
+        bmp.extend_from_slice(&size.to_le_bytes());
+        bmp.extend_from_slice(&[0, 0, 0, 0, 54, 0, 0, 0, 40, 0, 0, 0]);
+        bmp.extend_from_slice(&(w as i32).to_le_bytes());
+        bmp.extend_from_slice(&(-(h as i32)).to_le_bytes());
+        bmp.extend_from_slice(&[1, 0, 32, 0, 0, 0, 0, 0]);
+        bmp.extend_from_slice(&((w * h * 4) as u32).to_le_bytes());
+        bmp.extend_from_slice(&[0; 16]);
+        for p in &img.pixels {
+            bmp.extend_from_slice(&[p.b(), p.g(), p.r(), 255]);
+        }
+        let _ = std::fs::write(&path, bmp);
+        ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+    } else if n == 40 {
+        ctx.send_viewport_cmd(egui::ViewportCommand::Screenshot(egui::UserData::default()));
+    }
+    ctx.request_repaint();
 }

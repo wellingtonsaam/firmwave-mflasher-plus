@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The launcher icon's wave shaped as a W, in the adaptive icon's safe zone -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <path android:strokeColor="#FF000000" android:strokeWidth="6.2" android:strokeLineCap="round" android:strokeLineJoin="round"
+        android:fillColor="#00000000" android:pathData="M31.00,44.40 L31.72,44.58 L32.44,45.13 L33.16,46.02 L33.88,47.21 L34.59,48.67 L35.31,50.33 L36.03,52.13 L36.75,54.00 L37.47,55.87 L38.19,57.67 L38.91,59.33 L39.62,60.79 L40.34,61.98 L41.06,62.87 L41.78,63.42 L42.50,63.60 L43.22,63.42 L43.94,62.87 L44.66,61.98 L45.38,60.79 L46.09,59.33 L46.81,57.67 L47.53,55.87 L48.25,54.00 L48.97,52.13 L49.69,50.33 L50.41,48.67 L51.12,47.21 L51.84,46.02 L52.56,45.13 L53.28,44.58 L54.00,44.40 L54.72,44.58 L55.44,45.13 L56.16,46.02 L56.88,47.21 L57.59,48.67 L58.31,50.33 L59.03,52.13 L59.75,54.00 L60.47,55.87 L61.19,57.67 L61.91,59.33 L62.62,60.79 L63.34,61.98 L64.06,62.87 L64.78,63.42 L65.50,63.60 L66.22,63.42 L66.94,62.87 L67.66,61.98 L68.38,60.79 L69.09,59.33 L69.81,57.67 L70.53,55.87 L71.25,54.00 L71.97,52.13 L72.69,50.33 L73.41,48.67 L74.12,47.21 L74.84,46.02 L75.56,45.13 L76.28,44.58 L77.00,44.40" />
+</vector>
